@@ -53,8 +53,7 @@ char **argv;
  switch(qqtalk_close(&qqt))
   {
    case 0: die_success();
-   case QQT_TOOLONG:
-   case QQT_EXECHARD: die_perm("forward: fatal: permanent qmail-queue error\n");
+   case QQT_TOOLONG: die_perm("forward: fatal: permanent qmail-queue error\n");
    default: die_temp("forward: fatal: temporary qmail-queue error\n");
   }
 }

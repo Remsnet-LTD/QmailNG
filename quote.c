@@ -46,7 +46,12 @@ unsigned int n;
  unsigned char uch;
  int i;
  if (!n) return 0;
- for (i = 0;i < n;++i) if ((uch = s[i]) <= 127) if (!ok[uch]) return 1;
+ for (i = 0;i < n;++i)
+  {
+   uch = s[i];
+   if (uch >= 128) return 1;
+   if (!ok[uch]) return 1;
+  }
  if (s[0] == '.') return 1;
  if (s[n - 1] == '.') return 1;
  for (i = 0;i < n - 1;++i) if (s[i] == '.') if (s[i + 1] == '.') return 1;

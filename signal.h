@@ -8,6 +8,7 @@ extern void signal_catchbug();
 extern void signal_catchterm();
 extern void signal_uncatchterm();
 extern void signal_catchalarm();
+extern void signal_uncatchalarm();
 extern void signal_catchchild();
 extern void signal_uncatchchild();
 extern void signal_blocknone();

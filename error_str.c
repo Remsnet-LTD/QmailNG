@@ -15,15 +15,11 @@ int i;
  X(error_exist,"file already exists")
  X(error_timeout,"timed out")
  X(error_inprogress,"operation in progress")
- X(error_wouldblock,"input/output would block")
  X(error_again,"temporary failure")
+ X(error_wouldblock,"input/output would block")
  X(error_pipe,"broken pipe")
-#ifdef EPERM
- X(EPERM,"permission denied")
-#endif
-#ifdef EACCES
- X(EACCES,"access denied")
-#endif
+ X(error_perm,"permission denied")
+ X(error_acces,"access denied")
 #ifdef ESRCH
  X(ESRCH,"no such process")
 #endif

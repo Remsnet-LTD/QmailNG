@@ -88,6 +88,7 @@ void main()
 
  check(".",S_IFDIR,UID_OWNER,0755);
  check("control",S_IFDIR,UID_OWNER,0755);
+ check("users",S_IFDIR,UID_OWNER,0755);
  check("queue",S_IFDIR,UID_QUEUE,0750);
  check("bin",S_IFDIR,UID_OWNER,0755);
  check("alias",S_IFDIR,UID_ALIAS,0755);
@@ -116,6 +117,9 @@ void main()
  check("bin/qmail-home",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-inject",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-lspawn",S_IFREG,UID_OWNER,0755);
+ check("bin/qmail-newuser",S_IFREG,UID_OWNER,0755);
+ check("bin/qmail-pw2user",S_IFREG,UID_OWNER,0755);
+ check("bin/qmail-getpw",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-qread",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-tcpto",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-qstat",S_IFREG,UID_OWNER,0755);
@@ -176,6 +180,10 @@ void main()
  check("man/cat7/qmail-limits.0",S_IFREG,UID_OWNER,0644);
  check("man/cat5/qmail-log.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-lspawn.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/qmail-newuser.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/qmail-pw2user.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat5/qmail-users.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/qmail-getpw.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-queue.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-qread.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-tcpto.0",S_IFREG,UID_OWNER,0644);

@@ -5,6 +5,8 @@
 
 #define CONF_USERA "alias"
 #define CONF_USERD "qmaild"
+#define CONF_USERL "qmaill"
+#define CONF_USERP "qmailp"
 #define CONF_USERQ "qmailq"
 #define CONF_USERR "qmailr"
 #define CONF_USERS "qmails"

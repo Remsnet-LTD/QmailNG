@@ -55,6 +55,18 @@ This is a very serious problem;
 .B qmail-send
 cannot proceed without recording the results.
 It will try again in ten seconds.
+.TP
+.B alert: out of memory...
+.B qmail-send
+tried to allocate more memory and failed.
+It will try again in ten seconds.
+.TP
+.B alert: unable to opendir...
+.B qmail-send
+is having trouble reading a file list from disk,
+usually because the system's file descriptor table is full,
+but possibly because permissions are set incorrectly.
+It will try again in ten seconds.
 .SH "MESSAGES"
 .TP
 .B new msg \fIm\fB

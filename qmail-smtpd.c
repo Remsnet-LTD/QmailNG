@@ -102,6 +102,17 @@ void dohelo(arg) char *arg;
    outofmem();
 }
 
+void straynewline()
+{
+ out("451 \
+Put ,E=\\r\\n at the end of Mether in sendmail.cf \
+if you are using Solaris 2.5 (fixed in 2.5.1). \
+I cannot accept messages with stray newlines. \
+Many SMTP servers will time out waiting for \\r\\n.\\r\\n.\
+\r\n");
+ die();
+}
+
 void blast(ssfrom,hops)
 substdio *ssfrom;
 int *hops;
@@ -139,14 +150,17 @@ int *hops;
    switch(state)
     {
      case 0:
+       if (ch == '\n') straynewline();
        if (ch == '\r') { state = 4; continue; }
        break;
      case 1: /* \r\n */
+       if (ch == '\n') straynewline();
        if (ch == '.') { state = 2; continue; }
        if (ch == '\r') { state = 4; continue; }
        state = 0;
        break;
      case 2: /* \r\n + . */
+       if (ch == '\n') straynewline();
        if (ch == '\r') { state = 3; continue; }
        state = 0;
        break;
@@ -326,7 +340,6 @@ void smtp_data() {
  switch(r)
   {
    case QQT_TOOLONG: out("554 address too long (#5.1.3)\r\n"); return;
-   case QQT_EXECHARD: out("554 could not exec qq (#5.3.5)\r\n"); return;
    case QQT_SYS: out("451 qq system error (#4.3.0)\r\n"); return;
    case QQT_READ: out("451 qq read error (#4.3.0)\r\n"); return;
    case QQT_WRITE: out("451 qq write error or disk full (#4.3.0)\r\n"); return;

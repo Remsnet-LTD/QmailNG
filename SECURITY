@@ -38,7 +38,7 @@ timers, signals, and more. Even worse, the list of controlled items
 varies from one vendor's UNIX to the next, so it is very difficult to
 write portable code that cleans up everything.
 
-Of the eight most recent sendmail security holes, three worked only
+Of the eleven most recent sendmail security holes, five worked only
 because the entire sendmail system is setuid.
 
 Only one qmail program is setuid: qmail-queue. Its only purpose is to
@@ -49,8 +49,8 @@ add a new mail message to the outgoing queue.
 
 The entire sendmail system runs as root, so there's no way that its
 mistakes can be caught by the operating system's built-in protections.
-In contrast, only two qmail programs, qmail-start and qmail-lspawn, run
-as root.
+In contrast, only two qmail programs, qmail-start and qmail-lspawn,
+run as root.
 
 
 4. Move separate functions into mutually untrusting programs.
@@ -82,21 +82,21 @@ sequence of commands, in a format usually determined more by psychology
 than by solid engineering, into structured data.
 
 When another programmer wants to talk to a user interface, he has to
-_unparse_: convert his structured data into an unstructured sequence of
+_quote_: convert his structured data into an unstructured sequence of
 commands that the parser will, he hopes, convert back into the original
 structured data.
 
 This situation is a recipe for disaster. The parser often has bugs: it
 fails to handle some inputs according to the documented interface. The
-unparser often has bugs: it produces outputs that do not have the right
+quoter often has bugs: it produces outputs that do not have the right
 meaning. Only on rare joyous occasions does it happen that the parser
-and the unparser both misinterpret the interface in the same way.
+and the quoter both misinterpret the interface in the same way.
 
 When the original data is controlled by a malicious user, many of these
 bugs translate into security holes. Some examples: the Linux login
 -froot security hole; the classic find | xargs rm security hole; the
 recent Majordomo security hole. Even a simple parser like getopt is
-complicated enough for people to screw up the unparsing.
+complicated enough for people to screw up the quoting.
 
 In qmail, all the internal file structures are incredibly simple: text0
 lines beginning with single-character commands. (text0 format means that

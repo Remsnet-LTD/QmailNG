@@ -38,10 +38,12 @@ int ipme_init()
  struct sockaddr_in *sin;
  int len;
  int s;
+ struct ip_mx ix;
 
  if (ipmeok) return 1;
  if (!ipalloc_readyplus(&ipme,0)) return 0;
  ipme.len = 0;
+ ix.pref = 0;
 
  if ((s = socket(AF_INET,SOCK_STREAM,0)) == -1) return -1;
  ifc.ifc_buf = buf;
@@ -54,19 +56,27 @@ int ipme_init()
 #ifdef HASSALEN
    len = sizeof(ifr->ifr_name) + ifr->ifr_addr.sa_len;
    if (len < sizeof(*ifr))
-#endif
      len = sizeof(*ifr);
+   if (ifr->ifr_addr.sa_family == AF_INET)
+    {
+     sin = (struct sockaddr_in *) &ifr->ifr_addr;
+     byte_copy(&ix.ip,4,&sin->sin_addr);
+     if (ioctl(s,SIOCGIFFLAGS,x) == 0)
+       if (ifr->ifr_flags & IFF_UP)
+         if (!ipalloc_append(&ipme,&ix)) return 0;
+    }
+#else
+   len = sizeof(*ifr);
    if (ioctl(s,SIOCGIFFLAGS,x) == 0)
      if (ifr->ifr_flags & IFF_UP)
        if (ioctl(s,SIOCGIFADDR,x) == 0)
 	 if (ifr->ifr_addr.sa_family == AF_INET)
 	  {
-	   struct ip_mx ix;
 	   sin = (struct sockaddr_in *) &ifr->ifr_addr;
 	   byte_copy(&ix.ip,4,&sin->sin_addr);
-	   ix.pref = 0;
 	   if (!ipalloc_append(&ipme,&ix)) return 0;
 	  }
+#endif
    x += len;
   }
  close(s);

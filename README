@@ -1,5 +1,5 @@
-qmail 0.91, gamma.
-19960902
+qmail 0.92, gamma.
+19961026
 Copyright 1996
 D. J. Bernstein, qmail@pobox.com
 
@@ -8,7 +8,8 @@ It is meant as a replacement for the entire sendmail-binmail system on
 typical Internet-connected UNIX hosts. See BLURB, BLURB2, BLURB3, and
 BLURB4 for more detailed advertisements.
 
-INSTALL says how to set up and test qmail.
+INSTALL says how to set up and test qmail. If you're upgrading from
+0.91, read UPGRADE instead.
 
 See http://pobox.com/~djb/qmail.html for other qmail-related software.
 
@@ -23,61 +24,89 @@ qmail have been reported to work. 0.70 was the first beta version; 0.90
 was the first gamma version. To see your systype, make systype; cat
 systype.
 
-0.71: aix-3-2-:-:-:000109257500-:-
+0.91: aix-3-2-:-:-:000109257500-:-
 0.76: aix-4-1-:-:-:00050187a000-:-
 0.70: aix-4-1-:-:-:00ffffff4c00-:- (tnx ALB)
-0.90: bsd.os-2.0.1-:i386-:-:pentium-:-
+0.91: aix-4-2-:-:-:006030934c00-:-
+0.92: bsd.os-2.0.1-:i386-:-:pentium-:-
+0.91: bsd.os-2.1-:i386-:-:80486-:- (tnx paul=???)
 0.71: domain.os-sr10-10.4.0.11-:-:-:apollo-:- (cc is broken; use gcc)
-0.90: freebsd-2.0.5-release-:i386-:-:-:- (tnx TG)
-0.76: freebsd-2.1-stable-:i386-:-:pentium.815\100-:-
-0.90: freebsd-2.1.0-release-:i386-:-:pentium.735\90.or.815\100-:- (tnx MS)
+0.91: freebsd-2.0.5-release-:i386-:-:-:- (tnx TG)
+0.92: freebsd-2.1-stable-:i386-:-:pentium.815\100-:-
+0.91: freebsd-2.1.0-release-:i386-:-:i486.dx2-:- (tnx BR)
+0.91: freebsd-2.1.0-release-:i386-:-:pentium.735\90.or.815\100-:- (tnx MS)
 0.90: freebsd-2.1.0-release-:i386-:-:cy486dlc-:- (tnx G2A)
+0.91: freebsd-2.1.5-release-:i386-:-:-:- (tnx TM)
 0.90: freebsd-2.1.5-release-:i386-:-:i486dx-:- (tnx BZ)
 0.70: freebsd-2.2-:i386-:-:-:- (tnx TN)
 0.90: freebsd-2.2-current-:i386-:-:i486.dx2-:- (with mods; tnx brian@easysc=???)
+0.91: freebsd-2.2-current-:i386-:-:i486dx-:- (tnx tenser=???)
 0.71: hp-ux-a.09.07-a-:-:-:9000.725-:-
 0.90: hp-ux-b.09.00-a-:-:-:9000.360-:- (tnx VV)
+0.91: hp-ux-b.10.01-a-:-:-:9000.712-:- (tnx S2R)
 0.74: hp-ux-b.10.01-a-:-:-:9000.715-:- (tnx DS, BG)
+0.91: hp-ux-b.10.01-a-:-:-:9000.801-:- (tnx S2T)
 0.76: irix-5.3-11091810-:-:-:ip12-:- (tnx root@gonzo=???)
+0.91: irix-5.3-11091811-:sgi-:-:ip19-:- (tnx store=???)
 0.72: irix-5.3-11091812-:-:-:ip22-:- (tnx DS)
-0.90: irix-6.2-03131015-:-:-:ip22-:- (tnx DS)
+0.91: irix-6.2-03131015-:-:-:ip22-:- (tnx DS)
 0.73: linux-1.2.13-:i386-:-:i386-:- (tnx RN)
-0.90: linux-1.2.13-:i386-:-:i486-:- (tnx BB)
-0.76: linux-1.2.13-:i386-:-:pentium-:- (tnx G1A, EK)
+0.91: linux-1.2.13-:i386-:-:i486-:- (tnx BB)
+0.91: linux-1.2.13-:i386-:-:pentium-:- (tnx EK)
 0.75: linux-1.3.11-:i386-:-:i486-:- (tnx dusan=???)
 0.76: linux-1.3.68-:i386-:-:pentium-:- (tnx root@ticket=???)
 0.73: linux-1.3.71-:i386-:-:pentium-:- (tnx SS)
 0.74: linux-1.3.83-:i386-:-:i486-:- (tnx mforbes=???)
+0.91: linux-1.3.90-:i386-:-:alpha-:- (tnx eric@brouhaha=???)
 0.75: linux-1.99.14-:i386-:-:pentium-:- (tnx RDM)
 0.76: linux-2.0.0-:i386-:-:pentium-:- (tnx jjw=???)
 0.90: linux-2.0.1-:i386-:-:i486-:- (tnx DF)
+0.91: linux-2.0.1-:i386-:-:alpha-:- (tnx bet=???)
 0.90: linux-2.0.6-:i386-:-:pentium-:- (tnx RM)
-0.90: linux-2.0.7-:i386-:-:i486-:- (tnx TLM)
+0.91: linux-2.0.7-:i386-:-:i486-:- (tnx root@earth=???)
 0.90: linux-2.0.7-:i386-:-:pentium-:- (tnx K2J)
 0.76: linux-2.0.8-:i386-:-:i486-:- (tnx JL)
 0.76: linux-2.0.8-:i386-:-:pentium-:- (tnx D2H)
 0.90: linux-2.0.9-:i386-:-:pentium-:- (tnx JM)
 0.90: linux-2.0.10-:i386-:-:i486-:- (tnx JL)
-0.90: linux-2.0.10-:i386-:-:pentium-:- (tnx root@tummy=???)
+0.90: linux-2.0.10-:i386-:-:pentium-:- (tnx S2R)
 0.90: linux-2.0.11-:i386-:-:i486-:- (tnx ET)
 0.90: linux-2.0.12-:i386-:-:i486-:- (tnx HDG)
 0.90: linux-2.0.12-:i386-:-:i686-:- (tnx SS)
 0.90: linux-2.0.14-:i386-:-:pentium-:- (tnx root@svensson=???)
+0.91: linux-2.0.15-:i386-:-:pentium-:- (tnx root@arioch=???)
+0.90: linux-2.0.16-:i386-:-:i486-:- (tnx AP)
+0.91: linux-2.0.17-:i386-:-:i486-:- (tnx JL)
+0.91: linux-2.0.17-:i386-:-:pentium-:- (tnx SS)
+0.91: linux-2.0.18-:i386-:-:i486-:- (tnx AP)
+0.91: linux-2.0.18-:i386-:-:pentium-:- (tnx J2K)
+0.91: linux-2.0.21-:i386-:-:pentium-:- (tnx root@contact=???)
 0.75: netbsd-1.0a-:-:-:i386-:- (tnx MS)
-0.76: nextstep-3.3-:hppa-:-:7100lc-:-
-0.76: nextstep-3.3-:i386-:-:pentium-:-
+0.91: netbsd-1.2-:mac68k-:-:apple.macintosh.se/30..(68030)-:- (tnx hauke=???)
+0.91: nextstep-3.3-:hppa-:-:7100lc-:-
+0.92: nextstep-3.3-:i386-:-:pentium-:-
+0.91: openbsd-1.2-puma#0-:openbsd.m68k-:-:mac68k-:- (tnx briggs@puma=???)
 0.72: osf1-v3.2-148-:-:-:alpha-:- (with mods; tnx DS)
 0.71: sunos-4.1.3-3-:sparc-:sun4-:sun4m-:sun4m-
-0.75: sunos-4.1.3_u1-1-:sparc-:sun4-:sun4c-:sun4c- (tnx MS)
+0.91: sunos-4.1.3_u1-1-:sparc-:sun4-:sun4c-:sun4c- (tnx MS)
+0.91: sunos-4.1.3_u1-1-:sparc-:sun4-:sun4m-:sun4m- (tnx IS)
+0.91: sunos-4.1.4-2-:sparc-:sun4-:sun4c-:sun4c- (tnx ST)
+0.92: sunos-4.1.4-2-:sparc-:sun4-:sun4m-:sun4m-
 0.73: sunos-5.3-generic-:sparc-:sun4-:sun4c-:sun4c- (tnx BEO)
 0.72: sunos-5.4-generic-:-:sun4-:sun4c-:sun4c- (tnx J1K)
-0.90: sunos-5.4-generic-:sparc-:sun4-:sun4m-:sun4m-
+0.91: sunos-5.4-generic-:sparc-:sun4-:sun4m-:sun4m-
 0.76: sunos-5.4-generic_101945-23-:sparc-:-:sun4c-:- (tnx BH)
-0.90: sunos-5.4-generic_101945-23-:-:sun4-:sun4m-:sun4m- (tnx JP)
+0.91: sunos-5.4-generic_101945-23-:-:sun4-:sun4m-:sun4m- (tnx JP)
 0.90: sunos-5.4-generic_101946-07-:-:i86pc-:i86pc-:i86pc- (tnx CR)
 0.90: sunos-5.5-generic-:sparc-:sun4-:sun4c-:sun4c- (tnx TLM)
-0.76: sunos-5.5-generic-:sparc-:sun4-:sun4m-:sun4m- (tnx PJG, nk=???, BJ)
+0.91: sunos-5.5-generic-:sparc-:sun4-:sun4m-:sun4m- (tnx PJG)
+0.91: sunos-5.5-generic_103093-02-:sparc-:sun4-:sun4m-:sun4m- (tnx giri=???)
+0.91: sunos-5.5-generic_103093-03-:sparc-:sun4-:sun4d-:sun4d- (tnx mortens=???)
+0.91: sunos-5.5-generic_103093-03-:sparc-:sun4-:sun4m-:sun4m- (tnx store=???)
+0.91: sunos-5.5-generic_103093-03-:sparc-:sun4-:sun4u-:sun4u- (tnx olav=???)
+0.91: sunos-5.5-generic_103093-05-:sparc-:sun4-:sun4m-:sun4m- (tnx kenny=???)
 0.90: sunos-5.5-generic_103094-01-:i386-:i86pc-:i86pc-:i86pc- (tnx MD)
-0.90: sunos-5.5.1-generic-:sparc-:sun4-:sun4m-:sun4m- (tnx TG)
-0.90: sunos-5.5.1-generic-:sparc-:sun4-:sun4u-:sun4u- (tnx DS)
+0.91: sunos-5.5-generic_103094-03-:i386-:i86pc-:i86pc-:i86pc- (tnx ding=???)
+0.91: sunos-5.5.1-generic-:sparc-:sun4-:sun4m-:sun4m- (tnx MS)
+0.92: sunos-5.5.1-generic-:sparc-:sun4-:sun4u-:sun4u-
 0.76: ultrix-4.3-1-:-:-:risc-:- (using s5make; tnx DS)

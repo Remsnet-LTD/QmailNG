@@ -38,7 +38,15 @@ It ignores any message whose recipient address does not begin with
 
 .B maildir2smtp
 is designed to pass messages along a SLIP or PPP link.
-To set this up on the disconnected end, put
+To set this up on the disconnected end, create a new maildir in
+.BR ~alias :
+
+.EX
+   # maildirmake ~alias/pppdir
+   # chown -R alias ~alias/pppdir
+.EE
+
+Put
 
 .EX
    :alias-ppp

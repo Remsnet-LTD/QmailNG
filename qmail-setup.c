@@ -156,7 +156,10 @@ int mode;
 
 void main()
 {
+ umask(077);
+
  creatdir("control",UID_OWNER,0755);
+ creatdir("users",UID_OWNER,0755);
  creatdir("queue",UID_QUEUE,0750);
  creatdir("bin",UID_OWNER,0755);
  creatdir("alias",UID_ALIAS,0755);
@@ -185,6 +188,9 @@ void main()
  copy("qmail-home","bin/qmail-home",UID_OWNER,0755);
  copy("qmail-inject","bin/qmail-inject",UID_OWNER,0755);
  copy("qmail-lspawn","bin/qmail-lspawn",UID_OWNER,0755);
+ copy("qmail-newuser","bin/qmail-newuser",UID_OWNER,0755);
+ copy("qmail-pw2user","bin/qmail-pw2user",UID_OWNER,0755);
+ copy("qmail-getpw","bin/qmail-getpw",UID_OWNER,0755);
  copy("qmail-qread","bin/qmail-qread",UID_OWNER,0755);
  copy("qmail-tcpto","bin/qmail-tcpto",UID_OWNER,0755);
  copy("qmail-qstat","bin/qmail-qstat",UID_OWNER,0755);
@@ -245,6 +251,10 @@ void main()
  copy("qmail-limits.0","man/cat7/qmail-limits.0",UID_OWNER,0644);
  copy("qmail-log.0","man/cat5/qmail-log.0",UID_OWNER,0644);
  copy("qmail-lspawn.0","man/cat8/qmail-lspawn.0",UID_OWNER,0644);
+ copy("qmail-newuser.0","man/cat8/qmail-newuser.0",UID_OWNER,0644);
+ copy("qmail-pw2user.0","man/cat8/qmail-pw2user.0",UID_OWNER,0644);
+ copy("qmail-users.0","man/cat5/qmail-users.0",UID_OWNER,0644);
+ copy("qmail-getpw.0","man/cat8/qmail-getpw.0",UID_OWNER,0644);
  copy("qmail-queue.0","man/cat8/qmail-queue.0",UID_OWNER,0644);
  copy("qmail-qread.0","man/cat8/qmail-qread.0",UID_OWNER,0644);
  copy("qmail-tcpto.0","man/cat8/qmail-tcpto.0",UID_OWNER,0644);

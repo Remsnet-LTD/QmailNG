@@ -7,12 +7,13 @@
 2.2. How do I set up a null client?
 2.3. How do I send outgoing mail through UUCP?
 2.4. How do I flush a queue across a SLIP/PPP link?
+2.5. How do I deal with ``CNAME lookup failed temporarily''?
 
 3. Routing incoming messages by host
 3.1. How do I receive mail for another host name?
 3.2. How do I set up a virtual domain?
 3.3. How do I set up several virtual domains for one user?
-3.4. How do I stop people from using this host as a relay?
+3.4. How do I allow selected clients to use this host as a relay?
 
 4. Routing incoming messages by user
 4.1. How do I forward unrecognized usernames to another host?
@@ -27,12 +28,16 @@
 5.2. How do I set up qmail-qmtpd?
 5.3. How do I set up qmail-pop3d?
 
-6. Miscellany
-6.1. How do I safely stop qmail-send?
-6.2. How do I rejuvenate a message?
-6.3. How do I fix up messages from broken clients?
-6.4. How do I stop recent versions of pine from crashing?
-6.5. How do I tell qmail to do more deliveries at once?
+6. Organization
+6.1. How do I organize a big network?
+
+7. Miscellany
+7.1. How do I safely stop qmail-send?
+7.2. How do I rejuvenate a message?
+7.3. How do I fix up messages from broken clients?
+7.4. How do I stop recent versions of pine from crashing?
+7.5. How do I manually run the queue?
+7.6. How do I tell qmail to do more deliveries at once?
 
 
 
@@ -40,18 +45,18 @@
 
 
 1.1. How do I set up host masquerading? All the users on this host,
-vangogh.cs.berkeley.edu, are users on cs.berkeley.edu. When joe sends a
-message to fred, the message should say ``From: joe@cs.berkeley.edu''
-and ``To: fred@cs.berkeley.edu'', without ``vangogh'' anywhere.
+zippy.af.mil, are users on af.mil. When joe sends a message to fred, the
+message should say ``From: joe@af.mil'' and ``To: fred@af.mil'', without
+``zippy'' anywhere.
 
-Answer: echo cs.berkeley.edu > /var/qmail/control/defaulthost; chmod 644
+Answer: echo af.mil > /var/qmail/control/defaulthost; chmod 644
 /var/qmail/control/defaulthost.
 
 
 1.2. How do I set up user masquerading? I'd like my own From lines to
-show god@sendmail.org rather than eric@cs.berkeley.edu.
+show boss@af.mil rather than god@heaven.af.mil.
 
-Answer: Add MAILHOST=sendmail.org and MAILUSER=god to your environment.
+Answer: Add MAILHOST=af.mil and MAILUSER=boss to your environment.
 
 
 
@@ -59,26 +64,26 @@ Answer: Add MAILHOST=sendmail.org and MAILUSER=god to your environment.
 
 
 2.1. How do I send local messages to another host? All the mail for
-sendmail.org should be delivered to our disk server, pokey.sendmail.org.
-I've set up an MX from sendmail.org to pokey.sendmail.org, but when a
-user on the sendmail.org host sends a message to eric@sendmail.org,
-sendmail.org tries to deliver it locally. How do I stop that?
+af.mil should be delivered to our disk server, pokey.af.mil. I've set up
+an MX from af.mil to pokey.af.mil, but when a user on the af.mil host
+sends a message to boss@af.mil, af.mil tries to deliver it locally. How
+do I stop that?
 
-Answer: Remove sendmail.org from /var/qmail/control/locals. Make sure
-the MX is set up properly before you do this. Also make sure that pokey
-can receive mail for sendmail.org---see question 3.1.
+Answer: Remove af.mil from /var/qmail/control/locals. Make sure the MX
+is set up properly before you do this. Also make sure that pokey can
+receive mail for af.mil---see question 3.1.
 
 
-2.2. How do I set up a null client? I'd like vangogh.cs.berkeley.edu to
-send all mail to hofmann.cs.berkeley.edu.
+2.2. How do I set up a null client? I'd like zippy.af.mil to
+send all mail to bigbang.af.mil.
 
-Answer: echo :hofmann.cs.berkeley.edu > /var/qmail/control/smtproutes;
+Answer: echo :bigbang.af.mil > /var/qmail/control/smtproutes;
 chmod 644 /var/qmail/control/smtproutes. Disable local delivery as in
 question 2.1. Turn off qmail-smtpd in /etc/inetd.conf.
 
 
 2.3. How do I send outgoing mail through UUCP? I need qmail to send all
-outgoing mail via UUCP to my upstream UUCP site, zippy.
+outgoing mail via UUCP to my upstream UUCP site, gonzo.
 
 Answer: Put
 
@@ -86,7 +91,7 @@ Answer: Put
 
 into control/virtualdomains and
 
-   |preline -df /usr/bin/uux - -r -gC -a"$SENDER" zippy!rmail "($EXT2@$HOST)"
+   |preline -df /usr/bin/uux - -r -gC -a"$SENDER" gonzo!rmail "($EXT2@$HOST)"
 
 into ~alias/.qmail-uucp-default. (For some UUCP software you will need
 to use -d instead of -df.)
@@ -97,16 +102,27 @@ to use -d instead of -df.)
 Answer: See maildir2smtp.0.
 
 
+2.5. How do I deal with ``CNAME lookup failed temporarily''? The log
+showed that a message was deferred for this reason. Why is qmail doing
+CNAME lookups, anyway?
+
+Answer: The SMTP standard does not permit aliased hostnames, so qmail
+has to do a CNAME lookup in DNS for every sender and recipient host. If
+the relevant DNS server is down, qmail defers the message. It will try
+again soon.
+
+
 
 3. Routing incoming messages by host
 
 
 3.1. How do I receive mail for another host name? I'd like our disk
-server, pokey.sendmail.org, to receive mail addressed to sendmail.org.
-I've set up an MX from sendmail.org to pokey.sendmail.org, but how do I
-get pokey to treat sendmail.org as a name for the local host?
+server, pokey.af.mil, to receive mail addressed to af.mil. I've set up
+an MX from af.mil to pokey.af.mil, but how do I get pokey to treat
+af.mil as a name for the local host?
 
-Answer: Add sendmail.org to /var/qmail/control/locals.
+Answer: Add af.mil to /var/qmail/control/locals and to
+/var/qmail/control/rcpthosts. Restart qmail-send.
 
 
 3.2. How do I set up a virtual domain? I'd like any mail for
@@ -134,18 +150,44 @@ Now Bob can set up separate .qmail-nowhere-* and everywhere-* files. He
 can even set up .qmail-nowhere-default and .qmail-everywhere-default.
 
 
-3.4. How do I stop people from using this host as a relay? If a message
-comes in by SMTP, and isn't for a local address, it should bounce. How
-can I set that up?
+3.4. How do I allow selected clients to use this host as a relay? I see
+that qmail-smtpd rejects messages to any host not listed in
+control/rcpthosts. I know I could entirely disable this feature by
+removing control/rcpthosts, but I want to be more selective.
 
-Answer: qmail-makectl already set this up for you, by putting the list
-of allowed domains into /var/qmail/control/rcpthosts.
+Answer: Three steps. First, install tcp-wrappers, available separately,
+including hosts_options. Second, change your qmail-smtpd line in
+inetd.conf to
 
-If you want to allow relaying from any client, remove control/rcpthosts.
+   smtp stream tcp nowait qmaild /usr/local/bin/tcpd
+   /var/qmail/bin/tcp-env /var/qmail/bin/qmail-smtpd
 
-Note that the fixup procedure described in section 6.3 overrides
-rcpthosts. If you want to allow relaying from certain clients without
-the fixup, just ``setenv = RELAYCLIENT''.
+(all on one line) and kill -HUP the inetd process. Third, in tcpd's
+hosts.allow, make a line setting the environment variable RELAYCLIENT to
+the empty string for the selected clients:
+
+   tcp-env: 1.2.3.4, 1.2.3.5: setenv = RELAYCLIENT
+
+Here 1.2.3.4 and 1.2.3.5 are the clients' IP addresses. qmail-smtpd
+ignores control/rcpthosts when RELAYCLIENT is set. (It also appends
+RELAYCLIENT to each envelope recipient address. See question 7.3 for an
+application.)
+
+Alternative procedure, if you are using tcpserver: Install tcpcontrol,
+available separately. Create /etc/tcp.smtp containing
+
+   1.2.3.4:allow,RELAYCLIENT=""
+   1.2.3.5:allow,RELAYCLIENT=""
+
+where 1.2.3.4 and 1.2.3.5 are the clients' IP addresses. Run
+
+   tcpmakectl /etc/tcp.smtp.cdb /etc/tcp.smtp.tmp < /etc/tcp.smtp
+
+Finally, insert
+
+   tcpcontrol /etc/tcp.smtp.cdb
+
+before /var/qmail/bin/qmail-smtpd in your tcpserver line.
 
 
 
@@ -153,11 +195,11 @@ the fixup, just ``setenv = RELAYCLIENT''.
 
 
 4.1. How do I forward unrecognized usernames to another host? I'd like
-to set up a LUSER_RELAY pointing at hofmann.cs.berkeley.edu.
+to set up a LUSER_RELAY pointing at bigbang.af.mil.
 
 Answer: Put
 
-   | forward "$LOCAL"@hofmann.cs.berkeley.edu
+   | forward "$LOCAL"@bigbang.af.mil
 
 into ~alias/.qmail-default.
 
@@ -188,12 +230,7 @@ shouldn't patch majordomo if you're using qmsmac.
 4.4. How do I handle usernames containing hyphens? I have a user named
 joe-bob, which qmail interprets as an alias under joe's control.
 
-Answer: Set up a second passwd entry for the same user, named (say) jb.
-Then put
-
-   joe-bob:jb
-
-into control/usermap.
+Answer: Switch to the qmail-users mechanism, and run qmail-p2wuser -b.
 
 
 4.5. How do I use procmail with qmail?
@@ -282,7 +319,7 @@ delivery for any user who wants to read mail via POP.
 If you have tcpserver installed, skip the inetd step, and set up (on two
 lines)
 
-   tcpserver 0 pop3 /var/qmail/bin/popup YOURHOST \
+   tcpserver 0 pop3 /var/qmail/bin/qmail-popup YOURHOST \
    /bin/checkpassword /var/qmail/bin/qmail-pop3d Maildir &
 
 replacing YOURHOST with your host's fully qualified domain name. See
@@ -293,10 +330,63 @@ otherwise an eavesdropper can steal passwords.
 
 
 
-6. Miscellany
+6. Organization
 
 
-6.1. How do I safely stop qmail-send? Back when we were running
+6.1. How do I organize a big network? I have a lot of machines, and I
+don't know where to start.
+
+Answer: First, choose the domain name where your users will receive
+mail. This is normally the shortest domain name you control. If you are
+in charge of *.movie.edu, you can use addresses like joe@movie.edu.
+
+Second, choose the machine that will know what to do with different
+users at movie.edu. Set up a host name in DNS for this machine:
+
+   mailhost.movie.edu IN A 1.2.3.4
+   4.3.2.1.in-addr.arpa IN PTR mailhost.movie.edu
+
+Here 1.2.3.4 is the IP address of that machine.
+
+Third, make a list of machines where mail should end up. For example, if
+mail for Bob should end up on Bob's workstation, put Bob's workstation
+onto the list. For each of these machines, set up a host name in DNS:
+
+   bobshost.movie.edu IN A 1.2.3.7
+   7.3.2.1.in-addr.arpa IN PTR bobshost.movie.edu
+
+Fourth, install qmail on bobshost.movie.edu. qmail will automatically
+configure itself to accept messages for bob@bobshost.movie.edu and
+deliver them to ~bob/Mailbox on bobshost. Do the same for the other
+machines where mail should end up.
+
+Fifth, install qmail on mailhost.movie.edu. Put
+
+   movie.edu:alias-movie
+
+into control/virtualdomains on mailhost. Then forward bob@movie.edu to
+bob@bobshost.movie.edu, by putting
+
+   bob@bobshost.movie.edu
+
+into ~alias/.qmail-movie-bob. Do the same for other users.
+
+Sixth, put movie.edu into control/rcpthosts on mailhost.movie.edu, so
+that mailhost.movie.edu will accept messages for users at movie.edu.
+
+Seventh, set up an MX record in DNS to deliver movie.edu messages to
+mailhost:
+
+   movie.edu IN MX 10 mailhost.movie.edu
+
+Eighth, on all your machines, put movie.edu into control/defaulthost.
+
+
+
+7. Miscellany
+
+
+7.1. How do I safely stop qmail-send? Back when we were running
 sendmail, it was always tricky to kill sendmail without risking the loss
 of current deliveries; what should I do with qmail-send?
 
@@ -305,46 +395,63 @@ cleanly. Wait for ``exiting'' to show up in the log. To restart it, run
 qmail-start the same way as it's run from your system boot scripts.
 
 
-6.2. How do I rejuvenate a message? Somebody broke into Eric's computer
+7.2. How do I rejuvenate a message? Somebody broke into Eric's computer
 again; it's going to be down for at least another two days. I know Eric
 has been expecting an important message---in fact, I see it sitting here
 in /var/qmail/queue/mess/15/26902. It's been in the queue for six days;
-how can I make sure hofmann doesn't bounce it tomorrow?
+how can I make sure it isn't bounced tomorrow?
 
-Answer: Just touch /var/qmail/queue/info/15/26902.
+Answer: Just touch /var/qmail/queue/info/15/26902. (This is the only
+form of queue modification that's safe while qmail is running.)
 
 
-6.3. How do I fix up messages from broken clients?
+7.3. How do I fix up messages from broken clients?
 
-Answer: Five steps. First, install tcp-wrappers, available separately,
-including hosts_options. Second, change your qmail-smtpd line in
-inetd.conf to
-
-   smtp stream tcp nowait qmaild /usr/local/bin/tcpd
-   /var/qmail/bin/tcp-env /var/qmail/bin/qmail-smtpd
-
-(all on one line) and kill -HUP the inetd process. Third, put
+Answer: Three steps. First, put
 
    | qmail-inject -f "$SENDER" -- "$EXT2"
 
-into ~alias/.qmail-fixup-default. Fourth, put
+into ~alias/.qmail-fixup-default. Second, put
 
    fix.me:fixup
 
 into /var/qmail/control/virtualdomains, and restart qmail-send as in
-question 6.1. Fifth, in tcpd's hosts.allow, make a line for the broken
-clients with ``setenv = RELAYCLIENT @fix.me''.
+question 7.1. Third, follow the procedure in question 3.4, but set
+RELAYCLIENT to the string ``@fix.me'':
+
+   tcp-env: 1.2.3.6, 1.2.3.7: setenv = RELAYCLIENT @fix.me
+
+Here 1.2.3.6 and 1.2.3.7 are the clients' IP addresses. If you are using
+tcpserver and tcpcontrol instead of inetd and tcpd, put
+
+   1.2.3.6:allow,RELAYCLIENT="@fix.me"
+   1.2.3.7:allow,RELAYCLIENT="@fix.me"
+
+into /etc/tcp.smtp, and run tcpmakectl as in question 3.4.
 
 
-6.4. How do I stop recent versions of pine from crashing? When I ask any
+7.4. How do I stop recent versions of pine from crashing? When I ask any
 version of pine past 3.91 to send mail, it crashes.
 
-Answer: Put ``sendmail-path=/usr/lib/sendmail -t'' into
-/usr/local/lib/pine.conf.
+Answer: Put ``sendmail-path=/usr/lib/sendmail -oem -oi -t'' into
+/usr/local/lib/pine.conf. (This will work with sendmail too.)
 
 
-6.5. How do I tell qmail to do more deliveries at once? It's running
+7.5. How do I manually run the queue? I'd like qmail to try delivering
+all the remote messages right now.
+
+Answer: Stop qmail as in question 7.1. After it stops,
+
+   touch /var/qmail/queue/remote/*/*
+
+and restart.
+
+
+7.6. How do I tell qmail to do more deliveries at once? It's running
 only 20 parallel qmail-remote processes.
 
 Answer: Decide how many deliveries you want to allow at once. Put that
-number into control/concurrencyremote. Restart qmail-send.
+number into control/concurrencyremote. Restart qmail-send. If your
+system has resource limits, make sure you set the descriptors limit to
+at least double the concurrency plus 5; otherwise you'll get lots of
+unnecessary deferrals whenever a big burst of mail shows up.

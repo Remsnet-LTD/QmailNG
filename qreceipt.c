@@ -92,8 +92,7 @@ following address: ");
  switch(qqtalk_close(&qqt))
   {
    case 0: break;
-   case QQT_TOOLONG:
-   case QQT_EXECHARD: die_qqperm();
+   case QQT_TOOLONG: die_qqperm();
    default: die_qqtemp();
   }
 }

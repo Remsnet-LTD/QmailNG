@@ -73,7 +73,6 @@ stralloc dataline = {0};
 stralloc filenames = {0};
 prioq pq = {0};
 stralloc newname = {0};
-stralloc curname = {0};
 
 struct message
  {
@@ -143,19 +142,25 @@ void getlist()
    closedir(dir);
   }
 
+ if (!stralloc_copys(&filenames,"")) die_nomem();
+
  if (dir = opendir("new"))
   {
    while (d = readdir(dir))
     {
      if (!str_diff(d->d_name,".")) continue;
      if (!str_diff(d->d_name,"..")) continue;
-     if (!stralloc_copys(&newname,"new/")) die_nomem();
-     if (!stralloc_cats(&newname,d->d_name)) die_nomem();
-     if (!stralloc_0(&newname)) die_nomem();
-     if (!stralloc_copys(&curname,"cur/")) die_nomem();
-     if (!stralloc_cats(&curname,d->d_name)) die_nomem();
-     if (!stralloc_0(&curname)) die_nomem();
-     rename(newname.s,curname.s);
+     pos = filenames.len;
+     if (!stralloc_cats(&filenames,"new/")) die_nomem();
+     if (!stralloc_cats(&filenames,d->d_name)) die_nomem();
+     if (!stralloc_0(&filenames)) die_nomem();
+     if (stat(filenames.s + pos,&st) == 0)
+      {
+       pe.dt = st.st_mtime;
+       pe.id = pos;
+       if (!prioq_insert(&pq,&pe)) die_nomem();
+       ++numm;
+      }
     }
    closedir(dir);
   }

@@ -1,6 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "auto-hasmkffo.h"
+#include "hasmkffo.h"
 #include "fifo.h"
 
 #ifdef HASMKFIFO

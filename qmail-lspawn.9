@@ -17,81 +17,26 @@ invokes
 asynchronously,
 so the results may not be in the same order as the commands.
 
+For each recipient address,
 .B qmail-lspawn
-is responsible for deciding
-which local users control which recipient addresses.
-For an address
-of the form
-.I user\fBCONF-BREAK\fIanything\fB@\fIhost\fR,
-.B qmail-lspawn
-switches to
-.I user
-and runs
-.B qmail-alias
-.B \--
-.I user
-.I homedir
-.I user\fBCONF-BREAK\fIanything
-.B \-
-.I anything
-.I host
-.IR sender ,
-where
-.I homedir
-is
-.IR user 's
-home directory.
-.B qmail-lspawn
-also allows
-.I user
-without the
-.B CONF-BREAK\fIanything
-extension.
-
-For an address
-.I recip\fB@\fIhost
-that does not begin with a username,
-.B qmail-lspawn
-switches to
-.B alias
-and runs
-.B qmail-alias
-.B \--
-.B alias
-.I homedir
-.I recip
-.B \-
-.I recip
-.I host
-.IR sender ,
-where
-.I homedir
-is the home directory
-of the
-.B alias
-account.
-
-.B WARNING:
-.B qmail-lspawn
-does not consider every account listed in
-.B /etc/passwd
-to be a username.
-It excludes any account with uid 0;
-any account with a nonexistent home directory;
-and any account with a home directory owned by a different account.
-
-.B WARNING:
-.B qmail-lspawn
-converts all uppercase letters in the recipient address to lowercase,
-so it cannot deliver mail to any username containing an uppercase letter.
-It also cannot deliver mail to any username containing a hyphen.
-
+first checks the
+.B qmail-users
+mechanism, and then
+invokes
+.B qmail-getpw
+if necessary,
+to find out which local user controls that address.
 .B qmail-lspawn
 runs
 .B qmail-alias
-under the user's gid.
+under the user's uid and gid.
 It does not set up any supplementary groups.
+
+.B qmail-lspawn
+treats an empty mailbox name as a trash address.
 .SH "SEE ALSO"
 envelopes(5),
+qmail-users(5),
+qmail-getpw(8),
 qmail-send(8),
 qmail-alias(8)

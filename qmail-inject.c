@@ -138,7 +138,7 @@ void exitnicely()
      case 0: break;
      case QQT_CRASHED: die_qqsig();
      case QQT_USAGE: case QQT_BUG: die_bug();
-     case QQT_EXECSOFT: case QQT_EXECHARD: die_exec();
+     case QQT_EXECSOFT: die_exec();
      case QQT_NOMEM: die_nomem();
      case QQT_READ: die_comm();
      case QQT_WRITE: die_qqwrite();

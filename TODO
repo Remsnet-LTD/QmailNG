@@ -1,10 +1,10 @@
-factor qmail-lspawn account lookups: qmail-acct, running as qmailz
-move usermap to qmail-acct (with usermap compiler)
-maybe give qmail-acct power to disable program deliveries in qmail-alias
-rewrite INTERNALS
-use more strerr-based messages
+think about SIGALRM for qmail-send to run everything
+think about SIGHUP for qmail-send to reread locals, virtualdomains
+make a non-/bin/sh version of program delivery
+have maildir2smtp produce bounces, tnx TG, MD
+think about ways to deal with SIOCGIFCONF stupidity, tnx MD
+maybe give qmail-lspawn power to disable program deliveries in qmail-alias
 in version 1.00 and following, allow free distribution
 do some serious coverage testing, preferably under Purify, without alloc slop
+replace INTERNALS with a real paper describing qmail
 rewrite everything from scratch
-separate compatibility project: pine+maildir
-separate project: bouncebot

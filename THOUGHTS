@@ -19,27 +19,6 @@ contents of the message? It'd be possible to record a one-way hash of
 each outgoing message, but a user who wants to send ``bad'' mail can
 avoid qmail entirely.
 
-Given a local address, qmail needs to figure out whether the user part
-of the address is a proper target of mail, and, if so, where that user
-stores his files and what his uid is. There should, therefore, be (1) a
-database that says whether an account is a proper target of mail; (2) a
-database mapping accounts to home directories; and (3) a database
-mapping accounts to uids. /etc/passwd manages to handle (2) and (3),
-though it's disgusting that a program should have to drag in a password
-library for something totally unrelated to passwords. Right now qmail
-handles (1) by the following heuristics: a root account is not a proper
-target of mail; an account that doesn't own ~account is not a proper
-target of mail; everyone else is okay.
-
-There should be another database saying whether an account is allowed to
-run programs of its own choosing. You may not want random users running
-programs on your mail server via .qmail files, for example. Right now
-qmail doesn't have any checks along these lines. sendmail uses
-/etc/shells, which is already massively overloaded. (And a silly concept
-in the first place. We wouldn't need to ``protect'' users from choosing
-nonfunctional login shells if a user could specify a shell upon login.
-Of course, this only applies to users who are allowed to run programs.)
-
 I originally decided on security grounds not to put qmail advertisements
 into SMTP responses: advertisements often act as version identifiers.
 However, now that I have a reasonably stable home page location for
@@ -338,13 +317,13 @@ the server's reply text doesn't contain bare LFs.
 qmail-alias doesn't support comsat. comsat is a pointless abomination.
 Use qbiff if you want that kind of notification.
 
-The getpwnam() interface hides I/O errors. Not sure what to do here.
+The getpwnam() interface hides I/O errors. Solution: qmail-pw2user.
 
 
 8. sendmail V8's new features
 
-sendmail-8.7.3/doc/op/op.me includes a list of big improvements of
-sendmail 8.7.3 over sendmail 5.67. Here's how qmail stacks up against
+sendmail-8.8.0/doc/op/op.me includes a list of big improvements of
+sendmail 8.8.0 over sendmail 5.67. Here's how qmail stacks up against
 each of those improvements. (Of course, qmail has its own improvements,
 but that's not the point of this list.)
 
@@ -367,7 +346,7 @@ ESMTP support: Yup. (Server-side, including PIPELINING.)
 8-bit clean: Yup. (Including server-side 8BITMIME support; same as
 sendmail with the 8 option.)
 
-Udb: Nope.
+Configurable user database: Yup.
 
 BIND support: Yup.
 

@@ -19,7 +19,6 @@
 #include "stralloc.h"
 #include "fmt.h"
 #include "str.h"
-#include "qlx.h"
 #include "qqtalk.h"
 #include "now.h"
 #include "myctime.h"
@@ -27,10 +26,11 @@
 #include "conf-unusual.h"
 #include "gfrom.h"
 #include "case.h"
+#include "slurpclose.h"
 
 void err(s) char *s; { substdio_putsflush(subfderr,s); }
-void soft() { _exit(QLX_SOFT); }
-void hard() { _exit(QLX_HARD); }
+void soft() { _exit(111); }
+void hard() { _exit(112); }
 
 void temp_childcrashed() { err("Aack, child crashed. (#4.3.0)\n"); soft(); }
 void temp_rewind() { err("Unable to rewind message. (#4.3.0)\n"); soft(); }
@@ -40,7 +40,7 @@ void temp_write() { err("Error while writing message. (#4.3.0)\n"); soft(); }
 void temp_child() { err("Temporary error in forwarding message. (#4.3.0)\n"); soft(); }
 void temp_maildirtimeout() { err("Timeout on maildir delivery. (#4.3.0)\n"); soft(); }
 void temp_maildir() { err("Temporary error on maildir delivery. (#4.3.0)\n"); soft(); }
-void temp_nomaildir() { err("Maildir does not exist, sorry. (#4.2.1)\n"); soft(); }
+void temp_nomaildir() { err("Unable to chdir to maildir. (#4.2.1)\n"); soft(); }
 void temp_open(fn) char *fn; { err("Unable to open "); err(fn); err(". (#4.2.1)\n"); soft(); }
 
 void temp_blankline() { err("Uh-oh: first line of .qmail file is blank. (#4.2.1)\n"); soft(); }
@@ -53,10 +53,12 @@ void temp_homesticky() { err("Home directory is sticky: user is editing his .qma
 void temp_homewritable() { err("Uh-oh: home directory is writable. (#4.7.0)\n"); soft(); }
 void temp_qmwritable() { err("Uh-oh: .qmail file is writable. (#4.7.0)\n"); soft(); }
 void temp_nfsqmail() { err("Temporary error trying to open .qmail file. (#4.3.0)\n"); soft(); }
+void temp_denyqmail() { err("Permission error trying to open .qmail file. (#4.3.0)\n"); soft(); }
+void temp_slowlock() { err("File has been locked for 30 seconds straight. (#4.3.0)\n"); soft(); }
 
 void bounce_childperm() { err("Permanent error in forwarding message. (#5.2.4)\n"); hard(); }
 void bounce_loop() { err("This message is looping: it already has my Delivered-To line. (#5.4.6)\n"); hard(); }
-void bounce_ext() { err("No such address. (#5.1.1)\n"); hard(); }
+void bounce_ext() { err("Sorry, no mailbox here by that name. (#5.1.1)\n"); hard(); }
 void usage() { err("qmail-alias: usage: qmail-alias [ -nN ] user homedir local dash ext domain sender\n"); hard(); }
 
 void warn_homesticky() { err("Warning: home directory is sticky.\n"); }
@@ -83,8 +85,8 @@ stralloc cmds = {0};
 stralloc messline = {0};
 stralloc foo = {0};
 
-char buf[SUBSTDIO_INSIZE];
-char outbuf[SUBSTDIO_OUTSIZE];
+char buf[1024];
+char outbuf[1024];
 
 /* child process */
 
@@ -185,6 +187,8 @@ char *fn;
   }
 }
 
+void slowlock() { temp_slowlock(); }
+
 void mailfile(fn)
 char *fn;
 {
@@ -199,7 +203,13 @@ char *fn;
 
  fd = open_append(fn);
  if (fd == -1) temp_open(fn);
+
+ signal_catchalarm(slowlock);
+ alarm(30);
  flaglocked = (lock_ex(fd) != -1);
+ alarm(0);
+ signal_uncatchalarm();
+
  seek_end(fd);
  pos = seek_cur(fd);
 
@@ -264,7 +274,7 @@ char *prog;
    temp_childcrashed();
  switch(wait_exitcode(wstat))
   {
-   case QLX_SOFT: case QLX_EXECSOFT: case 71: case 74: case 75: soft();
+   case 111: case 120: case 71: case 74: case 75: soft();
    case 0: break;
    case 99: flag99 = 1; break;
    default: hard();
@@ -296,8 +306,7 @@ char **recips;
  while (*recips) qqtalk_to(&qqt,*recips++);
  switch(qqtalk_close(&qqt))
   {
-   case QQT_TOOLONG:
-   case QQT_EXECHARD: bounce_childperm();
+   case QQT_TOOLONG: bounce_childperm();
    case QQT_READ: temp_read();
    case 0: return;
    default: temp_child();
@@ -368,6 +377,8 @@ int *cutable;
    if (fd == -1)
     {
      if (error_temp(errno)) temp_nfsqmail();
+     if (errno == error_perm) temp_denyqmail();
+     if (errno == error_acces) temp_denyqmail();
     }
    else
     {
@@ -387,43 +398,30 @@ int *cutable;
   }
 }
 
-void slurp(fd,sa)
-int fd;
-stralloc *sa;
-{
- int r;
-
- for (;;)
-  {
-   if (!stralloc_readyplus(sa,SUBSTDIO_INSIZE)) temp_nomem();
-   r = read(fd,sa->s + sa->len,SUBSTDIO_INSIZE);
-   if (r < 0) temp_read();
-   if (!r) return;
-   sa->len += r;
-  }
-}
-
 unsigned long count_file = 0;
 unsigned long count_forward = 0;
 unsigned long count_program = 0;
 char count_buf[FMT_ULONG];
 
+char countssbuf[128];
+static struct substdio countss = SUBSTDIO_FDBUF(write,1,countssbuf,128);
+
 void count_print()
 {
- substdio_puts(subfdout,"did ");
- substdio_put(subfdout,count_buf,fmt_ulong(count_buf,count_file));
- substdio_puts(subfdout,"+");
- substdio_put(subfdout,count_buf,fmt_ulong(count_buf,count_forward));
- substdio_puts(subfdout,"+");
- substdio_put(subfdout,count_buf,fmt_ulong(count_buf,count_program));
- substdio_puts(subfdout,"\n");
+ substdio_puts(&countss,"did ");
+ substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_file));
+ substdio_puts(&countss,"+");
+ substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_forward));
+ substdio_puts(&countss,"+");
+ substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_program));
+ substdio_puts(&countss,"\n");
  if (mailforward_qp)
   {
-   substdio_puts(subfdout,"qp ");
-   substdio_put(subfdout,count_buf,fmt_ulong(count_buf,mailforward_qp));
-   substdio_puts(subfdout,"\n");
+   substdio_puts(&countss,"qp ");
+   substdio_put(&countss,count_buf,fmt_ulong(count_buf,mailforward_qp));
+   substdio_puts(&countss,"\n");
   }
- substdio_flush(subfdout);
+ substdio_flush(&countss);
 }
 
 void sayit(type,cmd,len)
@@ -431,9 +429,9 @@ char *type;
 char *cmd;
 int len;
 {
- substdio_puts(subfdout,type);
- substdio_put(subfdout,cmd,len);
- substdio_putsflush(subfdout,"\n");
+ substdio_puts(&countss,type);
+ substdio_put(&countss,cmd,len);
+ substdio_putsflush(&countss,"\n");
 }
 
 void main(argc,argv)
@@ -588,12 +586,8 @@ char **argv;
 
  if (!stralloc_ready(&cmds,0)) temp_nomem();
  cmds.len = 0;
-
  if (fd != -1)
-  {
-   slurp(fd,&cmds);
-   close(fd);
-  }
+   if (slurpclose(fd,&cmds,256) == -1) temp_nomem();
 
  if (!cmds.len)
   {

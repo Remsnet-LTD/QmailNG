@@ -19,13 +19,14 @@ void log3(s1,s2,s3) char *s1; char *s2; char *s3; {
  substdio_putsflush(&sserr,s1);
  substdio_putsflush(&sserr,s2);
  substdio_putsflush(&sserr,s3); }
-void nomem() { log1("warning: out of memory, sleeping...\n"); sleep(10); }
+void nomem() { log1("alert: out of memory, sleeping...\n"); sleep(10); }
 
 void pausedir(dir) char *dir;
-{ log3("warning: unable to opendir ",dir,", sleeping...\n"); sleep(10); }
+{ log3("alert: unable to opendir ",dir,", sleeping...\n"); sleep(10); }
 
 static int issafe(ch) char ch;
 {
+ if (ch == '%') return 0; /* general principle: allman's code is crap */
  if (ch < 33) return 0;
  if (ch > 126) return 0;
  return 1;

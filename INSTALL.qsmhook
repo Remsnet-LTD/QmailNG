@@ -51,7 +51,3 @@ As another example, if sendmail.cf has
 then ~alias/.qmail-default should have
 
    |qsmhook -x alias- -lsDFMmnP /usr/lib/mail.local -f %g -d %u
-
-If your delivery agent insists on being run by root, you'll have to
-change "alias" to "root" in conf-user.h, recompile, and set up
-~root/.qmail-default.

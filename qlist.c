@@ -327,8 +327,7 @@ I didn't see any commands. I presume this is a subscription request.\n\
  switch(qqtalk_close(&qqt))
   {
    case 0: _exit(0);
-   case QQT_TOOLONG:
-   case QQT_EXECHARD: die_qqperm();
+   case QQT_TOOLONG: die_qqperm();
    default: die_qqtemp();
   }
 }

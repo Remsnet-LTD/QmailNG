@@ -17,6 +17,5 @@
 #define QQX_WRITE 122
 #define QQX_NOMEM 123
 #define QQX_TIMEOUT 124
-#define QQX_EXECHARD 126
 
 #endif

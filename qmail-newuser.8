@@ -1,0 +1,43 @@
+.TH qmail-newuser 8
+.SH NAME
+qmail-newuser \- prepare address assignments for qmail-lspawn
+.SH SYNOPSIS
+.B qmail-newuser
+.SH DESCRIPTION
+.B qmail-newuser
+reads the assignments in
+.B /var/qmail/users/assign
+and writes them into
+.B /var/qmail/users/cdb
+in a binary format suited
+for quick access by
+.BR qmail-lspawn .
+
+If there is a problem with
+.BR users/assign ,
+.B qmail-newuser
+complains and leaves
+.B users/cdb
+alone.
+
+.B qmail-newuser
+ensures that
+.B users/cdb
+is updated atomically,
+so
+.B qmail-lspawn
+never has to wait for
+.B qmail-newuser
+to finish.
+However,
+.B qmail-newuser
+makes no attempt to protect against two simultaneous updates of
+.BR users/cdb .
+
+The binary
+.B users/cdb
+format is portable across machines.
+.SH "SEE ALSO"
+qmail-users(5),
+qmail-lspawn(8),
+qmail-pw2user(8)

@@ -76,7 +76,6 @@ CONF-NUMD.
 Maximum number of simultaneous remote delivery attempts.
 Default: 20.
 If 0, remote deliveries will be put on hold.
-There is a compile-time limit on
 .I concurrencyremote
 is limited at compile time to
 CONF-NUMD.
@@ -105,17 +104,16 @@ notice to
 gives up.)
 .TP 5
 .I envnoathost
-Presumed domain name for envelope recipient addresses without @ signs.
+Presumed domain name for addresses without @ signs.
 Default:
 .IR me ,
 if that is supplied;
 otherwise the literal name
 .BR envnoathost ,
 which is probably not what you want.
-Envelope recipient addresses without an @ sign are illegal.
 If
 .B qmail-send
-sees an illegal address,
+sees an envelope recipient address without an @ sign,
 it appends
 .B @\fIenvnoathost\fR.
 .TP 5
@@ -164,28 +162,6 @@ After this time expires,
 will try the message once more,
 but it will treat any temporary delivery failures as
 permanent failures.
-.TP 5
-.I usermap
-List of user nicknames, one per line.
-Each nickname has the form
-.IR nick\fB:\fIuser ,
-without any extra spaces.
-If
-.I domain
-is listed in
-.I locals
-then
-.B qmail-send
-converts
-.I nick\fB@\fIdomain
-to
-.IR user\fB@\fIdomain .
-It also converts
-.I nick\fBCONF-BREAK\fIanything\fB@\fIdomain
-to
-.IR user\fBCONF-BREAK\fIanything\fB@\fIdomain .
-Note that this treatment does not apply to domains listed in
-.IR virtualdomains .
 .TP 5
 .I virtualdomains
 List of virtual domains, one per line.

@@ -1,19 +1,17 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <pwd.h>
+#include "fd.h"
 #include "wait.h"
 #include "prot.h"
 #include "substdio.h"
-#include "case.h"
+#include "stralloc.h"
+#include "scan.h"
 #include "qlx.h"
 #include "exit.h"
-#include "byte.h"
-#include "str.h"
 #include "fork.h"
 #include "error.h"
+#include "cdb.h"
+#include "case.h"
+#include "slurpclose.h"
 #include "conf-home.h"
-#include "conf-user.h"
-#include "conf-unusual.h"
 #include "auto-uids.h"
 
 void initialize()
@@ -34,21 +32,132 @@ int len;
   { substdio_puts(ss,"Zqmail-alias crashed.\n"); return; }
  switch(wait_exitcode(wstat))
   {
-   case QLX_NOALIAS: substdio_puts(ss,"ZUnable to find alias user!\n"); return;
-   case QLX_USAGE: substdio_puts(ss,"DInternal qmail-lspawn bug.\n"); return;
-   case QLX_NFS: substdio_puts(ss,"ZNFS failure in qmail-alias.\n"); return;
-   case QLX_EXECHARD: substdio_puts(ss,"DUnable to run qmail-alias.\n"); return;
-   case QLX_EXECSOFT: substdio_puts(ss,"ZUnable to run qmail-alias.\n"); return;
-   case QLX_SOFT: case 71: case 74: case 75:
+   case QLX_CDB:
+     substdio_puts(ss,"ZTrouble reading users/cdb in qmail-lspawn.\n"); return;
+   case QLX_NOMEM:
+     substdio_puts(ss,"ZOut of memory in qmail-lspawn.\n"); return;
+   case QLX_SYS:
+     substdio_puts(ss,"ZTemporary failure in qmail-lspawn.\n"); return;
+   case QLX_NOALIAS:
+     substdio_puts(ss,"ZUnable to find alias user!\n"); return;
+   case QLX_ROOT:
+     substdio_puts(ss,"ZNot allowed to perform deliveries as root.\n"); return;
+   case QLX_USAGE:
+     substdio_puts(ss,"ZInternal qmail-lspawn bug.\n"); return;
+   case QLX_NFS:
+     substdio_puts(ss,"ZNFS failure in qmail-alias.\n"); return;
+   case QLX_EXECHARD:
+     substdio_puts(ss,"DUnable to run qmail-alias.\n"); return;
+   case QLX_EXECSOFT:
+     substdio_puts(ss,"ZUnable to run qmail-alias.\n"); return;
+   case QLX_EXECPW:
+     substdio_puts(ss,"ZUnable to run qmail-getpw.\n"); return;
+   case 111: case 71: case 74: case 75:
      substdio_put(ss,"Z",1); break;
    case 0:
      substdio_put(ss,"K",1); break;
+   case 112:
    default:
      substdio_put(ss,"D",1); break;
   }
 
  for (i = 0;i < len;++i) if (!s[i]) break;
  substdio_put(ss,s,i);
+}
+
+stralloc lower = {0};
+stralloc nughde = {0};
+stralloc wildchars = {0};
+
+void nughde_get(local)
+char *local;
+{
+ char *(args[3]);
+ int pi[2];
+ int gpwpid;
+ int gpwstat;
+ int r;
+ int fd;
+ int flagwild;
+
+ if (!stralloc_copys(&lower,"!")) _exit(QLX_NOMEM);
+ if (!stralloc_cats(&lower,local)) _exit(QLX_NOMEM);
+ if (!stralloc_0(&lower)) _exit(QLX_NOMEM);
+ case_lowerb(lower.s,lower.len);
+
+ if (!stralloc_copys(&nughde,"")) _exit(QLX_NOMEM);
+
+ fd = open_read("users/cdb");
+ if (fd == -1)
+   if (errno != error_noent)
+     _exit(QLX_CDB);
+
+ if (fd != -1)
+  {
+   uint32 dlen;
+   unsigned int i;
+
+   r = cdb_seek(fd,"",0,&dlen);
+   if (r != 1) _exit(QLX_CDB);
+   if (!stralloc_ready(&wildchars,(unsigned int) dlen)) _exit(QLX_NOMEM);
+   wildchars.len = dlen;
+   if (cdb_bread(fd,wildchars.s,wildchars.len) == -1) _exit(QLX_CDB);
+
+   i = lower.len;
+   flagwild = 0;
+
+   do
+    {
+     /* i > 0 */
+     if (!flagwild || (i == 1) || (byte_chr(wildchars.s,wildchars.len,lower.s[i - 1]) < wildchars.len))
+      {
+       r = cdb_seek(fd,lower.s,i,&dlen);
+       if (r == -1) _exit(QLX_CDB);
+       if (r == 1)
+        {
+         if (!stralloc_ready(&nughde,(unsigned int) dlen)) _exit(QLX_NOMEM);
+         nughde.len = dlen;
+         if (cdb_bread(fd,nughde.s,nughde.len) == -1) _exit(QLX_CDB);
+         if (flagwild)
+	   if (!stralloc_cats(&nughde,local + i - 1)) _exit(QLX_NOMEM);
+         if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+         close(fd);
+         return;
+        }
+      }
+     --i;
+     flagwild = 1;
+    }
+   while (i);
+
+   close(fd);
+  }
+
+ if (pipe(pi) == -1) _exit(QLX_SYS);
+ args[0] = "bin/qmail-getpw";
+ args[1] = local;
+ args[2] = 0;
+ switch(gpwpid = vfork())
+  {
+   case -1:
+     _exit(QLX_SYS);
+   case 0:
+     if (prot_gid(GID_NOFILES) == -1) _exit(QLX_USAGE);
+     if (prot_uid(UID_PW) == -1) _exit(QLX_USAGE);
+     close(pi[0]);
+     if (fd_move(1,pi[1]) == -1) _exit(QLX_SYS);
+     execv(*args,args);
+     _exit(QLX_EXECPW);
+  }
+ close(pi[1]);
+
+ if (slurpclose(pi[0],&nughde,128) == -1) _exit(QLX_SYS);
+
+ if (wait_pid(&gpwstat,gpwpid) != -1)
+  {
+   if (wait_crashed(gpwstat)) _exit(QLX_SYS);
+   if (wait_exitcode(gpwstat) != 0) _exit(wait_exitcode(gpwstat));
+  }
 }
 
 int spawn(fdmess,fdout,s,r,at)
@@ -59,67 +168,59 @@ char *s; char *r; int at;
 
  if (!(f = fork()))
   {
-   char username[LSPAWN_USERLEN];
    char *(args[10]);
-   char *dash;
-   char *extension;
-   struct passwd *pw;
-   struct stat st;
+   unsigned long u;
+   int n;
+   int uid;
+   int gid;
+   char *x;
+   unsigned int xlen;
    
    r[at] = 0;
-
    if (!r[0]) _exit(0); /* <> */
-   for (extension = r;*extension;++extension)
-     if (*extension == LSPAWN_BREAK) break;
 
-   dash = "";
-   if (extension - r < sizeof(username))
-    {
-     if (*extension)
-      {
-       byte_copy(username,extension - r,r);
-       username[extension - r] = 0;
-       ++extension;
-       dash = "-";
-      }
-     else str_copy(username,r);
-     case_lowers(username);
-     pw = getpwnam(username);
-    }
-   else
-     pw = 0;
-  
-   if (pw)
-    {
-     if (!pw->pw_uid) pw = 0;
-     else if (stat(pw->pw_dir,&st) == -1)
-      { if (error_temp(errno)) _exit(QLX_NFS); pw = 0; }
-     else if (st.st_uid != pw->pw_uid) pw = 0;
-    }
-  
-   if (!pw) { extension = r; dash = "-"; pw = getpwnam(CONF_USERA); }
-   if (!pw) _exit(QLX_NOALIAS);
-  
    if (chdir(CONF_HOME) == -1) _exit(QLX_USAGE);
-   if (prot_gid((int) pw->pw_gid) == -1) _exit(QLX_USAGE);
-   if (prot_uid((int) pw->pw_uid) == -1) _exit(QLX_USAGE);
 
-   close(0); dup(fdmess); close(fdmess);
-   close(1); dup(fdout); close(fdout);
-   close(2); dup(1);
+   nughde_get(r);
+
+   x = nughde.s;
+   xlen = nughde.len;
 
    args[0] = "bin/qmail-alias";
    args[1] = "--";
-   args[2] = pw->pw_name;
-   args[3] = pw->pw_dir;
+   args[2] = x;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
+   scan_ulong(x,&u);
+   uid = u;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
+   scan_ulong(x,&u);
+   gid = u;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
+   args[3] = x;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
    args[4] = r;
-   args[5] = dash;
-   args[6] = extension;
+   args[5] = x;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
+   args[6] = x;
+   n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
+
    args[7] = r + at + 1;
    args[8] = s;
    args[9] = 0;
 
-   execvp(*args,args);
+   if (fd_move(0,fdmess) == -1) _exit(QLX_SYS);
+   if (fd_move(1,fdout) == -1) _exit(QLX_SYS);
+   if (fd_copy(2,1) == -1) _exit(QLX_SYS);
+   if (prot_gid(gid) == -1) _exit(QLX_USAGE);
+   if (prot_uid(uid) == -1) _exit(QLX_USAGE);
+   if (!getuid()) _exit(QLX_ROOT);
+
+   execv(*args,args);
    if (error_temp(errno)) _exit(QLX_EXECSOFT);
    _exit(QLX_EXECHARD);
   }

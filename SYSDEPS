@@ -6,8 +6,8 @@ select.h
 auto-hasflock.h
 auto-hassalen.h
 fork.h
-auto-hassgact.h
+hassgact.h
 direntry.h
-auto-hassgprm.h
-auto-haswaitp.h
-auto-hasmkffo.h
+hassgprm.h
+haswaitp.h
+hasmkffo.h

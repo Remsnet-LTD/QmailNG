@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -193,7 +194,7 @@ stralloc *sa;
    if (!sa->len) return loop;
    if (sa->s[sa->len - 1] == ']') return loop;
    if (sa->s[sa->len - 1] == '.') { --sa->len; continue; }
-   switch(resolve(sa,T_CNAME))
+   switch(resolve(sa,T_ANY))
     {
      case DNS_MEM: return DNS_MEM;
      case DNS_SOFT: return DNS_SOFT;
@@ -208,6 +209,7 @@ stralloc *sa;
 	   break;
 	  }
 	}
+       if (r == 2) return loop;
     }
   }
  return DNS_HARD; /* alias loop */
@@ -229,7 +231,7 @@ struct ip_address *ip;
  i = fmt_ulong(s,(unsigned long) ip->d[1]); len += i; if (s) s += i;
  i = fmt_str(s,"."); len += i; if (s) s += i;
  i = fmt_ulong(s,(unsigned long) ip->d[0]); len += i; if (s) s += i;
- i = fmt_str(s,".in-addr.arpa"); len += i; if (s) s += i;
+ i = fmt_str(s,".in-addr.arpa."); len += i; if (s) s += i;
  return len;
 }
 

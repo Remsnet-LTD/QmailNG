@@ -44,6 +44,8 @@ void main()
  int match;
  int fdlock;
 
+ umask(077);
+
  mbox = env_get("MAIL");
  if (!mbox) strerr_die2x(111,FATAL,"MAIL not set");
  mboxtmp = env_get("MAILTMP");

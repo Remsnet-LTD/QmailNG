@@ -1,3 +1,4 @@
+#include "fd.h"
 #include "wait.h"
 #include "substdio.h"
 #include "exit.h"
@@ -89,9 +90,9 @@ char *s; char *r; int at;
 
  if (!(f = vfork()))
   {
-   close(0); dup(fdmess); close(fdmess);
-   close(1); dup(fdout); close(fdout);
-   close(2); dup(1);
+   if (fd_move(0,fdmess) == -1) _exit(111);
+   if (fd_move(1,fdout) == -1) _exit(111);
+   if (fd_copy(2,1) == -1) _exit(111);
    execvp(*args,args);
    if (error_temp(errno)) _exit(111);
    _exit(1);

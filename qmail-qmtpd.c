@@ -284,7 +284,6 @@ main()
      case QQT_WRITE: result = "Zqq write error or disk full (#4.3.0)"; break;
      case QQT_NOMEM: result = "Zqq out of memory (#4.3.0)"; break;
      case QQT_EXECSOFT: result = "Zcould not exec qq (#4.3.0)"; break;
-     case QQT_EXECHARD: result = "Dcould not exec qq (#5.3.5)"; break;
      case QQT_TIMEOUT: result = "Zqq timeout (#4.3.0)"; break;
      case QQT_TOOLONG: result = "Dqq toolong surprise (#5.1.3)"; break;
      default: result = "Zqq internal bug (#4.3.0)"; break;

@@ -31,7 +31,6 @@
 #include "constmap.h"
 #include "fmtqfn.h"
 #include "readsubdir.h"
-#include "conf-unusual.h"
 
 /* critical timing feature #1: if not triggered, do not busy-loop */
 /* critical timing feature #2: if triggered, respond within fixed time */
@@ -51,8 +50,6 @@ stralloc locals = {0};
 struct constmap maplocals;
 stralloc vdoms = {0};
 struct constmap mapvdoms;
-stralloc usermap = {0};
-struct constmap mapusermap;
 stralloc envnoathost = {0};
 stralloc bouncefrom = {0};
 stralloc bouncehost = {0};
@@ -147,17 +144,7 @@ char *recip;
 
  if (constmap(&maplocals,domain.s,domain.len))
   {
-   prepend = 0;
-   for (i = box.len;i > 0;--i)
-     if ((i == box.len) || (box.s[i] == LSPAWN_BREAK))
-       if (prepend = constmap(&mapusermap,box.s,i))
-	{
-	 if (!stralloc_cats(&rwline,prepend)) return 0;
-	 if (!stralloc_catb(&rwline,box.s + i,box.len - i)) return 0;
-	 break;
-	}
-   if (!prepend)
-     if (!stralloc_cat(&rwline,&box)) return 0;
+   if (!stralloc_cat(&rwline,&box)) return 0;
    if (!stralloc_cats(&rwline,"@")) return 0;
    if (!stralloc_cat(&rwline,&domain)) return 0;
    if (!stralloc_0(&rwline)) return 0;
@@ -583,6 +570,32 @@ int j;
 
 /* this file is too long ------------------------------------------- BOUNCES */
 
+char *stripvdomprepend(recip)
+char *recip;
+{
+ int i;
+ char *domain;
+ int domainlen;
+ char *prepend;
+
+ i = str_rchr(recip,'@');
+ if (!recip[i]) return recip;
+ domain = recip + i + 1;
+ domainlen = str_len(domain);
+
+ for (i = 0;i <= domainlen;++i)
+   if ((i == 0) || (i == domainlen) || (domain[i] == '.'))
+     if (prepend = constmap(&mapvdoms,domain + i,domainlen - i))
+      {
+       if (!*prepend) break;
+       i = str_len(prepend);
+       if (str_diffn(recip,prepend,i)) break;
+       if (recip[i] != '-') break;
+       return recip + i + 1;
+      }
+ return recip;
+}
+
 stralloc bouncetext = {0};
 
 void addbounce(id,recip,report)
@@ -594,7 +607,7 @@ char *report;
  int pos;
  int w;
  while (!stralloc_copys(&bouncetext,"<")) nomem();
- while (!stralloc_cats(&bouncetext,recip)) nomem();
+ while (!stralloc_cats(&bouncetext,stripvdomprepend(recip))) nomem();
  for (pos = 0;pos < bouncetext.len;++pos)
    if (bouncetext.s[pos] == '\n')
      bouncetext.s[pos] = '_';
@@ -875,7 +888,7 @@ seek_pos pos;
    fd = open_write(fn.s);
    if (fd == -1) break;
    if (fstat(fd,&st) == -1) { close(fd); break; }
-   if (seek_to(fd,pos) == -1) { close(fd); break; }
+   if (seek_set(fd,pos) == -1) { close(fd); break; }
    if (write(fd,"D",1) != 1) { close(fd); break; }
    /* further errors -> double delivery without us knowing about it, oh well */
    close(fd);
@@ -1038,7 +1051,7 @@ int c;
  int n;
 
  if (birth > recent) n = 0;
- else n = sqrt(recent - birth); /* XXX: add some fuzz to recent? */
+ else n = sqrt(recent - birth); /* no need to add fuzz to recent */
  n += chanskip[c];
  return birth + n * n;
 }
@@ -1445,12 +1458,6 @@ int getcontrols() { if (control_init() == -1) return 0;
  if (!stralloc_0(&doublebounceto)) return 0;
  if (control_readfile(&locals,"control/locals",1) != 1) return 0;
  if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
- switch(control_readfile(&usermap,"control/usermap",0))
-  {
-   case -1: return 0;
-   case 0: if (!constmap_init(&mapusermap,"",0,1)) return 0; break;
-   case 1: if (!constmap_init(&mapusermap,usermap.s,usermap.len,1)) return 0; break;
-  }
  switch(control_readfile(&percenthack,"control/percenthack",0))
   {
    case -1: return 0;

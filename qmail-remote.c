@@ -51,6 +51,12 @@ struct ip_address partner;
 void out(s) char *s; { if (substdio_puts(subfdout,s) == -1) _exit(0); }
 void zero() { if (substdio_put(subfdout,"\0",1) == -1) _exit(0); }
 void zerodie() { zero(); substdio_flush(subfdout); _exit(0); }
+
+void outsafe(sa) stralloc *sa; { int i; char ch;
+for (i = 0;i < sa->len;++i) {
+ch = sa->s[i]; if (ch < 33) ch = '?'; if (ch > 126) ch = '?';
+if (substdio_put(subfdout,&ch,1) == -1) _exit(0); } }
+
 void temp_nomem() { out("ZOut of memory. (#4.3.0)\n"); zerodie(); }
 void temp_oserr() { out("Z\
 System resources temporarily unavailable. (#4.3.0)\n"); zerodie(); }
@@ -58,7 +64,7 @@ void temp_noconn() { out("Z\
 Sorry, I wasn't able to establish an SMTP connection. (#4.4.1)\n"); zerodie(); }
 void temp_read() { out("ZUnable to read message. (#4.3.0)\n"); zerodie(); }
 void temp_dnscanon() { out("Z\
-Temporarily unable to canonicalize address. (#4.4.3)\n"); zerodie(); }
+CNAME lookup failed temporarily. (#4.4.3)\n"); zerodie(); }
 void temp_dns() { out("Z\
 Sorry, I couldn't find any host by that name. (#4.1.2)\n"); zerodie(); }
 void temp_chdir() { out("Z\
@@ -68,7 +74,9 @@ Unable to read control files. (#4.3.0)\n"); zerodie(); }
 void perm_usage() { out("D\
 I (qmail-remote) was invoked improperly. (#5.3.5)\n"); zerodie(); }
 void perm_dns() { out("D\
-Sorry, I couldn't find any host by that name. (#5.1.2)\n"); zerodie(); }
+Sorry, I couldn't find any host named ");
+outsafe(&host);
+out(". (#5.1.2)\n"); zerodie(); }
 void perm_nomx() { out("D\
 Sorry, I couldn't find a mail exchanger or IP address. (#5.4.4)\n");
 zerodie(); }
@@ -406,7 +414,7 @@ char **argv;
  addrmangle(&sender,argv[2],&flagalias,!relayhost);
 
  if (!saa_readyplus(&reciplist,0)) temp_nomem();
- if (!ipme_init()) temp_nomem();
+ if (ipme_init() != 1) temp_oserr();
 
  flagallaliases = 1;
  recips = argv + 3;

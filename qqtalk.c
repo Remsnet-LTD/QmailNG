@@ -1,7 +1,7 @@
+#include "fd.h"
 #include "readwrite.h"
 #include "wait.h"
 #include "substdio.h"
-#include "error.h"
 #include "exit.h"
 #include "fork.h"
 #include "qqtalk.h"
@@ -27,12 +27,13 @@ int flagpath;
      close(pie[0]); close(pie[1]);
      return -1;
    case 0:
-     close(0); dup(pim[0]); close(pim[0]); close(pim[1]);
-     close(1); dup(pie[0]); close(pie[0]); close(pie[1]);
+     close(pim[1]);
+     close(pie[1]);
+     if (fd_move(0,pim[0]) == -1) _exit(QQX_EXECSOFT);
+     if (fd_move(1,pie[0]) == -1) _exit(QQX_EXECSOFT);
      if (flagpath) execvp(*qqargs,qqargs);
      else execvp(*binqqargs,binqqargs);
-     if (error_temp(errno)) _exit(QQX_EXECSOFT);
-     _exit(QQX_EXECHARD);
+     _exit(QQX_EXECSOFT);
   }
 
  qqt->fdm = pim[1]; close(pim[0]);
@@ -104,7 +105,6 @@ struct qqtalk *qqt;
  switch(wait_exitcode(wstat))
   {
    case 0: if (qqt->flagerr) return QQT_BUG; return 0;
-   case QQX_EXECHARD: return QQT_EXECHARD;
    case QQX_USAGE: return QQT_USAGE;
    case QQX_TOOLONG: return QQT_TOOLONG;
    case QQX_PIDUSED: case QQX_STAT: case QQX_LINK1:

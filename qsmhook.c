@@ -1,3 +1,4 @@
+#include "fd.h"
 #include "stralloc.h"
 #include "readwrite.h"
 #include "sgetopt.h"
@@ -112,7 +113,8 @@ char **argv;
    case -1:
      die_temp();
    case 0:
-     close(0); dup(pi[0]); close(pi[0]); close(pi[1]);
+     close(pi[1]);
+     if (fd_move(0,pi[0]) == -1) die_temp();
      signal_uninit();
      execvp(*argv,argv);
      if (error_temp(errno)) die_temp();

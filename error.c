@@ -79,3 +79,17 @@ EPIPE;
 #else
 -11;
 #endif
+
+int error_perm =
+#ifdef EPERM
+EPERM;
+#else
+-12;
+#endif
+
+int error_acces =
+#ifdef EACCES
+EACCES;
+#else
+-13;
+#endif

@@ -81,8 +81,7 @@ char **argv;
  switch(qqtalk_close(&qqt))
   {
    case 0: die_99();
-   case QQT_TOOLONG:
-   case QQT_EXECHARD: die_perm("condredirect: fatal: permanent qmail-queue error\n");
+   case QQT_TOOLONG: die_perm("condredirect: fatal: permanent qmail-queue error\n");
    default: die_temp("condredirect: fatal: temporary qmail-queue error\n");
   }
 }

@@ -1,7 +1,7 @@
 #include <signal.h>
 #include "signal.h"
-#include "auto-hassgact.h"
-#include "auto-hassgprm.h"
+#include "hassgact.h"
+#include "hassgprm.h"
 
 static void catch(sig,f)
 int sig;
@@ -54,6 +54,7 @@ void signal_blocknone()
 
 void signal_init() { catch(SIGPIPE,SIG_IGN); }
 void signal_uninit() { catch(SIGPIPE,SIG_DFL); }
+void signal_uncatchalarm() { catch(SIGALRM,SIG_DFL); }
 void signal_catchalarm(f) void (*f)(); { catch(SIGALRM,f); }
 void signal_uncatchterm() { catch(SIGTERM,SIG_DFL); }
 void signal_catchterm(f) void (*f)(); { catch(SIGTERM,f); }

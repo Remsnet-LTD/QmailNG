@@ -14,6 +14,8 @@ extern int error_inprogress;
 extern int error_wouldblock;
 extern int error_again;
 extern int error_pipe;
+extern int error_perm;
+extern int error_acces;
 
 extern char *error_str();
 extern int error_temp();

@@ -99,7 +99,7 @@ void tcpto_err(ip,flagerr) struct ip_address *ip; int flagerr;
        record[10] = when; when >>= 8;
        record[11] = when;
       }
-     if (seek_to(fdlock,i << 4) == 0)
+     if (seek_set(fdlock,i << 4) == 0)
        if (write(fdlock,record,16) < 16)
          ; /*XXX*/
      close(fdlock);
@@ -148,7 +148,7 @@ void tcpto_err(ip,flagerr) struct ip_address *ip; int flagerr;
    record[10] = when; when >>= 8;
    record[11] = when;
    record[4] = 1;
-   if (seek_to(fdlock,i << 4) == 0)
+   if (seek_set(fdlock,i << 4) == 0)
      if (write(fdlock,record,16) < 16)
        ; /*XXX*/
   }

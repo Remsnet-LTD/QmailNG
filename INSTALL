@@ -10,9 +10,9 @@ a local directory, not shared among machines; it is where qmail queues
 all mail messages. (To change this directory, edit conf-home.h now.)
 
 * The names of the qmail users and the qmail groups: normally alias,
-qmaild, qmailq, qmailr, qmails, qmail, and nofiles. The qmail system is
-heavily partitioned for security; it does almost nothing as root. (To
-change any of these names, edit conf-user.h now.)
+qmaild, qmaill, qmailp, qmailq, qmailr, qmails, qmail, and nofiles. The
+qmail system is heavily partitioned for security; it does almost nothing
+as root. (To change any of these names, edit conf-user.h now.)
 
 
 Installation steps that won't interfere with sendmail:
@@ -112,14 +112,8 @@ Pre-upgrade tests:
 
 Upgrading from sendmail to qmail:
 
-20. Comment out
-            sendmail -bd -q15m
-    in /etc/rc or /etc/init.d/sendmail, and replace it with
-            PATH="/var/qmail/bin:$PATH" \
-	    qmail-start logger -p mail.info -t qmail &
-    Under HP-UX 10, you'll have to do
-            PATH="/var/qmail/bin:$PATH" \
-	    csh -cf 'qmail-start logger -p mail.info -t qmail &'
+20. Read INSTALL.boot. You must replace the sendmail invocation in your
+    boot scripts with an appropriate qmail invocation.
 21. Kill the sendmail daemon. You should first kill -STOP the daemon; if
     any children are running, you should kill -CONT, wait, kill -STOP
     again, and repeat ad nauseam. If there aren't any children, kill

@@ -75,8 +75,8 @@ char *s;
  i = fmt_str(s," invoked "); len += i; if (s) s += i;
  if (uid == UID_ALIAS)
   { i = fmt_str(s,"by alias"); len += i; if (s) s += i; }
- else if (uid == UID_SMTPD)
-  { i = fmt_str(s,"from smtpd"); len += i; if (s) s += i; }
+ else if (uid == UID_DAEMON)
+  { i = fmt_str(s,"from network"); len += i; if (s) s += i; }
  else if (uid == UID_SEND)
   { i = fmt_str(s,"for bounce"); len += i; if (s) s += i; }
  else

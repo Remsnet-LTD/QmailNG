@@ -85,5 +85,5 @@ POP3 service (qmail-popup, qmail-pop3d):
 *  RFC 1939
 *  UIDL support
 *  TOP support
-*  APOP support
+*  APOP hook
 *  modular password checking (checkpassword, available separately)

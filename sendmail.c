@@ -91,7 +91,7 @@ char **argv;
  for (i = 0;i < argc;++i) *arg++ = argv[i];
  *arg = 0;
 
- execvp(*qiargv,qiargv);
+ execv(*qiargv,qiargv);
  
  substdio_putsflush(subfderr,"sendmail: fatal: unable to run qmail-inject\n");
  _exit(1);

@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "fd.h"
 #include "signal.h"
 #include "getline.h"
 #include "stralloc.h"
@@ -83,7 +84,7 @@ char *pass;
  int pi[2];
  int i;
 
- close(2); dup(1);
+ if (fd_copy(2,1) == -1) die_pipe();
  close(3);
  if (pipe(pi) == -1) die_pipe();
  if (pi[0] != 3) die_pipe();

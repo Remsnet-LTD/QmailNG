@@ -113,12 +113,6 @@ do
     contents=`head -1 $i`
     echo "SMTP server data timeout is $contents seconds."
     ;;
-  usermap)
-    while read line
-    do
-      echo "User map: $line"
-    done < $i
-    ;;
   virtualdomains)
     while read line
     do

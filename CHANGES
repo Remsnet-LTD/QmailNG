@@ -1,3 +1,145 @@
+19961026 qmail 0.92, gamma.
+19961026 bug: qmail-getpw did not 0-terminate usernames. tnx CF. impact:
+         qmail-getpw would crash on some systems, deferring local
+	 deliveries. fix: 0-terminate.
+19961025 cleanup: renamed auto-hassgprm.h to hassgprm.h.
+19961025 cleanup: renamed auto-hassgact.h to hassgact.h.
+19961024 change: replaced qmail-alias.0 with dot-qmail.0 in
+         INSTALL.alias. tnx MW.
+19961022 change: switched uids as early as possible in qmail-start.c.
+19961022 change: in SECURITY, ``ten most recent sendmail security
+         holes, five'' -> ``eleven most recent sendmail security holes,
+	 five.''
+19961022 change: quote_need() now treats non-ASCII characters the same
+         way as control characters.
+19961022 change: added version and home page to qmail.7.
+19961022 cleanup: introduced slurpclose.c. used it in qmail-alias.c,
+         qmail-lspawn.c.
+19961021 portability problem: AT&T NCR boxes need stdio.h before
+         arpa/nameser.h. impact: dns.c would not compile. fix: include
+	 stdio.h. tnx HS.
+19961021 change: added AIX section to INSTALL.ids. tnx SSB.
+19961021 change: added qmail-pw2user.
+19961020 change: added qmail-pw2user.8.
+19961020 change: qmail-alias now dies soft on EACCES/EPERM for .qmail.
+19961020 change: eliminated root comments from INSTALL.qsmhook.
+19961020 change: various improvements in FAQ.
+19961017 change: added QLX_ROOT.
+19961017 change: renamed hosts in FAQ. tnx SLB.
+19961017 change: in dot-qmail.5, documented envnoathost effects. tnx RN.
+19961017 change: revamped addresses.5.
+19961017 change: added stripvdomprepend() for better bounces. tnx PT.
+19961012 portability problem: under HP-UX 9, can't setgroups() to 65537.
+         impact: couldn't compile under HP-UX 9. fix: use 0 instead of
+	 65537 in chkshsgr.c. tnx HHO.
+19961008 change: added several qlx codes.
+19961008 cleanup: eliminated qlx from qmail-alias.
+19961008 change: qmail-lspawn runs qmail-getpw as UID_PW.
+19961008 change: added qmail-newuser.
+19961008 change: added cdb support to qmail-lspawn.
+19961008 change: integrated cdb.
+19961007 change: added qmail-users.5.
+19961007 change: eliminated usermap.
+19961007 cleanup: switched execvp to execv in sendmail, qmail-lspawn.
+19961007 change: used qmail-getpw in qmail-lspawn.
+19961007 change: renamed LSPAWN_USERLEN as GETPW_USERLEN.
+19961007 change: added qmail-getpw.
+19961007 change: created users subdirectory of CONF_HOME.
+19961007 change: fixed typo in FAQ. tnx J1B.
+19961006 change: replaced subfdout with a small ss in qmail-alias.
+19961006 change: reduced qmail-alias buffer sizes to 1024.
+19961003 change: added note to maildir2smtp.0 about maildirmake. tnx SM.
+19961003 bug: if ipme_init() returned -1, qmail-remote would continue,
+         blindly assuming that all addresses are local. impact: on
+	 systems with too many aliases, all remote deliveries fail. tnx
+	 MD. fix: qmail-remote now dies with temp_oserr() on any result
+	 other than 1.
+19961003 portability problem: all pre-4.9.4 versions of bind barf,
+         badly, on CNAME queries to lame servers. what a crappy system.
+	 even if the resolver doesn't barf, the next name server down
+	 the line may barf. impact: qmail can't get mail through to
+	 domains that are (1) lame and (2) running old versions of bind.
+	 fix: never, ever, do a CNAME query. dns_cname() now does an ANY
+	 query instead. this, like sendmail's analogous procedure, is
+	 unreliable when a CNAME is mixed with other records.
+19961001 cleanup: switched to libfd in qmail-start.c.
+19960929 cleanup: renamed auto-hasmkffo.h to hasmkffo.h.
+19960928 cleanup: reorganized qmail-start.c.
+19960928 cleanup: used libfd in preline.c, qmail-lspawn.c,
+         qmail-popup.c, qmail-rspawn.c, qmail-start.c, qqtalk.c,
+	 qsmhook.c.
+19960928 cleanup: added libfd.
+19960927 change: in SECURITY, ``nine most recent sendmail security
+         holes, four'' -> ``ten most recent sendmail security holes,
+	 five.''
+19960926 change: added tcpcontrol notes to FAQ.
+19960926 change: qmail-smtpd now immediately closes connection, with a
+         warning message dedicated to Solaris, if stray newlines show up
+	 in the incoming data.
+19960926 change: added INSTALL.boot.
+19960926 portability problem: on systems that can handle IP interface
+         aliases (i.e., on sa_len systems), SIOCGIFADDR returns the
+	 primary address for an alias. impact: ipme_init() did not
+	 include alias addresses. fix: ipme_init() avoids SIOCGIFADDR on
+	 sa_len systems; on these systems, the address we want is
+	 already in ifr. tnx DM.
+19960926 change: qmail-alias kills itself if locking takes longer than
+         30 seconds.
+19960926 change: qmail-pop3d no longer moves messages. tnx RS.
+19960924 change: added note to FAQ about descriptors limit. tnx RD.
+19960922 change: open_trunc() now uses 644.
+19960922 change: qmail-setup now does umask(077).
+19960922 change: maildir2mbox now does umask(077).
+19960922 change: moved subfderr buf up to 64 characters.
+19960920 change: in SECURITY, ``eight most recent sendmail security
+         holes, three'' -> ``nine most recent sendmail security holes,
+	 four.''
+19960920 portability problem: init run commands are subject to job
+         control signals under more systems than HP-UX. impact: on some
+	 systems (e.g., Solaris), qmail daemons would be killed. fix:
+	 INSTALL now tells everybody to use csh -cf.
+19960920 change: added queue-run section to FAQ.
+19960920 change: in pine-crashing question in FAQ, added -oem and -oi,
+         so that change will work with the real sendmail too.
+19960919 change: added CNAME section to FAQ. tnx to various people.
+19960919 change: eliminated QQX_EXECHARD and QQT_EXECHARD. this means
+         that all qmail-queue invocation failures are now soft, even
+	 things like EPERM.
+19960919 change: replaced ``No such address'' with ``Sorry, no mailbox
+         here by that name.'' tnx G2A.
+19960919 change: qmail-remote now includes host name in no-such-host
+         messages. tnx G2A.
+19960919 change: replaced ``Temporarily unable to canonicalize address''
+         with ``CNAME lookup failed temporarily.''
+19960918 change: improved an error message in qmail-alias.c. tnx TG.
+19960918 change: added SHELL=/bin/sh to Makefile. tnx JL.
+19960916 change: reorganized INSTALL.ids a bit.
+19960916 change: ``from smtpd'' is now ``from network''.
+19960916 change: SMTPD is now DAEMON.
+19960916 change: qmail-start sets logger uid to UID_LOG. tnx JLH.
+19960916 change: added CONF_USERL.
+19960916 change: iaafmt() now puts a dot on in-addr.arpa.
+19960915 change: added UPGRADE. suggested by several people.
+19960915 change: added qsutil error messages to qmail-log.5.
+19960915 change: qsutil error messages are now alerts.
+19960915 portability problem: on some systems, logger appears to use
+         syslog(pri,buf) instead of syslog(pri,"%s",buf). tnx JC.
+	 impact: logger could barf or crash if fed messages containing
+	 %. an attacker could easily cause a crash, eliminating qmail's
+	 logs. fix: % is no longer considered safe for logs.
+19960912 cleanup: split seek.c into seek_*.c.
+19960912 cleanup: replaced seek_to() with seek_set().
+19960912 cleanup: introduced libseek.a.
+19960907 cleanup: split case.c into case_*.c.
+19960907 cleanup: introduced libcase.a.
+19960907 cleanup: split wait.c into wait_*.c.
+19960907 cleanup: introduced libwait.a.
+19960907 cleanup: renamed auto-haswaitp.h to haswaitp.h.
+19960907 cleanup: split open.c into open_*.c.
+19960907 cleanup: introduced libopen.a.
+19960904 change: added generic pointer to qmail-control.5. tnx HW.
+19960904 change: rewrote rcpthosts section in FAQ. tnx HW.
+19960904 change: added organization section to FAQ. tnx HW.
 19960902 qmail 0.91, gamma.
 19960902 change: control_readfile() can now handle partial lines. tnx
          JDHB.
@@ -336,7 +478,7 @@
 19960625 change: qmail-inject now mentions disk full for QQT_WRITE.
 19960622 change: if RELAYCLIENT is set, qmail-smtpd skips rcpthosts.
 19960609 change: updated INSTALL for current SMTP responses.
-19960607 change: clarified INSTALL.qsmhook examples. tnx SR.
+19960607 change: clarified INSTALL.qsmhook examples. tnx S1R.
 19960607 change: added subject parsing to qlist.c. tnx RN.
 19960607 cleanup: used case_diffb in qlist.c.
 19960607 change: added extra log information to INSTALL examples.

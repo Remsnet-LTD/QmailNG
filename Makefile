@@ -2,6 +2,7 @@
 # If you want to use a different compiler, change conf-cc.sh.
 
 NROFF=nroff -man
+SHELL=/bin/sh
 
 default: all
 
@@ -11,21 +12,21 @@ addresses.5
 
 all: \
 qmail-alias qmail-clean qmail-home qmail-inject qmail-lspawn \
-qmail-queue qmail-remote qmail-rspawn qmail-send qmail-setup \
-qmail-qmtpd qmail-smtpd qmail-makectl qmail-showctl qmail-check \
-qmail-setup qmail-start qmail-pop3d qmail-popup tokenize dnscname \
-dnsptr dnsip dnsmxip dnsfq hostname ipmeprint tcp-env sendmail \
-qmail-qread qmail-qstat qmail-tcpto qlist qlist2 qreceipt qsmhook \
-qbiff forward preline condredirect maildirmake maildir2mbox \
-maildir2qmtp maildir2smtp maildirwatch mailsubj qail elq pinq \
-qmail-upq
+qmail-newuser qmail-pw2user qmail-getpw qmail-queue qmail-remote \
+qmail-rspawn qmail-send qmail-setup qmail-qmtpd qmail-smtpd \
+qmail-makectl qmail-showctl qmail-check qmail-setup qmail-start \
+qmail-pop3d qmail-popup tokenize dnscname dnsptr dnsip dnsmxip dnsfq \
+hostname ipmeprint tcp-env sendmail qmail-qread qmail-qstat \
+qmail-tcpto qlist qlist2 qreceipt qsmhook qbiff forward preline \
+condredirect maildirmake maildir2mbox maildir2qmtp maildir2smtp \
+maildirwatch mailsubj qail elq pinq qmail-upq
 
 alloc.o: \
 compile alloc.c error.h alloc.h
 	./compile alloc.c
 
 alloc_re.o: \
-compile alloc_re.c alloc.h byte.h
+compile alloc_re.c byte.h alloc.h
 	./compile alloc_re.c
 
 auto-hasflock.h: \
@@ -33,15 +34,10 @@ tryflock.c compile load
 	( ( ./compile tryflock.c && ./load tryflock ) >/dev/null 2>&1 \
 	&& echo \#define HASFLOCK 1 || exit 0 ) > auto-hasflock.h
 
-auto-hasmkffo.h: \
-trymkffo.c compile load
-	( ( ./compile trymkffo.c && ./load trymkffo ) >/dev/null 2>&1 \
-	&& echo \#define HASMKFIFO 1 || exit 0 ) > auto-hasmkffo.h
-
 auto-hasnpbg1.h: \
-trynpbg1.c compile load open.h open.o fifo.h fifo.o select.h
+trynpbg1.c compile load open.h libopen.a fifo.h fifo.o select.h
 	( ( ./compile trynpbg1.c \
-	&& ./load trynpbg1 open.o fifo.o && ./trynpbg1 ) >/dev/null 2>&1 \
+	&& ./load trynpbg1 fifo.o libopen.a && ./trynpbg1 ) >/dev/null 2>&1 \
 	&& echo \#define HASNAMEDPIPEBUG1 1 || exit 0 ) > auto-hasnpbg1.h
 
 auto-hassalen.h: \
@@ -49,27 +45,12 @@ trysalen.c compile
 	( ./compile trysalen.c >/dev/null 2>&1 \
 	&& echo \#define HASSALEN 1 || exit 0 ) > auto-hassalen.h
 
-auto-hassgact.h: \
-trysgact.c compile load
-	( ( ./compile trysgact.c && ./load trysgact ) >/dev/null 2>&1 \
-	&& echo \#define HASSIGACTION 1 || exit 0 ) > auto-hassgact.h
-
-auto-hassgprm.h: \
-trysgprm.c compile load
-	( ( ./compile trysgprm.c && ./load trysgprm ) >/dev/null 2>&1 \
-	&& echo \#define HASSIGPROCMASK 1 || exit 0 ) > auto-hassgprm.h
-
 auto-hasshsgr.h: \
 tryshsgr.c chkshsgr compile load
 	./chkshsgr || ( cat warn-shsgr; exit 1 )
 	( ( ./compile tryshsgr.c \
 	&& ./load tryshsgr && ./tryshsgr ) >/dev/null 2>&1 \
 	&& echo \#define HASSHORTSETGROUPS 1 || exit 0 ) > auto-hasshsgr.h
-
-auto-haswaitp.h: \
-trywaitp.c compile load
-	( ( ./compile trywaitp.c && ./load trywaitp ) >/dev/null 2>&1 \
-	&& echo \#define HASWAITPID 1 || exit 0 ) > auto-haswaitp.h
 
 auto-uids.h: \
 printuids
@@ -100,9 +81,50 @@ byte_zero.o: \
 compile byte_zero.c byte.h
 	./compile byte_zero.c
 
-case.o: \
-compile case.c case.h
-	./compile case.c
+case_diffb.o: \
+compile case_diffb.c case.h
+	./compile case_diffb.c
+
+case_diffs.o: \
+compile case_diffs.c case.h
+	./compile case_diffs.c
+
+case_lowerb.o: \
+compile case_lowerb.c case.h
+	./compile case_lowerb.c
+
+case_lowers.o: \
+compile case_lowers.c case.h
+	./compile case_lowers.c
+
+cdb_hash.o: \
+compile cdb_hash.c uint32.h cdb.h
+	./compile cdb_hash.c
+
+cdb_seek.o: \
+compile cdb_seek.c uint32.h cdb.h
+	./compile cdb_seek.c
+
+cdb_unpack.o: \
+compile cdb_unpack.c uint32.h cdb.h
+	./compile cdb_unpack.c
+
+cdbmake_add.o: \
+compile cdbmake_add.c uint32.h cdbmake.h
+	./compile cdbmake_add.c
+
+cdbmake_hash.o: \
+compile cdbmake_hash.c uint32.h cdbmake.h
+	./compile cdbmake_hash.c
+
+cdbmake_pack.o: \
+compile cdbmake_pack.c uint32.h cdbmake.h
+	./compile cdbmake_pack.c
+
+cdbmss.o: \
+compile cdbmss.c substdio.h cdbmake.h alloc.h readwrite.h cdbmss.h \
+seek.h uint32.h
+	./compile cdbmss.c
 
 check: \
 do-check
@@ -120,8 +142,8 @@ load chkspawn.o libsubstdio.a liberror.a libstr.a libfs.a
 	./load chkspawn libsubstdio.a liberror.a libstr.a libfs.a
 
 chkspawn.o: \
-compile chkspawn.c fmt.h substdio.h select.h subfd.h exit.h \
-conf-unusual.h
+compile chkspawn.c fmt.h substdio.h subfd.h select.h conf-unusual.h \
+exit.h
 	./compile chkspawn.c
 
 clean: \
@@ -137,9 +159,13 @@ make-commands systype
 	chmod 755 compile
 
 condredirect: \
-condredirect.o signal.o wait.o qqtalk.o seek.o libenv.a libstralloc.a \
-libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
-	./load condredirect signal.o wait.o qqtalk.o seek.o libenv.a \
+condredirect.o signal.o libwait.a qqtalk.o libseek.a libenv.a \
+libstralloc.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a \
+libfd.a load
+	./load condredirect signal.o qqtalk.o libenv.a \
+	libfd.a \
+	libseek.a \
+	libwait.a \
 	libstralloc.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 condredirect.0: \
@@ -147,16 +173,17 @@ condredirect.1
 	$(NROFF) condredirect.1 > condredirect.0
 
 condredirect.o: \
-compile condredirect.c stralloc.h gen_alloc.h exit.h qqtalk.h error.h \
-substdio.h wait.h subfd.h env.h fork.h readwrite.h seek.h signal.h
+compile condredirect.c stralloc.h gen_alloc.h exit.h qqtalk.h \
+substdio.h error.h subfd.h wait.h readwrite.h fork.h env.h seek.h \
+signal.h
 	./compile condredirect.c
 
 constmap.o: \
-compile constmap.c alloc.h case.h constmap.h
+compile constmap.c alloc.h constmap.h case.h
 	./compile constmap.c
 
 control.o: \
-compile control.c scan.h open.h substdio.h error.h control.h alloc.h \
+compile control.c scan.h open.h control.h error.h substdio.h alloc.h \
 getline.h readwrite.h stralloc.h gen_alloc.h
 	./compile control.c
 
@@ -174,14 +201,15 @@ compile trydrent.c direntry.h1 direntry.h2
 	&& cat direntry.h2 || cat direntry.h1 ) > direntry.h
 
 dns.o: \
-compile dns.c stralloc.h gen_alloc.h fmt.h case.h ipalloc.h ip.h \
-alloc.h str.h dns.h
+compile dns.c stralloc.h gen_alloc.h fmt.h ipalloc.h case.h ip.h \
+alloc.h dns.h str.h
 	./compile dns.c
 
 dnscname: \
-dnscname.o dns.o dnsdoe.o ip.o ipalloc.o case.o libsubstdio.a \
+dnscname.o dns.o dnsdoe.o ip.o ipalloc.o libcase.a libsubstdio.a \
 libstralloc.a liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns dnscname dns.o dnsdoe.o ip.o ipalloc.o case.o \
+	./loaddns dnscname dns.o dnsdoe.o ip.o ipalloc.o \
+	libcase.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a \
 	libfs.a
 
@@ -195,47 +223,51 @@ compile dnsdoe.c dnsdoe.h substdio.h subfd.h dns.h exit.h
 	./compile dnsdoe.c
 
 dnsfq: \
-dnsfq.o dns.o dnsdoe.o ip.o ipalloc.o case.o libsubstdio.a \
+dnsfq.o dns.o dnsdoe.o ip.o ipalloc.o libcase.a libsubstdio.a \
 libstralloc.a liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns dnsfq dns.o dnsdoe.o ip.o ipalloc.o case.o \
+	./loaddns dnsfq dns.o dnsdoe.o ip.o ipalloc.o \
+	libcase.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 dnsfq.o: \
-compile dnsfq.c gen_alloc.h exit.h dnsdoe.h ipalloc.h ip.h substdio.h \
+compile dnsfq.c gen_alloc.h exit.h dnsdoe.h ipalloc.h substdio.h ip.h \
 subfd.h dns.h stralloc.h
 	./compile dnsfq.c
 
 dnsip: \
-dnsip.o dns.o dnsdoe.o ip.o ipalloc.o case.o libsubstdio.a \
+dnsip.o dns.o dnsdoe.o ip.o ipalloc.o libcase.a libsubstdio.a \
 libstralloc.a liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns dnsip dns.o dnsdoe.o ip.o ipalloc.o case.o \
+	./loaddns dnsip dns.o dnsdoe.o ip.o ipalloc.o \
+	libcase.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 dnsip.o: \
-compile dnsip.c gen_alloc.h exit.h dnsdoe.h ipalloc.h ip.h substdio.h \
+compile dnsip.c gen_alloc.h exit.h dnsdoe.h ipalloc.h substdio.h ip.h \
 subfd.h dns.h stralloc.h
 	./compile dnsip.c
 
 dnsmxip: \
-dnsmxip.o dns.o dnsdoe.o ip.o ipalloc.o now.o case.o libsubstdio.a \
+dnsmxip.o dns.o dnsdoe.o ip.o ipalloc.o now.o libcase.a libsubstdio.a \
 libstralloc.a liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns dnsmxip dns.o dnsdoe.o ip.o ipalloc.o now.o case.o \
+	./loaddns dnsmxip dns.o dnsdoe.o ip.o ipalloc.o now.o \
+	libcase.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 dnsmxip.o: \
-compile dnsmxip.c stralloc.h now.h gen_alloc.h exit.h fmt.h dnsdoe.h \
-ipalloc.h ip.h substdio.h subfd.h dns.h datetime.h
+compile dnsmxip.c stralloc.h gen_alloc.h now.h exit.h dnsdoe.h fmt.h \
+ipalloc.h substdio.h ip.h subfd.h dns.h datetime.h
 	./compile dnsmxip.c
 
 dnsptr: \
-dnsptr.o dns.o dnsdoe.o ip.o ipalloc.o case.o libsubstdio.a \
+dnsptr.o dns.o dnsdoe.o ip.o ipalloc.o libcase.a libsubstdio.a \
 libstralloc.a liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns dnsptr dns.o dnsdoe.o ip.o ipalloc.o case.o \
+	./loaddns dnsptr dns.o dnsdoe.o ip.o ipalloc.o \
+	libcase.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 dnsptr.o: \
-compile dnsptr.c stralloc.h gen_alloc.h exit.h scan.h dnsdoe.h ip.h \
-substdio.h subfd.h str.h dns.h
+compile dnsptr.c stralloc.h gen_alloc.h exit.h scan.h dnsdoe.h \
+substdio.h ip.h subfd.h dns.h str.h
 	./compile dnsptr.c
 
 do-check:
@@ -293,8 +325,16 @@ error_temp.o: \
 compile error_temp.c error.h
 	./compile error_temp.c
 
+fd_copy.o: \
+compile fd_copy.c fd.h
+	./compile fd_copy.c
+
+fd_move.o: \
+compile fd_move.c fd.h
+	./compile fd_move.c
+
 fifo.o: \
-compile fifo.c auto-hasmkffo.h fifo.h
+compile fifo.c hasmkffo.h fifo.h
 	./compile fifo.c
 
 find-systype: \
@@ -336,9 +376,11 @@ tryvfork.c compile load fork.h1 fork.h2
 	&& cat fork.h2 || cat fork.h1 ) > fork.h
 
 forward: \
-forward.o signal.o wait.o qqtalk.o libenv.a libstralloc.a \
-libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
-	./load forward signal.o wait.o qqtalk.o libenv.a libstralloc.a \
+forward.o signal.o libwait.a qqtalk.o libenv.a libstralloc.a \
+libsubstdio.a liballoc.a liberror.a libstr.a libfs.a libfd.a load
+	./load forward signal.o qqtalk.o libenv.a libstralloc.a \
+	libfd.a \
+	libwait.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 forward.0: \
@@ -346,23 +388,43 @@ forward.1
 	$(NROFF) forward.1 > forward.0
 
 forward.o: \
-compile forward.c gen_alloc.h exit.h qqtalk.h substdio.h subfd.h env.h \
-readwrite.h stralloc.h signal.h
+compile forward.c gen_alloc.h exit.h qqtalk.h substdio.h subfd.h \
+readwrite.h env.h signal.h stralloc.h
 	./compile forward.c
 
 getline.o: \
-compile getline.c substdio.h byte.h alloc.h getline.h stralloc.h \
+compile getline.c substdio.h alloc.h byte.h getline.h stralloc.h \
 gen_alloc.h
 	./compile getline.c
 
 getline2.o: \
-compile getline2.c substdio.h alloc.h byte.h getline.h stralloc.h \
+compile getline2.c substdio.h byte.h alloc.h getline.h stralloc.h \
 gen_alloc.h
 	./compile getline2.c
 
 gfrom.o: \
 compile gfrom.c str.h gfrom.h
 	./compile gfrom.c
+
+hasmkffo.h: \
+trymkffo.c compile load
+	( ( ./compile trymkffo.c && ./load trymkffo ) >/dev/null 2>&1 \
+	&& echo \#define HASMKFIFO 1 || exit 0 ) > hasmkffo.h
+
+hassgact.h: \
+trysgact.c compile load
+	( ( ./compile trysgact.c && ./load trysgact ) >/dev/null 2>&1 \
+	&& echo \#define HASSIGACTION 1 || exit 0 ) > hassgact.h
+
+hassgprm.h: \
+trysgprm.c compile load
+	( ( ./compile trysgprm.c && ./load trysgprm ) >/dev/null 2>&1 \
+	&& echo \#define HASSIGPROCMASK 1 || exit 0 ) > hassgprm.h
+
+haswaitp.h: \
+trywaitp.c compile load
+	( ( ./compile trywaitp.c && ./load trywaitp ) >/dev/null 2>&1 \
+	&& echo \#define HASWAITPID 1 || exit 0 ) > haswaitp.h
 
 headerbody.o: \
 compile headerbody.c gen_alloc.h headerbody.h substdio.h byte.h \
@@ -392,7 +454,7 @@ compile ipalloc.c ipalloc.h ip.h alloc.h gen_alloc.h gen_allocdefs.h
 	./compile ipalloc.c
 
 ipme.o: \
-compile ipme.c ipalloc.h ipme.h ip.h byte.h auto-hassalen.h \
+compile ipme.c ipme.h ipalloc.h ip.h byte.h auto-hassalen.h \
 gen_alloc.h
 	./compile ipme.c
 
@@ -403,13 +465,26 @@ libstr.a libfs.a load
 	liballoc.a liberror.a libstr.a libfs.a
 
 ipmeprint.o: \
-compile ipmeprint.c ipme.h ipalloc.h ip.h substdio.h subfd.h \
+compile ipmeprint.c ipalloc.h ipme.h substdio.h ip.h subfd.h \
 gen_alloc.h exit.h
 	./compile ipmeprint.c
 
 liballoc.a: \
 alloc.o alloc_re.o makelib
 	./makelib liballoc.a alloc.o alloc_re.o
+
+libcase.a: \
+makelib case_diffb.o case_diffs.o case_lowerb.o case_lowers.o
+	./makelib libcase.a \
+	case_diffb.o case_diffs.o case_lowerb.o case_lowers.o
+
+libcdb.a: \
+makelib cdb_hash.o cdb_seek.o cdb_unpack.o
+	./makelib libcdb.a cdb_hash.o cdb_seek.o cdb_unpack.o
+
+libcdbmake.a: \
+makelib cdbmake_add.o cdbmake_hash.o cdbmake_pack.o
+	./makelib libcdbmake.a cdbmake_add.o cdbmake_hash.o cdbmake_pack.o
 
 libenv.a: \
 env.o envread.o makelib
@@ -418,6 +493,10 @@ env.o envread.o makelib
 liberror.a: \
 error.o error_temp.o error_str.o makelib
 	./makelib liberror.a error.o error_temp.o error_str.o
+
+libfd.a: \
+makelib fd_copy.o fd_move.o
+	./makelib libfd.a fd_copy.o fd_move.o
 
 libfs.a: \
 fmt_strn.o fmt_str.o fmt_uint.o fmt_uint0.o fmt_ulong.o scan_nbblong.o \
@@ -432,6 +511,17 @@ getline.o getline2.o makelib
 libgetopt.a: \
 subgetopt.o sgetopt.o makelib
 	./makelib libgetopt.a subgetopt.o sgetopt.o
+
+libopen.a: \
+makelib open_append.o open_excl.o open_read.o open_trunc.o \
+open_write.o
+	./makelib libopen.a \
+	open_read.o open_write.o open_excl.o open_trunc.o open_append.o
+
+libseek.a: \
+makelib seek_cur.o seek_end.o seek_set.o seek_trunc.o
+	./makelib libseek.a \
+	seek_cur.o seek_end.o seek_set.o seek_trunc.o
 
 libstr.a: \
 str_len.o str_diff.o str_diffn.o str_cpy.o str_chr.o str_rchr.o \
@@ -459,6 +549,11 @@ substdio_copy.o
 	./makelib libsubstdio.a substdio.o substdi.o substdo.o \
 	subfderr.o subfdout.o subfdin.o substdio_copy.o
 
+libwait.a: \
+makelib wait_nohang.o wait_pid.o
+	./makelib libwait.a \
+	wait_pid.o wait_nohang.o
+
 load: \
 make-commands systype
 	./make-commands "`cat ./systype`" load > load
@@ -478,17 +573,18 @@ maildir.5
 	$(NROFF) maildir.5 > maildir.0
 
 maildir.o: \
-compile maildir.c stralloc.h now.h prioq.h gen_alloc.h maildir.h \
-strerr.h direntry.h env.h str.h datetime.h
+compile maildir.c stralloc.h gen_alloc.h prioq.h now.h strerr.h \
+maildir.h direntry.h env.h str.h datetime.h
 	./compile maildir.c
 
 maildir2mbox: \
-maildir2mbox.o maildir.o prioq.o now.o open.o lock.o myctime.o \
+maildir2mbox.o maildir.o prioq.o now.o libopen.a lock.o myctime.o \
 datetime.o gfrom.o libstrerr.a libgetline.a libstralloc.a libenv.a \
 libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
-	./load maildir2mbox prioq.o now.o open.o lock.o myctime.o \
+	./load maildir2mbox prioq.o now.o lock.o myctime.o \
 	maildir.o \
 	datetime.o gfrom.o \
+	libopen.a \
 	libstrerr.a libgetline.a libstralloc.a libenv.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
@@ -497,19 +593,21 @@ maildir2mbox.1
 	$(NROFF) maildir2mbox.1 > maildir2mbox.0
 
 maildir2mbox.o: \
-compile maildir2mbox.c getline.h lock.h env.h stralloc.h readwrite.h \
-gfrom.h prioq.h gen_alloc.h exit.h open.h substdio.h error.h maildir.h \
-strerr.h subfd.h str.h myctime.h datetime.h
+compile maildir2mbox.c getline.h lock.h readwrite.h stralloc.h env.h \
+gen_alloc.h prioq.h gfrom.h exit.h open.h strerr.h maildir.h error.h \
+substdio.h subfd.h str.h myctime.h datetime.h
 	./compile maildir2mbox.c
 
 maildir2qmtp: \
-load maildir2qmtp.o signal.o maildir.o prioq.o open.o ip.o now.o \
-wait.o ndelay.o timeoutconn.o timeoutread.o timeoutwrite.o libstrerr.a \
-libgetline.a libsubstdio.a libstralloc.a liballoc.a liberror.a \
-libstr.a libenv.a libfs.a
-	./load maildir2qmtp maildir.o prioq.o open.o \
-	signal.o ip.o ndelay.o now.o wait.o \
+load maildir2qmtp.o signal.o maildir.o prioq.o libopen.a ip.o now.o \
+libwait.a ndelay.o timeoutconn.o timeoutread.o timeoutwrite.o \
+libstrerr.a libgetline.a libsubstdio.a libstralloc.a liballoc.a \
+liberror.a libstr.a libenv.a libfs.a
+	./load maildir2qmtp maildir.o prioq.o \
+	signal.o ip.o ndelay.o now.o \
 	timeoutconn.o timeoutread.o timeoutwrite.o \
+	libwait.a \
+	libopen.a \
 	libstrerr.a libgetline.a libsubstdio.a libstralloc.a \
 	libenv.a liballoc.a liberror.a libstr.a libfs.a
 
@@ -518,20 +616,22 @@ maildir2qmtp.1
 	$(NROFF) maildir2qmtp.1 > maildir2qmtp.0
 
 maildir2qmtp.o: \
-compile maildir2qmtp.c ip.h timeoutconn.h substdio.h datetime.h \
-error.h signal.h stralloc.h prioq.h gen_alloc.h exit.h subfd.h fmt.h \
-wait.h open.h getline.h case.h fork.h maildir.h readwrite.h \
-timeoutwrite.h timeoutread.h strerr.h str.h
+compile maildir2qmtp.c error.h timeoutconn.h substdio.h datetime.h \
+ip.h stralloc.h signal.h gen_alloc.h prioq.h exit.h wait.h fmt.h \
+subfd.h case.h getline.h open.h readwrite.h strerr.h fork.h \
+timeoutwrite.h str.h maildir.h timeoutread.h
 	./compile maildir2qmtp.c
 
 maildir2smtp: \
-load maildir2smtp.o signal.o maildir.o prioq.o open.o case.o quote.o \
-ip.o now.o ndelay.o timeoutconn.o timeoutread.o timeoutwrite.o \
+load maildir2smtp.o signal.o maildir.o prioq.o libopen.a libcase.a \
+quote.o ip.o now.o ndelay.o timeoutconn.o timeoutread.o timeoutwrite.o \
 libstrerr.a libgetline.a libsubstdio.a libstralloc.a liballoc.a \
 liberror.a libstr.a libenv.a libfs.a
-	./load maildir2smtp maildir.o prioq.o open.o \
-	signal.o case.o quote.o ip.o ndelay.o now.o \
+	./load maildir2smtp maildir.o prioq.o \
+	signal.o quote.o ip.o ndelay.o now.o \
 	timeoutconn.o timeoutread.o timeoutwrite.o \
+	libcase.a \
+	libopen.a \
 	libstrerr.a libgetline.a libsubstdio.a libstralloc.a \
 	libenv.a liballoc.a liberror.a libstr.a libfs.a
 
@@ -540,10 +640,10 @@ maildir2smtp.1
 	$(NROFF) maildir2smtp.1 > maildir2smtp.0
 
 maildir2smtp.o: \
-compile maildir2smtp.c maildir.h timeoutconn.h timeoutwrite.h \
-datetime.h error.h stralloc.h signal.h prioq.h gen_alloc.h exit.h \
-subfd.h scan.h quote.h open.h getline.h case.h readwrite.h ip.h \
-substdio.h timeoutread.h strerr.h str.h
+compile maildir2smtp.c error.h timeoutconn.h timeoutwrite.h datetime.h \
+maildir.h signal.h stralloc.h gen_alloc.h prioq.h exit.h subfd.h \
+scan.h quote.h case.h getline.h open.h readwrite.h strerr.h substdio.h \
+str.h ip.h timeoutread.h
 	./compile maildir2smtp.c
 
 maildirmake: \
@@ -561,12 +661,13 @@ compile maildirmake.c error.h subfd.h exit.h substdio.h
 	./compile maildirmake.c
 
 maildirwatch: \
-maildirwatch.o maildir.o prioq.o now.o open.o hfield.o headerbody.o \
+maildirwatch.o maildir.o prioq.o now.o libopen.a hfield.o headerbody.o \
 libstrerr.a libgetline.a libstralloc.a libenv.a libsubstdio.a \
 liballoc.a liberror.a libstr.a libfs.a load
 	./load maildirwatch \
-	prioq.o now.o open.o lock.o hfield.o headerbody.o \
+	prioq.o now.o lock.o hfield.o headerbody.o \
 	maildir.o \
+	libopen.a \
 	libstrerr.a libgetline.a libstralloc.a libenv.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
@@ -575,8 +676,8 @@ maildirwatch.1
 	$(NROFF) maildirwatch.1 > maildirwatch.0
 
 maildirwatch.o: \
-compile maildirwatch.c hfield.h stralloc.h prioq.h gen_alloc.h exit.h \
-headerbody.h open.h maildir.h substdio.h strerr.h subfd.h getline.h \
+compile maildirwatch.c hfield.h stralloc.h gen_alloc.h prioq.h exit.h \
+headerbody.h open.h strerr.h substdio.h maildir.h subfd.h getline.h \
 str.h readwrite.h datetime.h
 	./compile maildirwatch.c
 
@@ -606,8 +707,9 @@ dot-qmail.0 maildir.0 maildirmake.0 maildir2mbox.0 maildir2qmtp.0 \
 maildir2smtp.0 maildirwatch.0 mailsubj.0 mbox.0 preline.0 qbiff.0 \
 qlist.0 qmail.0 qreceipt.0 qmail-popup.0 qmail-pop3d.0 qmail-alias.0 \
 qmail-clean.0 qmail-command.0 qmail-control.0 qmail-header.0 \
-qmail-inject.0 qmail-limits.0 qmail-log.0 qmail-lspawn.0 qmail-qread.0 \
-qmail-qstat.0 qmail-tcpto.0 qmail-queue.0 qmail-remote.0 \
+qmail-inject.0 qmail-limits.0 qmail-log.0 qmail-lspawn.0 \
+qmail-newuser.0 qmail-pw2user.0 qmail-users.0 qmail-getpw.0 \
+qmail-qread.0 qmail-qstat.0 qmail-tcpto.0 qmail-queue.0 qmail-remote.0 \
 qmail-rspawn.0 qmail-send.0 qmail-qmtpd.0 qmail-smtpd.0 qmail-start.0 \
 qmail-showctl.0 qmail-upgrade.0 tcp-env.0 tcp-environ.0
 
@@ -633,9 +735,25 @@ now.o: \
 compile now.c datetime.h now.h
 	./compile now.c
 
-open.o: \
-compile open.c open.h
-	./compile open.c
+open_append.o: \
+compile open_append.c open.h
+	./compile open_append.c
+
+open_excl.o: \
+compile open_excl.c open.h
+	./compile open_excl.c
+
+open_read.o: \
+compile open_read.c open.h
+	./compile open_read.c
+
+open_trunc.o: \
+compile open_trunc.c open.h
+	./compile open_trunc.c
+
+open_write.o: \
+compile open_write.c open.h
+	./compile open_write.c
 
 pinq: \
 pinq.sh qmail-home warn-auto.sh
@@ -644,9 +762,11 @@ pinq.sh qmail-home warn-auto.sh
 	chmod 755 pinq
 
 preline: \
-load preline.o wait.o signal.o libenv.a libgetopt.a libsubstdio.a \
-liballoc.a liberror.a libstr.a libfs.a
-	./load preline wait.o signal.o \
+load preline.o libwait.a signal.o libenv.a libgetopt.a libsubstdio.a \
+liballoc.a liberror.a libstr.a libfs.a libfd.a
+	./load preline signal.o \
+	libfd.a \
+	libwait.a \
 	libenv.a libgetopt.a libsubstdio.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
@@ -655,8 +775,8 @@ preline.1
 	$(NROFF) preline.1 > preline.0
 
 preline.o: \
-compile preline.c exit.h substdio.h error.h subfd.h wait.h fork.h \
-env.h readwrite.h subgetopt.h signal.h sgetopt.h
+compile preline.c fd.h exit.h error.h substdio.h wait.h subfd.h \
+subgetopt.h env.h fork.h readwrite.h sgetopt.h signal.h
 	./compile preline.c
 
 printbreak: \
@@ -664,8 +784,8 @@ printbreak.o libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
 	./load printbreak libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 printbreak.o: \
-compile printbreak.c conf-home.h substdio.h readwrite.h exit.h \
-conf-unusual.h
+compile printbreak.c conf-home.h substdio.h readwrite.h conf-unusual.h \
+exit.h
 	./compile printbreak.c
 
 printnumd: \
@@ -673,8 +793,8 @@ printnumd.o libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
 	./load printnumd libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 printnumd.o: \
-compile printnumd.c fmt.h conf-home.h substdio.h readwrite.h exit.h \
-conf-unusual.h
+compile printnumd.c conf-home.h fmt.h substdio.h readwrite.h \
+conf-unusual.h exit.h
 	./compile printnumd.c
 
 printsplit: \
@@ -682,8 +802,8 @@ printsplit.o libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
 	./load printsplit libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 printsplit.o: \
-compile printsplit.c fmt.h conf-home.h substdio.h readwrite.h exit.h \
-conf-unusual.h
+compile printsplit.c conf-home.h fmt.h substdio.h readwrite.h \
+conf-unusual.h exit.h
 	./compile printsplit.c
 
 printuids: \
@@ -709,10 +829,11 @@ qail.sh qmail-home warn-auto.sh
 	chmod 755 qail
 
 qbiff: \
-qbiff.o open.o headerbody.o hfield.o libgetline.a libenv.a \
+qbiff.o libopen.a headerbody.o hfield.o libgetline.a libenv.a \
 libstralloc.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a \
 load
-	./load qbiff open.o headerbody.o hfield.o libgetline.a \
+	./load qbiff headerbody.o hfield.o libgetline.a \
+	libopen.a \
 	libenv.a libstralloc.a libsubstdio.a liballoc.a liberror.a \
 	libstr.a libfs.a
 
@@ -722,15 +843,19 @@ qbiff.1
 
 qbiff.o: \
 compile qbiff.c stralloc.h gen_alloc.h exit.h headerbody.h open.h \
-substdio.h subfd.h byte.h env.h readwrite.h str.h hfield.h
+substdio.h subfd.h byte.h readwrite.h env.h str.h hfield.h
 	./compile qbiff.c
 
 qlist: \
-qlist.o signal.o hfield.o token822.o headerbody.o open.o lock.o wait.o \
-qqtalk.o case.o libenv.a libgetline.a libstralloc.a libsubstdio.a \
-liballoc.a liberror.a libstr.a libfs.a load
-	./load qlist signal.o hfield.o token822.o headerbody.o open.o case.o \
-	lock.o wait.o qqtalk.o libenv.a libgetline.a libstralloc.a \
+qlist.o signal.o hfield.o token822.o headerbody.o libopen.a lock.o \
+libwait.a qqtalk.o libcase.a libenv.a libgetline.a libstralloc.a \
+libsubstdio.a liballoc.a liberror.a libstr.a libfs.a libfd.a load
+	./load qlist signal.o hfield.o token822.o headerbody.o \
+	lock.o qqtalk.o libenv.a libgetline.a libstralloc.a \
+	libfd.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 qlist.0: \
@@ -738,9 +863,10 @@ qlist.1
 	$(NROFF) qlist.1 > qlist.0
 
 qlist.o: \
-compile qlist.c alloc.h lock.h getline.h stralloc.h env.h signal.h \
-gen_alloc.h exit.h headerbody.h qqtalk.h token822.h gen_allocdefs.h \
-readwrite.h open.h case.h substdio.h error.h str.h subfd.h hfield.h
+compile qlist.c token822.h lock.h alloc.h signal.h getline.h \
+stralloc.h gen_alloc.h exit.h qqtalk.h headerbody.h readwrite.h \
+gen_allocdefs.h env.h case.h open.h error.h substdio.h str.h subfd.h \
+hfield.h
 	./compile qlist.c
 
 qlist2: \
@@ -751,12 +877,17 @@ qlist2.sh qmail-home printbreak warn-auto.sh
 	chmod 755 qlist2
 
 qmail-alias: \
-qmail-alias.o signal.o now.o seek.o open.o lock.o qqtalk.o wait.o \
-myctime.o datetime.o quote.o gfrom.o case.o libenv.a libgetopt.a \
-libgetline.a libsubstdio.a libstralloc.a liballoc.a liberror.a \
-libstr.a libfs.a load
-	./load qmail-alias signal.o now.o seek.o open.o lock.o \
-	qqtalk.o wait.o myctime.o datetime.o quote.o gfrom.o case.o \
+qmail-alias.o signal.o now.o libseek.a libopen.a lock.o qqtalk.o \
+libwait.a myctime.o datetime.o quote.o gfrom.o slurpclose.o libcase.a \
+libenv.a libgetopt.a libgetline.a libsubstdio.a libstralloc.a \
+liballoc.a liberror.a libstr.a libfs.a libfd.a load
+	./load qmail-alias signal.o now.o lock.o \
+	qqtalk.o myctime.o datetime.o quote.o gfrom.o slurpclose.o \
+	libfd.a \
+	libseek.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	libenv.a libgetopt.a libgetline.a libsubstdio.a libstralloc.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
@@ -765,22 +896,22 @@ qmail-alias.8
 	$(NROFF) qmail-alias.8 > qmail-alias.0
 
 qmail-alias.o: \
-compile qmail-alias.c getline.h case.h lock.h myctime.h open.h seek.h \
-env.h error.h stralloc.h fork.h sgetopt.h signal.h gfrom.h now.h \
-substdio.h gen_alloc.h readwrite.h wait.h conf-unusual.h subgetopt.h \
-subfd.h exit.h byte.h qqtalk.h quote.h fmt.h str.h alloc.h qlx.h \
-datetime.h
+compile qmail-alias.c myctime.h open.h datetime.h getline.h case.h \
+seek.h subgetopt.h substdio.h lock.h readwrite.h signal.h sgetopt.h \
+stralloc.h gen_alloc.h error.h now.h fork.h subfd.h gfrom.h env.h \
+wait.h conf-unusual.h alloc.h exit.h quote.h qqtalk.h str.h byte.h \
+fmt.h slurpclose.h
 	./compile qmail-alias.c
 
 qmail-check: \
-qmail-check.o open.o libsubstdio.a libstralloc.a liballoc.a liberror.a \
-libstr.a libfs.a load
-	./load qmail-check open.o libsubstdio.a libstralloc.a \
+qmail-check.o libopen.a libsubstdio.a libstralloc.a liballoc.a \
+liberror.a libstr.a libfs.a load
+	./load qmail-check libopen.a libsubstdio.a libstralloc.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-check.o: \
-compile qmail-check.c fmt.h conf-home.h auto-uids.h open.h error.h \
-substdio.h subfd.h conf-unusual.h exit.h
+compile qmail-check.c auto-uids.h conf-home.h fmt.h open.h substdio.h \
+error.h subfd.h exit.h conf-unusual.h
 	./compile qmail-check.c
 
 qmail-clean: \
@@ -794,9 +925,9 @@ qmail-clean.8
 	$(NROFF) qmail-clean.8 > qmail-clean.0
 
 qmail-clean.o: \
-compile qmail-clean.c direntry.h stralloc.h readwrite.h signal.h now.h \
-gen_alloc.h exit.h scan.h fmt.h conf-home.h fmtqfn.h substdio.h \
-error.h byte.h str.h getline.h datetime.h
+compile qmail-clean.c direntry.h signal.h readwrite.h stralloc.h \
+gen_alloc.h now.h exit.h scan.h conf-home.h fmt.h fmtqfn.h error.h \
+substdio.h byte.h str.h getline.h datetime.h
 	./compile qmail-clean.c
 
 qmail-command.0: \
@@ -806,6 +937,28 @@ qmail-command.8
 qmail-control.0: \
 qmail-control.5
 	$(NROFF) qmail-control.5 > qmail-control.0
+
+qmail-getpw: \
+load qmail-getpw.o libcase.a libsubstdio.a liberror.a libstr.a libfs.a
+	./load qmail-getpw \
+	libcase.a \
+	libsubstdio.a liberror.a libstr.a libfs.a
+
+qmail-getpw.0: \
+qmail-getpw.8
+	$(NROFF) qmail-getpw.8 > qmail-getpw.0
+
+qmail-getpw.8: \
+qmail-getpw.9 printbreak printnumd
+	cat qmail-getpw.9 \
+	| sed s}CONF-BREAK}"`./printbreak`"}g \
+	| sed s}CONF-NUMD}"`./printnumd`"}g \
+	> qmail-getpw.8
+
+qmail-getpw.o: \
+compile qmail-getpw.c exit.h conf-user.h fmt.h case.h qlx.h substdio.h \
+error.h byte.h readwrite.h str.h conf-unusual.h
+	./compile qmail-getpw.c
 
 qmail-header.0: \
 qmail-header.5
@@ -822,12 +975,15 @@ compile qmail-home.c substdio.h readwrite.h exit.h conf-home.h
 
 qmail-inject: \
 qmail-inject.o hfield.o newfield.o datetime.o date822fmt.o now.o \
-signal.o quote.o token822.o control.o open.o headerbody.o qqtalk.o \
-wait.o libenv.a libgetopt.a libgetline.a libsubstdio.a libstralloc.a \
-liballoc.a liberror.a libstr.a libfs.a load
+signal.o quote.o token822.o control.o libopen.a headerbody.o qqtalk.o \
+libwait.a libenv.a libgetopt.a libgetline.a libsubstdio.a \
+libstralloc.a liballoc.a liberror.a libstr.a libfs.a libfd.a load
 	./load qmail-inject hfield.o newfield.o datetime.o \
-	date822fmt.o now.o signal.o quote.o token822.o control.o open.o \
-	headerbody.o qqtalk.o wait.o libenv.a libgetopt.a libgetline.a \
+	date822fmt.o now.o signal.o quote.o token822.o control.o \
+	headerbody.o qqtalk.o libenv.a libgetopt.a libgetline.a \
+	libfd.a \
+	libwait.a \
+	libopen.a \
 	libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 qmail-inject.0: \
@@ -835,10 +991,11 @@ qmail-inject.8
 	$(NROFF) qmail-inject.8 > qmail-inject.0
 
 qmail-inject.o: \
-compile qmail-inject.c token822.h error.h hfield.h control.h \
-stralloc.h substdio.h sgetopt.h signal.h gen_alloc.h now.h newfield.h \
-subfd.h exit.h alloc.h qqtalk.h quote.h headerbody.h getline.h \
-gen_allocdefs.h env.h fmt.h str.h subgetopt.h conf-home.h datetime.h
+compile qmail-inject.c env.h substdio.h hfield.h control.h signal.h \
+error.h sgetopt.h stralloc.h now.h gen_alloc.h exit.h subfd.h \
+newfield.h quote.h headerbody.h token822.h qqtalk.h alloc.h \
+conf-home.h getline.h fmt.h str.h subgetopt.h gen_allocdefs.h \
+datetime.h
 	./compile qmail-inject.c
 
 qmail-limits.0: \
@@ -857,11 +1014,16 @@ qmail-log.5
 	$(NROFF) qmail-log.5 > qmail-log.0
 
 qmail-lspawn: \
-qmail-lspawn.o coe.o open.o spawn.o wait.o case.o prot.o signal.o \
-libgetline.a libstralloc.a libsubstdio.a liballoc.a liberror.a \
-libstr.a libfs.a load
-	./load qmail-lspawn coe.o open.o spawn.o wait.o case.o prot.o \
+qmail-lspawn.o coe.o slurpclose.o libopen.a spawn.o libwait.a \
+libcase.a prot.o signal.o libgetline.a libstralloc.a libsubstdio.a \
+liballoc.a liberror.a libstr.a libfs.a libfd.a libcdb.a load
+	./load qmail-lspawn coe.o spawn.o prot.o slurpclose.o \
 	signal.o libgetline.a libstralloc.a libsubstdio.a liballoc.a \
+	libcdb.a \
+	libfd.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	liberror.a libstr.a libfs.a
 
 qmail-lspawn.0: \
@@ -876,9 +1038,9 @@ qmail-lspawn.9 printbreak printnumd
 	> qmail-lspawn.8
 
 qmail-lspawn.o: \
-compile qmail-lspawn.c exit.h conf-unusual.h conf-user.h conf-home.h \
-auto-uids.h case.h qlx.h substdio.h error.h wait.h byte.h fork.h str.h \
-prot.h
+compile qmail-lspawn.c cdb.h stralloc.h fork.h gen_alloc.h fd.h \
+uint32.h exit.h scan.h auto-uids.h conf-home.h case.h qlx.h error.h \
+substdio.h slurpclose.h wait.h prot.h
 	./compile qmail-lspawn.c
 
 qmail-makectl: \
@@ -887,12 +1049,36 @@ warn-auto.sh qmail-mctl.sh qmail-home
 	| sed s}HOME}"`./qmail-home`"}g > qmail-makectl
 	chmod 755 qmail-makectl
 
+qmail-newuser: \
+load qmail-newuser.o cdbmss.o libcdbmake.a libcase.a libopen.a \
+libseek.a libgetline.a libstralloc.a liballoc.a libsubstdio.a \
+liberror.a libstr.a libfs.a
+	./load qmail-newuser \
+	cdbmss.o libcdbmake.a \
+	libseek.a \
+	libopen.a \
+	libcase.a \
+	libgetline.a libstralloc.a \
+	liballoc.a \
+	libsubstdio.a liberror.a libstr.a libfs.a
+
+qmail-newuser.0: \
+qmail-newuser.8
+	$(NROFF) qmail-newuser.8 > qmail-newuser.0
+
+qmail-newuser.o: \
+compile qmail-newuser.c exit.h uint32.h conf-home.h case.h open.h \
+error.h substdio.h cdbmake.h subfd.h getline.h readwrite.h cdbmss.h \
+stralloc.h gen_alloc.h
+	./compile qmail-newuser.c
+
 qmail-pop3d: \
-load qmail-pop3d.o signal.o datetime.o open.o prioq.o lock.o now.o \
+load qmail-pop3d.o signal.o datetime.o libopen.a prioq.o lock.o now.o \
 libgetline.a libsubstdio.a libstralloc.a liballoc.a liberror.a \
 libstr.a libfs.a
-	./load qmail-pop3d signal.o datetime.o open.o prioq.o \
+	./load qmail-pop3d signal.o datetime.o prioq.o \
 	lock.o now.o libgetline.a libsubstdio.a libstralloc.a \
+	libopen.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-pop3d.0: \
@@ -900,15 +1086,18 @@ qmail-pop3d.8
 	$(NROFF) qmail-pop3d.8 > qmail-pop3d.0
 
 qmail-pop3d.o: \
-compile qmail-pop3d.c alloc.h datetime.h getline.h prot.h direntry.h \
-stralloc.h signal.h now.h prioq.h gen_alloc.h readwrite.h exit.h \
-scan.h fmt.h open.h substdio.h str.h error.h lock.h
+compile qmail-pop3d.c direntry.h datetime.h getline.h signal.h \
+readwrite.h stralloc.h gen_alloc.h prioq.h now.h exit.h scan.h fmt.h \
+open.h error.h substdio.h str.h alloc.h prot.h
 	./compile qmail-pop3d.c
 
 qmail-popup: \
-load qmail-popup.o signal.o datetime.o wait.o now.o libgetline.a \
-libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a
-	./load qmail-popup signal.o datetime.o wait.o now.o \
+load qmail-popup.o signal.o datetime.o libwait.a now.o libgetline.a \
+libsubstdio.a libstralloc.a liballoc.a liberror.a libstr.a libfs.a \
+libfd.a
+	./load qmail-popup signal.o datetime.o now.o \
+	libfd.a \
+	libwait.a \
 	libgetline.a libsubstdio.a libstralloc.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
@@ -917,19 +1106,51 @@ qmail-popup.8
 	$(NROFF) qmail-popup.8 > qmail-popup.0
 
 qmail-popup.o: \
-compile qmail-popup.c stralloc.h signal.h now.h gen_alloc.h exit.h \
-fmt.h substdio.h error.h wait.h alloc.h getline.h readwrite.h str.h \
-datetime.h
+compile qmail-popup.c signal.h stralloc.h gen_alloc.h fd.h now.h \
+exit.h fmt.h error.h substdio.h wait.h alloc.h getline.h str.h \
+readwrite.h datetime.h
 	./compile qmail-popup.c
 
+qmail-pw2user: \
+load qmail-pw2user.o control.o constmap.o libopen.a libcase.a \
+libgetopt.a libgetline.a libstralloc.a liballoc.a libsubstdio.a \
+liberror.a libstr.a libfs.a
+	./load qmail-pw2user \
+	control.o constmap.o \
+	libopen.a libcase.a \
+	libgetline.a libstralloc.a \
+	libgetopt.a liballoc.a \
+	libsubstdio.a liberror.a libstr.a libfs.a
+
+qmail-pw2user.0: \
+qmail-pw2user.8
+	$(NROFF) qmail-pw2user.8 > qmail-pw2user.0
+
+qmail-pw2user.8: \
+qmail-pw2user.9 printbreak printnumd
+	cat qmail-pw2user.9 \
+	| sed s}CONF-BREAK}"`./printbreak`"}g \
+	| sed s}CONF-NUMD}"`./printnumd`"}g \
+	> qmail-pw2user.8
+
+qmail-pw2user.o: \
+compile qmail-pw2user.c subgetopt.h gen_alloc.h readwrite.h \
+conf-unusual.h conf-user.h scan.h conf-home.h fmt.h open.h constmap.h \
+substdio.h error.h control.h subfd.h stralloc.h getline.h sgetopt.h
+	./compile qmail-pw2user.c
+
 qmail-qmtpd: \
-load qmail-qmtpd.o qqtalk.o now.o wait.o signal.o datetime.o \
-date822fmt.o control.o constmap.o open.o case.o libgetline.a \
+load qmail-qmtpd.o qqtalk.o now.o libwait.a signal.o datetime.o \
+date822fmt.o control.o constmap.o libopen.a libcase.a libgetline.a \
 libstralloc.a libsubstdio.a libenv.a liballoc.a liberror.a libstr.a \
-libfs.a
+libfs.a libfd.a
 	./load qmail-qmtpd \
-	qqtalk.o now.o wait.o signal.o datetime.o date822fmt.o \
-	control.o constmap.o open.o case.o \
+	qqtalk.o now.o signal.o datetime.o date822fmt.o \
+	control.o constmap.o \
+	libfd.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	libgetline.a libstralloc.a libsubstdio.a \
 	libenv.a liballoc.a liberror.a libstr.a libfs.a
 
@@ -938,17 +1159,18 @@ qmail-qmtpd.8
 	$(NROFF) qmail-qmtpd.8 > qmail-qmtpd.0
 
 qmail-qmtpd.o: \
-compile qmail-qmtpd.c signal.h stralloc.h now.h gen_alloc.h qqtalk.h \
-fmt.h conf-home.h constmap.h control.h substdio.h env.h date822fmt.h \
-str.h readwrite.h datetime.h
+compile qmail-qmtpd.c stralloc.h signal.h gen_alloc.h now.h qqtalk.h \
+conf-home.h fmt.h constmap.h substdio.h control.h readwrite.h \
+date822fmt.h str.h env.h datetime.h
 	./compile qmail-qmtpd.c
 
 qmail-qread: \
-load qmail-qread.o fmtqfn.o readsubdir.o open.o datetime.o \
+load qmail-qread.o fmtqfn.o readsubdir.o libopen.a datetime.o \
 date822fmt.o libgetline.a libsubstdio.a libstralloc.a liballoc.a \
 liberror.a libstr.a libfs.a
-	./load qmail-qread fmtqfn.o readsubdir.o open.o datetime.o \
+	./load qmail-qread fmtqfn.o readsubdir.o datetime.o \
 	date822fmt.o libgetline.a libsubstdio.a libstralloc.a \
+	libopen.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-qread.0: \
@@ -956,9 +1178,9 @@ qmail-qread.8
 	$(NROFF) qmail-qread.8 > qmail-qread.0
 
 qmail-qread.o: \
-compile qmail-qread.c date822fmt.h stralloc.h readwrite.h gen_alloc.h \
-exit.h fmt.h conf-home.h fmtqfn.h open.h error.h substdio.h subfd.h \
-readsubdir.h getline.h str.h direntry.h datetime.h
+compile qmail-qread.c readwrite.h stralloc.h date822fmt.h gen_alloc.h \
+exit.h conf-home.h fmt.h open.h fmtqfn.h substdio.h error.h \
+readsubdir.h subfd.h direntry.h str.h getline.h datetime.h
 	./compile qmail-qread.c
 
 qmail-qstat: \
@@ -973,10 +1195,12 @@ qmail-qstat.8
 
 qmail-queue: \
 qmail-queue.o signal.o triggerpull.o datetime.o fmtqfn.o date822fmt.o \
-now.o ndelay.o open.o seek.o libsubstdio.a liballoc.a liberror.a \
+now.o ndelay.o libopen.a libseek.a libsubstdio.a liballoc.a liberror.a \
 libstr.a libfs.a load
 	./load qmail-queue signal.o triggerpull.o datetime.o fmtqfn.o \
-	date822fmt.o now.o ndelay.o open.o seek.o libsubstdio.a \
+	date822fmt.o now.o ndelay.o libsubstdio.a \
+	libseek.a \
+	libopen.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-queue.0: \
@@ -984,19 +1208,23 @@ qmail-queue.8
 	$(NROFF) qmail-queue.8 > qmail-queue.0
 
 qmail-queue.o: \
-compile qmail-queue.c readwrite.h signal.h now.h triggerpull.h exit.h \
-fmt.h conf-home.h auto-uids.h fmtqfn.h open.h substdio.h qqx.h alloc.h \
-seek.h date822fmt.h datetime.h
+compile qmail-queue.c readwrite.h signal.h triggerpull.h now.h exit.h \
+auto-uids.h conf-home.h fmt.h open.h fmtqfn.h qqx.h substdio.h alloc.h \
+datetime.h date822fmt.h seek.h
 	./compile qmail-queue.c
 
 qmail-remote: \
-qmail-remote.o signal.o dns.o ipme.o ip.o tcpto.o lock.o seek.o \
-ndelay.o ipalloc.o control.o constmap.o now.o open.o case.o quote.o \
-timeoutread.o timeoutwrite.o timeoutconn.o libgetline.a libstralloc.a \
-libsubstdio.a liballoc.a liberror.a libstr.a libfs.a loaddns
+qmail-remote.o signal.o dns.o ipme.o ip.o tcpto.o lock.o libseek.a \
+ndelay.o ipalloc.o control.o constmap.o now.o libopen.a libcase.a \
+quote.o timeoutread.o timeoutwrite.o timeoutconn.o libgetline.a \
+libstralloc.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a \
+loaddns
 	./loaddns qmail-remote signal.o control.o dns.o ipme.o ip.o \
-	tcpto.o lock.o seek.o ndelay.o ipalloc.o now.o open.o case.o \
+	tcpto.o lock.o ndelay.o ipalloc.o now.o \
 	quote.o timeoutread.o timeoutwrite.o timeoutconn.o constmap.o \
+	libseek.a \
+	libcase.a \
+	libopen.a \
 	libgetline.a libstralloc.a libsubstdio.a liballoc.a liberror.a \
 	libstr.a libfs.a
 
@@ -1005,19 +1233,22 @@ qmail-remote.8
 	$(NROFF) qmail-remote.8 > qmail-remote.0
 
 qmail-remote.o: \
-compile qmail-remote.c alloc.h ipme.h timeoutread.h quote.h case.h \
-str.h getline.h timeoutwrite.h datetime.h stralloc.h signal.h \
-gen_alloc.h now.h substdio.h exit.h error.h scan.h control.h \
-gen_allocdefs.h ip.h conf-home.h subfd.h constmap.h dns.h tcpto.h \
-ipalloc.h timeoutconn.h
+compile qmail-remote.c quote.h case.h str.h alloc.h ipme.h \
+timeoutread.h getline.h ip.h datetime.h signal.h stralloc.h now.h \
+gen_alloc.h control.h exit.h error.h scan.h substdio.h conf-home.h \
+timeoutwrite.h gen_allocdefs.h tcpto.h ipalloc.h timeoutconn.h subfd.h \
+constmap.h dns.h
 	./compile qmail-remote.c
 
 qmail-rspawn: \
-qmail-rspawn.o coe.o open.o spawn.o wait.o signal.o tcpto_clean.o \
-libgetline.a libstralloc.a libsubstdio.a liballoc.a liberror.a \
-libstr.a libfs.a load
+qmail-rspawn.o coe.o libopen.a spawn.o libwait.a signal.o \
+tcpto_clean.o libgetline.a libstralloc.a libsubstdio.a liballoc.a \
+liberror.a libstr.a libfs.a libfd.a load
 	./load qmail-rspawn spawn.o signal.o tcpto_clean.o coe.o \
-	open.o wait.o libgetline.a libstralloc.a libsubstdio.a \
+	libgetline.a libstralloc.a libsubstdio.a \
+	libfd.a \
+	libwait.a \
+	libopen.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-rspawn.0: \
@@ -1025,19 +1256,25 @@ qmail-rspawn.8
 	$(NROFF) qmail-rspawn.8 > qmail-rspawn.0
 
 qmail-rspawn.o: \
-compile qmail-rspawn.c error.h tcpto.h wait.h fork.h exit.h substdio.h
+compile qmail-rspawn.c error.h substdio.h wait.h tcpto.h fork.h fd.h \
+exit.h
 	./compile qmail-rspawn.c
 
 qmail-send: \
 qmail-send.o trigger.o control.o qsutil.o signal.o constmap.o quote.o \
-fmtqfn.o newfield.o now.o datetime.o date822fmt.o seek.o ndelay.o \
-readsubdir.o open.o lock.o case.o prioq.o qqtalk.o wait.o libgetline.a \
-libstralloc.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a \
-load
+fmtqfn.o newfield.o now.o datetime.o date822fmt.o libseek.a ndelay.o \
+readsubdir.o libopen.a lock.o libcase.a prioq.o qqtalk.o libwait.a \
+libgetline.a libstralloc.a libsubstdio.a liballoc.a liberror.a \
+libstr.a libfs.a libfd.a load
 	./load qmail-send trigger.o control.o qsutil.o signal.o \
 	constmap.o quote.o fmtqfn.o newfield.o now.o datetime.o \
-	date822fmt.o seek.o ndelay.o readsubdir.o open.o lock.o case.o \
-	prioq.o qqtalk.o wait.o libgetline.a libstralloc.a \
+	date822fmt.o ndelay.o readsubdir.o lock.o \
+	prioq.o qqtalk.o libgetline.a libstralloc.a \
+	libfd.a \
+	libseek.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 qmail-send.0: \
@@ -1052,23 +1289,24 @@ qmail-send.9 printbreak printnumd
 	> qmail-send.8
 
 qmail-send.o: \
-compile qmail-send.c readwrite.h control.h qqtalk.h seek.h substdio.h \
-qsutil.h lock.h select.h fmt.h ndelay.h readsubdir.h stralloc.h \
-trigger.h signal.h prioq.h conf-home.h now.h quote.h open.h \
-gen_alloc.h byte.h constmap.h exit.h alloc.h fmtqfn.h conf-unusual.h \
-direntry.h case.h newfield.h str.h getline.h error.h scan.h datetime.h
+compile qmail-send.c control.h conf-home.h ndelay.h readsubdir.h fmt.h \
+lock.h select.h qsutil.h seek.h alloc.h signal.h trigger.h stralloc.h \
+gen_alloc.h case.h now.h byte.h fmtqfn.h prioq.h quote.h constmap.h \
+newfield.h getline.h open.h exit.h direntry.h error.h scan.h str.h \
+readwrite.h substdio.h qqtalk.h datetime.h
 	./compile qmail-send.c
 
 qmail-setup: \
-qmail-setup.o open.o fifo.o libsubstdio.a libstralloc.a liballoc.a \
+qmail-setup.o libopen.a fifo.o libsubstdio.a libstralloc.a liballoc.a \
 liberror.a libstr.a libfs.a load
-	./load qmail-setup open.o fifo.o libsubstdio.a libstralloc.a \
+	./load qmail-setup fifo.o libsubstdio.a libstralloc.a \
+	libopen.a \
 	liballoc.a liberror.a libstr.a libfs.a
 
 qmail-setup.o: \
-compile qmail-setup.c exit.h conf-unusual.h fmt.h conf-home.h \
-auto-uids.h open.h substdio.h fifo.h error.h subfd.h readwrite.h \
-stralloc.h gen_alloc.h
+compile qmail-setup.c conf-unusual.h exit.h auto-uids.h conf-home.h \
+fmt.h open.h error.h fifo.h substdio.h subfd.h readwrite.h stralloc.h \
+gen_alloc.h
 	./compile qmail-setup.c
 
 qmail-showctl: \
@@ -1083,12 +1321,16 @@ qmail-showctl.8
 
 qmail-smtpd: \
 qmail-smtpd.o ipme.o ip.o ipalloc.o control.o newfield.o datetime.o \
-date822fmt.o signal.o now.o open.o case.o qqtalk.o wait.o constmap.o \
-libgetline.a libstralloc.a libsubstdio.a libenv.a liballoc.a \
-liberror.a libstr.a libfs.a load
+date822fmt.o signal.o now.o libopen.a libcase.a qqtalk.o libwait.a \
+constmap.o libgetline.a libstralloc.a libsubstdio.a libenv.a \
+liballoc.a liberror.a libstr.a libfs.a libfd.a load
 	./load qmail-smtpd ipme.o ip.o ipalloc.o control.o newfield.o \
-	datetime.o date822fmt.o signal.o now.o open.o case.o qqtalk.o \
-	wait.o constmap.o libgetline.a libstralloc.a libsubstdio.a \
+	datetime.o date822fmt.o signal.o now.o qqtalk.o \
+	constmap.o libgetline.a libstralloc.a libsubstdio.a \
+	libfd.a \
+	libcase.a \
+	libwait.a \
+	libopen.a \
 	libenv.a liballoc.a liberror.a libstr.a libfs.a
 
 qmail-smtpd.0: \
@@ -1096,28 +1338,31 @@ qmail-smtpd.8
 	$(NROFF) qmail-smtpd.8 > qmail-smtpd.0
 
 qmail-smtpd.o: \
-compile qmail-smtpd.c substdio.h stralloc.h control.h signal.h error.h \
-now.h gen_alloc.h newfield.h exit.h qqtalk.h ip.h fmt.h byte.h \
-conf-home.h alloc.h case.h getline.h constmap.h env.h ipme.h str.h \
-readwrite.h ipalloc.h datetime.h
+compile qmail-smtpd.c ip.h signal.h error.h stralloc.h control.h \
+gen_alloc.h now.h exit.h newfield.h qqtalk.h substdio.h conf-home.h \
+alloc.h fmt.h byte.h ipalloc.h getline.h ipme.h readwrite.h constmap.h \
+str.h env.h case.h datetime.h
 	./compile qmail-smtpd.c
 
 qmail-start: \
-qmail-start.o prot.o load
-	./load qmail-start prot.o
+qmail-start.o libfd.a prot.o load
+	./load qmail-start \
+	libfd.a \
+	prot.o
 
 qmail-start.0: \
 qmail-start.8
 	$(NROFF) qmail-start.8 > qmail-start.0
 
 qmail-start.o: \
-compile qmail-start.c auto-uids.h fork.h prot.h exit.h
+compile qmail-start.c exit.h auto-uids.h fork.h prot.h fd.h
 	./compile qmail-start.c
 
 qmail-tcpto: \
-load qmail-tcpto.o now.o lock.o open.o ip.o liberror.a libsubstdio.a \
-libfs.a libstr.a
-	./load qmail-tcpto now.o open.o lock.o ip.o \
+load qmail-tcpto.o now.o lock.o libopen.a ip.o liberror.a \
+libsubstdio.a libfs.a libstr.a
+	./load qmail-tcpto now.o lock.o ip.o \
+	libopen.a \
 	liberror.a libsubstdio.a libfs.a libstr.a
 
 qmail-tcpto.0: \
@@ -1125,8 +1370,8 @@ qmail-tcpto.8
 	$(NROFF) qmail-tcpto.8 > qmail-tcpto.0
 
 qmail-tcpto.o: \
-compile qmail-tcpto.c now.h exit.h conf-home.h fmt.h ip.h error.h \
-substdio.h subfd.h lock.h datetime.h
+compile qmail-tcpto.c now.h exit.h fmt.h conf-home.h substdio.h \
+error.h ip.h subfd.h datetime.h lock.h
 	./compile qmail-tcpto.c
 
 qmail-upgrade.0: \
@@ -1147,21 +1392,28 @@ qmail-upq.sh qmail-home printsplit warn-auto.sh
 	| sed s}HOME}"`./qmail-home`"}g > qmail-upq
 	chmod 755 qmail-upq
 
+qmail-users.0: \
+qmail-users.5
+	$(NROFF) qmail-users.5 > qmail-users.0
+
 qmail.0: \
 qmail.7
 	$(NROFF) qmail.7 > qmail.0
 
 qqtalk.o: \
-compile qqtalk.c substdio.h error.h qqx.h wait.h fork.h readwrite.h \
-exit.h qqtalk.h
+compile qqtalk.c qqtalk.h qqx.h substdio.h wait.h readwrite.h fork.h \
+fd.h exit.h
 	./compile qqtalk.c
 
 qreceipt: \
-qreceipt.o signal.o hfield.o token822.o headerbody.o open.o wait.o \
-quote.o qqtalk.o libenv.a libgetline.a libstralloc.a libsubstdio.a \
-liballoc.a liberror.a libstr.a libfs.a load
-	./load qreceipt signal.o hfield.o token822.o headerbody.o open.o \
-	wait.o quote.o qqtalk.o libenv.a libgetline.a libstralloc.a \
+qreceipt.o signal.o hfield.o token822.o headerbody.o libopen.a \
+libwait.a quote.o qqtalk.o libenv.a libgetline.a libstralloc.a \
+libsubstdio.a liballoc.a liberror.a libstr.a libfs.a libfd.a load
+	./load qreceipt signal.o hfield.o token822.o headerbody.o \
+	quote.o qqtalk.o libenv.a libgetline.a libstralloc.a \
+	libfd.a \
+	libwait.a \
+	libopen.a \
 	libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 qreceipt.0: \
@@ -1169,21 +1421,25 @@ qreceipt.1
 	$(NROFF) qreceipt.1 > qreceipt.0
 
 qreceipt.o: \
-compile qreceipt.c getline.h stralloc.h token822.h signal.h env.h \
-gen_alloc.h exit.h qqtalk.h headerbody.h gen_allocdefs.h open.h \
-substdio.h error.h subfd.h quote.h str.h alloc.h hfield.h
+compile qreceipt.c quote.h signal.h getline.h stralloc.h env.h \
+gen_alloc.h exit.h headerbody.h qqtalk.h gen_allocdefs.h open.h \
+error.h substdio.h subfd.h token822.h str.h alloc.h hfield.h
 	./compile qreceipt.c
 
 qsmhook: \
-qsmhook.o wait.o case.o signal.o libstralloc.a libenv.a libgetopt.a \
-libsubstdio.a liballoc.a liberror.a libstr.a libfs.a load
-	./load qsmhook wait.o case.o signal.o libstralloc.a libenv.a \
+qsmhook.o libwait.a libcase.a signal.o libstralloc.a libenv.a \
+libgetopt.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a \
+libfd.a load
+	./load qsmhook signal.o libstralloc.a libenv.a \
+	libfd.a \
+	libcase.a \
+	libwait.a \
 	libgetopt.a libsubstdio.a liballoc.a liberror.a libstr.a libfs.a
 
 qsmhook.o: \
-compile qsmhook.c env.h sgetopt.h fork.h stralloc.h gen_alloc.h exit.h \
-case.h error.h substdio.h wait.h subfd.h byte.h alloc.h readwrite.h \
-str.h subgetopt.h signal.h
+compile qsmhook.c fork.h sgetopt.h env.h signal.h readwrite.h \
+gen_alloc.h fd.h exit.h case.h substdio.h error.h subfd.h wait.h \
+alloc.h byte.h str.h subgetopt.h stralloc.h
 	./compile qsmhook.c
 
 qsutil.o: \
@@ -1201,7 +1457,7 @@ conf-unusual.h
 	./compile readsubdir.c
 
 remoteinfo.o: \
-compile remoteinfo.c fmt.h substdio.h ip.h byte.h readwrite.h \
+compile remoteinfo.c fmt.h ip.h substdio.h byte.h readwrite.h \
 timeoutconn.h remoteinfo.h
 	./compile remoteinfo.c
 
@@ -1215,7 +1471,22 @@ compile scan_ulong.c scan.h
 
 seek.o: \
 compile seek.c seek.h
-	./compile seek.c
+
+seek_cur.o: \
+compile seek_cur.c seek.h
+	./compile seek_cur.c
+
+seek_end.o: \
+compile seek_end.c seek.h
+	./compile seek_end.c
+
+seek_set.o: \
+compile seek_set.c seek.h
+	./compile seek_set.c
+
+seek_trunc.o: \
+compile seek_trunc.c seek.h
+	./compile seek_trunc.c
 
 select.h: \
 trysysel.c compile select.h1 select.h2
@@ -1229,8 +1500,8 @@ libstr.a libfs.a load
 	liberror.a libstr.a libfs.a
 
 sendmail.o: \
-compile sendmail.c exit.h conf-home.h substdio.h subfd.h alloc.h env.h \
-subgetopt.h str.h sgetopt.h
+compile sendmail.c exit.h conf-home.h substdio.h subfd.h alloc.h \
+subgetopt.h env.h str.h sgetopt.h
 	./compile sendmail.c
 
 setup: \
@@ -1244,8 +1515,12 @@ shar: \
 do-shar
 
 signal.o: \
-compile signal.c auto-hassgprm.h auto-hassgact.h signal.h
+compile signal.c hassgprm.h hassgact.h signal.h
 	./compile signal.c
+
+slurpclose.o: \
+compile slurpclose.c gen_alloc.h readwrite.h slurpclose.h stralloc.h
+	./compile slurpclose.c
 
 spawn.o: \
 chkspawn compile spawn.c getline.h stralloc.h gen_alloc.h exit.h coe.h \
@@ -1319,7 +1594,7 @@ compile strerr_die.c strerr.h subfd.h exit.h substdio.h
 	./compile strerr_die.c
 
 strerr_sys.o: \
-compile strerr_sys.c error.h strerr.h
+compile strerr_sys.c strerr.h error.h
 	./compile strerr_sys.c
 
 subfderr.o: \
@@ -1339,7 +1614,7 @@ compile subgetopt.c subgetopt.h
 	./compile subgetopt.c
 
 substdi.o: \
-compile substdi.c byte.h error.h substdio.h
+compile substdi.c byte.h substdio.h error.h
 	./compile substdi.c
 
 substdio.o: \
@@ -1359,11 +1634,12 @@ find-systype trycpp.c
 	./find-systype > systype
 
 tcp-env: \
-tcp-env.o dns.o ip.o ipalloc.o remoteinfo.o timeoutconn.o case.o \
+tcp-env.o dns.o ip.o ipalloc.o remoteinfo.o timeoutconn.o libcase.a \
 signal.o ndelay.o libgetopt.a libenv.a libsubstdio.a libstralloc.a \
 liballoc.a liberror.a libstr.a libfs.a loaddns
-	./loaddns tcp-env dns.o ip.o ipalloc.o remoteinfo.o case.o ndelay.o \
+	./loaddns tcp-env dns.o ip.o ipalloc.o remoteinfo.o ndelay.o \
 	timeoutconn.o signal.o libgetopt.a libenv.a libsubstdio.a \
+	libcase.a \
 	libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 tcp-env.0: \
@@ -1371,8 +1647,8 @@ tcp-env.1
 	$(NROFF) tcp-env.1 > tcp-env.0
 
 tcp-env.o: \
-compile tcp-env.c remoteinfo.h signal.h stralloc.h gen_alloc.h exit.h \
-scan.h fmt.h case.h ip.h byte.h env.h subgetopt.h str.h dns.h
+compile tcp-env.c remoteinfo.h stralloc.h signal.h gen_alloc.h exit.h \
+scan.h fmt.h case.h ip.h byte.h subgetopt.h env.h dns.h str.h
 	./compile tcp-env.c
 
 tcp-environ.0: \
@@ -1381,7 +1657,7 @@ tcp-environ.5
 
 tcpto.o: \
 compile tcpto.c lock.h now.h open.h ip.h tcpto.h byte.h readwrite.h \
-seek.h datetime.h
+datetime.h seek.h
 	./compile tcpto.c
 
 tcpto_clean.o: \
@@ -1389,7 +1665,7 @@ compile tcpto_clean.c tcpto.h readwrite.h open.h substdio.h
 	./compile tcpto_clean.c
 
 timeoutconn.o: \
-compile timeoutconn.c error.h ip.h select.h readwrite.h timeoutconn.h \
+compile timeoutconn.c ip.h error.h select.h readwrite.h timeoutconn.h \
 ndelay.h
 	./compile timeoutconn.c
 
@@ -1398,7 +1674,7 @@ compile timeoutread.c select.h readwrite.h timeoutread.h error.h
 	./compile timeoutread.c
 
 timeoutwrite.o: \
-compile timeoutwrite.c select.h readwrite.h error.h timeoutwrite.h
+compile timeoutwrite.c select.h readwrite.h timeoutwrite.h error.h
 	./compile timeoutwrite.c
 
 token822.o: \
@@ -1413,18 +1689,28 @@ liballoc.a liberror.a libstr.a libfs.a load
 	libstralloc.a liballoc.a liberror.a libstr.a libfs.a
 
 tokenize.o: \
-compile tokenize.c substdio.h error.h subfd.h alloc.h getline.h \
-token822.h stralloc.h gen_alloc.h
+compile tokenize.c error.h substdio.h subfd.h token822.h alloc.h \
+getline.h stralloc.h gen_alloc.h
 	./compile tokenize.c
 
 trigger.o: \
-compile trigger.c open.h select.h trigger.h auto-hasnpbg1.h
+compile trigger.c open.h select.h auto-hasnpbg1.h trigger.h
 	./compile trigger.c
 
 triggerpull.o: \
 compile triggerpull.c open.h ndelay.h triggerpull.h
 	./compile triggerpull.c
 
-wait.o: \
-compile wait.c error.h auto-haswaitp.h
-	./compile wait.c
+uint32.h: \
+tryulong32.c compile load uint32.h1 uint32.h2
+	( ( ./compile tryulong32.c && ./load tryulong32 && ./tryulong32 ) >/dev/null 2>&1 \
+	&& cat uint32.h2 || cat uint32.h1 ) > uint32.h
+	rm -f tryulong32.o tryulong32
+
+wait_nohang.o: \
+compile wait_nohang.c haswaitp.h
+	./compile wait_nohang.c
+
+wait_pid.o: \
+compile wait_pid.c error.h
+	./compile wait_pid.c

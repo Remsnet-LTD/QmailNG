@@ -33,7 +33,6 @@ extern unsigned long qqtalk_qp();
 #define QQT_WRITE -8
 #define QQT_NOMEM -9
 #define QQT_EXECSOFT -11
-#define QQT_EXECHARD -12
 #define QQT_TIMEOUT -13
 #define QQT_TOOLONG -14
 

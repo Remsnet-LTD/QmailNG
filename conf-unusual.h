@@ -3,7 +3,7 @@
 
 #define SPAWN_NUMD 120 /* silent concurrency limit */
 
-#define LSPAWN_BREAK '-' /* delimiter in user-ext */
+#define USEREXT_BREAK '-' /* delimiter in user-ext */
 
 #define ALIAS_EMPTY "./Mailbox\n"
 
@@ -12,6 +12,6 @@
 
 #define QFN_SPLIT 23 /* queue subdirectory split */
 
-#define LSPAWN_USERLEN 32
+#define GETPW_USERLEN 32
 
 #endif

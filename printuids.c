@@ -49,12 +49,14 @@ void main()
  substdio_puts(subfdout,"#ifndef AUTO_UIDS_H\n#define AUTO_UIDS_H\n");
  user("UID_OWNER",CONF_USERO);
  user("UID_ALIAS",CONF_USERA);
- user("UID_SMTPD",CONF_USERD);
+ user("UID_DAEMON",CONF_USERD);
+ user("UID_LOG",CONF_USERL);
+ user("UID_PW",CONF_USERP);
  user("UID_QUEUE",CONF_USERQ);
  user("UID_REMOTE",CONF_USERR);
  user("UID_SEND",CONF_USERS);
  group("GID_QMAIL",CONF_GROUPQ);
- group("GID_NOBODY",CONF_GROUPX);
+ group("GID_NOFILES",CONF_GROUPX);
  substdio_putsflush(subfdout,"#endif\n");
  _exit(0);
 }
