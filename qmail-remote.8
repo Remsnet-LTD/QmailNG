@@ -56,13 +56,10 @@ standard.
 .SH TRANSPARENCY
 End-of-file in SMTP is encoded as dot CR LF.
 A dot at the beginning of a line is encoded as dot dot.
+It is impossible in SMTP to send a message that does not end with a newline.
 .B qmail-remote
 converts the UNIX newline convention into the SMTP newline convention
 by inserting CR before each LF.
-It is impossible in SMTP to send a message that does not end with a newline;
-.B qmail-remote
-will add a final CR LF
-if necessary.
 
 It is a violation of the SMTP protocol
 to send a message that contains long lines or non-ASCII characters.
@@ -205,4 +202,5 @@ addresses(5),
 envelopes(5),
 qmail-control(5),
 qmail-send(8),
-qmail-smtpd(8)
+qmail-smtpd(8),
+qmail-tcpto(8)

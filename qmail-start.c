@@ -9,7 +9,7 @@ char *(qcargs[]) = { "qmail-clean", 0 };
 char *(qlargs[]) = { "qmail-lspawn", 0 };
 char *(qrargs[]) = { "qmail-rspawn", 0 };
 
-void die() { _exit(1); }
+void die() { _exit(111); }
 
 int pi0[2];
 int pi1[2];
@@ -47,6 +47,7 @@ char **argv;
       case -1:
 	die();
       case 0:
+        if (prot_gid(GID_NOFILES) == -1) die();
         if (prot_uid(UID_LOG) == -1) die();
         close(pi0[1]);
         if (fd_move(0,pi0[0]) == -1) die();

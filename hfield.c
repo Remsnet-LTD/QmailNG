@@ -2,8 +2,6 @@
 
 static char *(hname[]) = {
   "unknown-header"
-, "message"
-, "text"
 , "sender"
 , "from"
 , "reply-to"
@@ -102,15 +100,6 @@ int len;
    if (ch >= 127) return 0;
   }
  return 1;
-}
-
-int hfield_mort(s,len)
-char *s;
-int len;
-{
- if (hmatch(s,len,hname[H_MESSAGE])) return H_MESSAGE;
- if (hmatch(s,len,hname[H_TEXT])) return H_TEXT;
- return 0;
 }
 
 unsigned int hfield_skipname(s,len)

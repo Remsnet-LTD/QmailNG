@@ -14,42 +14,42 @@ void die_temp() { _exit(111); }
 
 void die_chdir()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to chdir\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to chdir\n");
   die_temp();
 }
 void die_nomem()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: out of memory\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: out of memory\n");
   die_temp();
 }
 void die_opena()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to open users/assign\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to open users/assign\n");
   die_temp();
 }
 void die_reada()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to read users/assign\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to read users/assign\n");
   die_temp();
 }
 void die_format()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: bad format in users/assign\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: bad format in users/assign\n");
   die_temp();
 }
 void die_opent()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to open users/cdb.tmp\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to open users/cdb.tmp\n");
   die_temp();
 }
 void die_writet()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to write users/cdb.tmp\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to write users/cdb.tmp\n");
   die_temp();
 }
 void die_rename()
 {
-  substdio_putsflush(subfderr,"qmail-newuser: fatal: unable to move users/cdb.tmp to users/cdb\n");
+  substdio_putsflush(subfderr,"qmail-newu: fatal: unable to move users/cdb.tmp to users/cdb\n");
   die_temp();
 }
 

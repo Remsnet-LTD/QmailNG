@@ -3,13 +3,13 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include "byte.h"
-#include "readwrite.h"
 #include "substdio.h"
 #include "ip.h"
 #include "fmt.h"
 #include "timeoutconn.h"
+#include "timeoutread.h"
+#include "timeoutwrite.h"
 #include "remoteinfo.h"
-#include <sys/types.h>
 
 static char line[999];
 
@@ -46,10 +46,12 @@ int timeout;
  len += fmt_ulong(line + len,lp);
  len += fmt_str(line + len,"\r\n");
 
- substdio_fdbuf(&ss,write,s,buf,sizeof(buf));
+ timeoutwrite_init(timeout);
+ substdio_fdbuf(&ss,timeoutwrite,s,buf,sizeof(buf));
  if (substdio_putflush(&ss,line,len) == -1) { close(s); return 0; }
 
- substdio_fdbuf(&ss,read,s,buf,sizeof(buf));
+ timeoutread_init(timeout);
+ substdio_fdbuf(&ss,timeoutread,s,buf,sizeof(buf));
  x = line;
  numcolons = 0;
  for (;;)

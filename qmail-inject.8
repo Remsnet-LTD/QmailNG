@@ -27,7 +27,7 @@ rewrites header fields.
 
 .B qmail-inject
 normally exits 0.
-It exits 1 if it was invoked improperly
+It exits 100 if it was invoked improperly
 or if there is a severe syntax error in the message.
 It exits 111 for temporary errors.
 .SH "ENVIRONMENT VARIABLES"
@@ -123,13 +123,13 @@ field created by
 .BR qmail-inject .
 .TP
 .B r
-Use the per-recipient owner hack.
+Use a per-recipient VERP.
 .B qmail-inject
 will append each recipient address to the envelope sender
 of the copy going to that recipient.
 .TP
 .B m
-Use the per-message owner hack.
+Use a per-message VERP.
 .B qmail-inject
 will append the current date and process ID to the envelope sender.
 .SH OPTIONS
@@ -210,6 +210,12 @@ if
 does not have dots.
 (Exception: see
 .IR plusdomain .)
+
+The
+.B QMAILDEFAULTDOMAIN
+environment variable
+overrides
+.IR defaultdomain .
 .TP 5
 .I defaulthost
 Default host name.
@@ -226,6 +232,11 @@ need not be the current host's name.
 For example,
 you may prefer that outgoing mail show
 just your domain name.
+
+The
+.B QMAILDEFAULTHOST
+environment variable overrides
+.IR defaulthost .
 .TP 5
 .I idhost
 Host name for Message-IDs.
@@ -243,6 +254,11 @@ However,
 .I idhost
 must be a fully-qualified name within your domain,
 and each host in your domain should use a different
+.IR idhost .
+
+The
+.B QMAILIDHOST
+environment variable overrides
 .IR idhost .
 .TP 5
 .I plusdomain
@@ -266,6 +282,11 @@ uses
 .IR plusdomain ,
 not
 .IR defaultdomain .
+
+The
+.B QMAILPLUSDOMAIN
+environment variable overrides
+.IR plusdomain .
 .SH "SEE ALSO"
 addresses(5),
 qmail-control(5),

@@ -1,16 +1,16 @@
-.TH qmail-pw2user 8
+.TH qmail-pw2u 8
 .SH NAME
-qmail-pw2user \- build address assignments from a passwd file
+qmail-pw2u \- build address assignments from a passwd file
 .SH SYNOPSIS
-.B qmail-pw2user
+.B qmail-pw2u
 [
-.B \-ohHuUbBC
+.B \-ohHuUC
 ]
 [
 .B \-c\fIchar
 ]
 .SH DESCRIPTION
-.B qmail-pw2user
+.B qmail-pw2u
 reads a V7-format passwd file from standard input
 and prints a
 .BR qmail-users -format
@@ -38,30 +38,30 @@ is the account's home directory.
 and
 .I shell
 are ignored by
-.BR qmail-pw2user .
+.BR qmail-pw2u .
 
 If you put the output of
-.B qmail-pw2user
+.B qmail-pw2u
 into
 .BR /var/qmail/users/assign ,
 and then run
-.BR qmail-newuser ,
+.BR qmail-newu ,
 .B qmail-lspawn
 will obey the assignments printed by
-.BR qmail-pw2user .
+.BR qmail-pw2u .
 .B WARNING:
 After changing any users, uids, gids, or home directories
 in your passwd file,
 you must run
-.B qmail-pw2user
+.B qmail-pw2u
 and
-.B qmail-newuser
+.B qmail-newu
 again if you want
 .B qmail-lspawn
 to see the changes.
 .SH RULES
 By default,
-.B qmail-pw2user
+.B qmail-pw2u
 follows the same rules as
 .BR qmail-getpw .
 It skips
@@ -76,15 +76,10 @@ does not exist,
 .I user
 does not own
 .IR home ,
+or
 (4)
 .I user
-contains uppercase letters,
-or
-(5)
-.I user
-contains
-.B CONF-BREAK
-characters.
+contains uppercase letters.
 It then gives each remaining
 .I user
 control over the basic
@@ -100,7 +95,7 @@ You may change these rules by setting up files in
 .BR /var/qmail/users :
 .TP
 .B include
-A list of allowed users, one per line.
+Allowed users, one per line.
 If
 .B include
 exists, and
@@ -111,7 +106,7 @@ is not listed in
 is ignored.
 .TP
 .B exclude
-A list of ignored users, one per line.
+Ignored users, one per line.
 If
 .B exclude
 exists, and
@@ -138,6 +133,8 @@ and
 and so on will be delivered
 to
 .IR user .
+
+.B WARNING:
 The addresses
 .I user
 and
@@ -172,6 +169,12 @@ home directory;
 .I sub\fBCONF-BREAK\fIext
 will be handled by
 .IR home\fB/.qmail-\fIpre\fB-\fIext .
+.TP
+.B append
+Extra assignments,
+printed at the end of
+.BR qmail-pw2u 's
+output.
 .SH OPTIONS
 .TP
 .B \-o
@@ -180,7 +183,8 @@ Skip
 .I user
 if
 .I home
-does not exist.
+does not exist (or is not visible to
+.BR qmail-pw2u ).
 Skip
 .I user
 if
@@ -215,19 +219,6 @@ if there are any uppercase letters in
 Allow uppercase letters in
 .IR user .
 .TP
-.B \-B
-(Default.)
-Skip
-.I user
-if it contains
-.BR CONF-BREAK .
-.TP
-.B \-b
-Allow
-.B CONF-BREAK
-in
-.IR user .
-.TP
 .B \-c\fIchar
 Use
 .I char
@@ -240,5 +231,5 @@ Disable the user-extension mechanism.
 .SH "SEE ALSO"
 qmail-users(5),
 qmail-lspawn(8),
-qmail-newuser(8),
+qmail-newu(8),
 qmail-getpw(8)

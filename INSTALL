@@ -42,16 +42,15 @@ Installation steps that won't interfere with sendmail:
 Pre-upgrade tests:
 
 11. Enable deliveries of messages injected into qmail:
-       # env - PATH="/var/qmail/bin:$PATH" \
-       qmail-start logger -p mail.info -t qmail &
+       # env - PATH="/var/qmail/bin:$PATH" qmail-start splogger qmail &
 12. Look for a
             qmail: running
     line in syslog. qmail-send always prints either ``cannot start'' or
-    ``running''.
+    ``running''. (The big number is a splogger timestamp.)
 13. Do a ps and look for the qmail daemons. There should be four of
     them, all idle: qmail-send, running as qmails; qmail-lspawn, running
     as root; qmail-rspawn, running as qmailr; and qmail-clean, running
-    as qmailq. You will also see the logger process.
+    as qmailq. You will also see the splogger process.
 14. Local-local test: Send yourself an empty message. (Replace ``me''
     with your username. Make sure to include the ``to:'' colon.)
        % echo to: me | /var/qmail/bin/qmail-inject
@@ -177,4 +176,7 @@ Post-upgrade tests (can be done immediately after step 24):
 
 
 That's it! To report success:
-       % cat `cat SYSDEPS` | mail djb-qst@koobera.math.uic.edu
+       % ( echo 'First M. Last'; cat `cat SYSDEPS` ) \
+         | mail djb-qst@koobera.math.uic.edu
+Replace First M. Last with your name. If you have questions about qmail,
+contact qmail@pobox.com.

@@ -11,6 +11,7 @@ Security:
 *  minimization of setuid code (qmail-queue)
 *  minimization of root code (qmail-start, qmail-lspawn)
 *  five-way trust partitioning---security in depth
+*  optional logging of one-way hashes, entire contents, etc. (QUEUE_EXTRA)
 
 Message construction (qmail-inject):
 *  RFC 822, RFC 1123
@@ -62,13 +63,13 @@ SMTP delivery (qmail-remote):
 *  automatic downed host backoffs
 *  artificial routing---smarthost, localnet, mailertable (control/smtproutes)
 *  per-buffer timeouts
-*  passive SMTP queue---perfect for SLIP/PPP links (maildir2smtp)
+*  passive SMTP queue---perfect for SLIP/PPP (serialmail, available separately)
 
 Forwarding and mailing lists (qmail-alias):
 *  address wildcards (.qmail-default, .qmail-foo-default, etc.)
 *  sendmail/smail /etc/aliases compatibility (qmsmac, available separately)
 *  mailing list owners---automatically divert bounces and vacation messages
-*  owner hack---automatic recipient identification for mailing list bounces
+*  VERPs---automatic recipient identification for mailing list bounces
 *  Delivered-To---automatic loop prevention, even across hosts
 *  automatic subscription management (qlist)
 

@@ -15,4 +15,6 @@ readsubdir;
 extern void readsubdir_init();
 extern int readsubdir_next();
 
+#define READSUBDIR_NAMELEN 10
+
 #endif

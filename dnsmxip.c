@@ -21,10 +21,10 @@ char **argv;
  int j;
  unsigned long r;
 
- if (!argv[1]) _exit(1);
+ if (!argv[1]) _exit(100);
 
  if (!stralloc_copys(&sa,argv[1]))
-  { substdio_putsflush(subfderr,"out of memory\n"); _exit(1); }
+  { substdio_putsflush(subfderr,"out of memory\n"); _exit(111); }
 
  r = now() + getpid();
  dns_init(0);

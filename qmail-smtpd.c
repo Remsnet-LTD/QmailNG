@@ -6,7 +6,7 @@
 #include "alloc.h"
 #include "conf-home.h"
 #include "control.h"
-#include "newfield.h"
+#include "received.h"
 #include "constmap.h"
 #include "error.h"
 #include "ipme.h"
@@ -54,11 +54,14 @@ stralloc liphost = {0};
 int rhok = 0;
 stralloc rcpthosts = {0};
 struct constmap maprcpthosts;
+int bmfok = 0;
+stralloc bmf = {0};
+struct constmap mapbmf;
+int flagbarf; /* defined if seenmail */
 
 stralloc helohost = {0};
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
-int seenhelo = 0;
 int seenmail = 0;
 
 stralloc addr = {0}; /* will be 0-terminated, if addrparse returns 1 */
@@ -66,46 +69,33 @@ stralloc addr = {0}; /* will be 0-terminated, if addrparse returns 1 */
 char *remoteip;
 char *remotehost;
 char *remoteinfo;
-char *localip;
-int localiplen;
-char *localhost;
-int localhostlen;
+char *local;
 char *relayclient;
+
+void dohelo(arg) char *arg;
+{
+ if (!stralloc_copys(&helohost,arg)) outofmem(); 
+ if (!stralloc_0(&helohost)) outofmem(); 
+}
 
 void getenvs()
 {
  remoteip = env_get("TCPREMOTEIP");
- if (!remoteip) die();
- localip = env_get("TCPLOCALIP");
- if (!localip) die();
- localhost = env_get("TCPLOCALHOST");
- if (localhost) localhostlen = str_len(localhost);
+ if (!remoteip) remoteip = "unknown";
+ local = env_get("TCPLOCALHOST");
+ if (!local) local = env_get("TCPLOCALIP");
+ if (!local) local = "unknown";
  remotehost = env_get("TCPREMOTEHOST");
+ if (!remotehost) remotehost = "unknown";
  remoteinfo = env_get("TCPREMOTEINFO");
  relayclient = env_get("RELAYCLIENT");
-}
-
-void dohelo(arg) char *arg;
-{
- char *real;
- char *myname;
- seenhelo = 1;
- real = remotehost;
- if (!real) real = "unknown";
- if (!arg) arg = real;
- if (!stralloc_copys(&helohost,arg)) outofmem(); 
- if (!stralloc_0(&helohost)) outofmem(); 
- localiplen = str_len(localip);
- if (!case_diffs(real,helohost.s)) real = 0;
- myname = localhost ? localhost : localip;
- if (!newfield_recmake(helohost.s,real,remoteinfo,remoteip,myname,now()))
-   outofmem();
+ dohelo(remotehost);
 }
 
 void straynewline()
 {
  out("451 \
-Put ,E=\\r\\n at the end of Mether in sendmail.cf \
+Put ,E=\\r\\n at the end of Mether, Mtcp, or Msmtp in sendmail.cf \
 if you are using Solaris 2.5 (fixed in 2.5.1). \
 I cannot accept messages with stray newlines. \
 Many SMTP servers will time out waiting for \\r\\n.\\r\\n.\
@@ -253,12 +243,24 @@ int addrallowed()
  return 0;
 }
 
+void bmfcheck()
+{
+ int j;
+ flagbarf = 0;
+ if (!bmfok) return;
+ if (constmap(&mapbmf,addr.s,addr.len - 1)) { flagbarf = 1; return; }
+ j = byte_rchr(addr.s,addr.len,'@');
+ if (j < addr.len)
+   if (constmap(&mapbmf,addr.s + j,addr.len - j - 1)) flagbarf = 1;
+}
+
 void smtp_greet(code) char *code; {
  if (substdio_puts(&ssout,code) == -1) die();
  if (substdio_put(&ssout,greeting.s,greeting.len) == -1) die(); }
 void smtp_quit() { smtp_greet("221 "); out("\r\n"); die(); }
 void smtp_help() { out("214-qmail home page: http://pobox.com/~djb/qmail.html\r\n214 send comments to qmail@pobox.com\r\n"); }
 void err_syntax() { out("555 syntax error (#5.5.4)\r\n"); }
+void err_bmf() { out("553 sorry, your envelope sender is in my badmailfrom list (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
 void err_unimpl() { out("502 unimplemented (#5.5.1)\r\n"); }
 void err_seenmail() { out("503 one MAIL per message (#5.5.1)\r\n"); }
@@ -268,28 +270,26 @@ void err_noop() { out("250 ok\r\n"); }
 void err_vrfy() { out("252 send some mail, i'll try my best\r\n"); }
 void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
 void smtp_helo(arg) char *arg; {
- if (!arg) arg = "";
  smtp_greet("250-"); out("\r\n250-PIPELINING\r\n250 8BITMIME\r\n");
  seenmail = 0;
- dohelo(arg); }
+ dohelo(arg ? arg : ""); }
 void smtp_rset() {
- if (!seenhelo) dohelo((char *) 0);
  seenmail = 0;
  out("250 flushed\r\n"); }
 void smtp_mail(arg) char *arg; {
- if (!seenhelo) dohelo((char *) 0);
  if (seenmail) { err_seenmail(); return; }
  if (!arg) { err_syntax(); return; }
  if (!addrparse(arg)) { err_syntax(); return; }
+ bmfcheck();
  seenmail = 1; out("250 ok\r\n");
  if (!stralloc_copys(&rcptto,"")) outofmem();
  if (!stralloc_copys(&mailfrom,addr.s)) outofmem();
  if (!stralloc_0(&mailfrom)) outofmem(); }
 void smtp_rcpt(arg) char *arg; {
- if (!seenhelo) dohelo((char *) 0);
  if (!seenmail) { err_wantmail(); return; }
  if (!arg) { err_syntax(); return; }
  if (!addrparse(arg)) { err_syntax(); return; }
+ if (flagbarf) { err_bmf(); return; }
  if (relayclient)
   {
    --addr.len;
@@ -319,7 +319,6 @@ void acceptmessage(qp) unsigned long qp;
 
 void smtp_data() {
  int hops; int r; unsigned long qp;
- if (!seenhelo) dohelo((char *) 0);
  if (!seenmail) { err_wantmail(); return; }
  if (!rcptto.len) { err_wantrcpt(); return; }
  seenmail = 0;
@@ -327,7 +326,7 @@ void smtp_data() {
  qp = qqtalk_qp(&qqt);
  out("354 go ahead\r\n");
 
- qqtalk_puts(&qqt,newfield_rec);
+ received(&qqt,"SMTP",local,remoteip,remotehost,remoteinfo,case_diffs(remotehost,helohost.s) ? helohost.s : 0);
  blast(&ssin,&hops);
  hops = (hops >= MAXHOPS);
  if (hops) qqtalk_fail(&qqt);
@@ -409,6 +408,13 @@ void getcontrols()
    case 1:
      rhok = 1;
      if (!constmap_init(&maprcpthosts,rcpthosts.s,rcpthosts.len,0)) die();
+  }
+ switch(control_readfile(&bmf,"control/badmailfrom",0))
+  {
+   case -1: die();
+   case 1:
+     bmfok = 1;
+     if (!constmap_init(&mapbmf,bmf.s,bmf.len,0)) die();
   }
 }
 

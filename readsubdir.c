@@ -15,7 +15,7 @@ void (*pause)();
  rs->pos = 0;
 }
 
-static char namepos[FMT_ULONG + 20/*XXX*/];
+static char namepos[FMT_ULONG + 4 + READSUBDIR_NAMELEN];
 
 int readsubdir_next(rs,id)
 readsubdir *rs;
@@ -27,6 +27,7 @@ unsigned long *id;
  if (!rs->dir)
   {
    if (rs->pos >= QFN_SPLIT) return 0;
+   if (str_len(rs->name) > READSUBDIR_NAMELEN) { rs->pos++; return -1; }
    len = 0;
    len += fmt_str(namepos + len,rs->name);
    namepos[len++] = '/';

@@ -331,14 +331,15 @@ if it is the empty address or
 i.e., if this is a bounce message.
 
 .B qmail-alias
-also supports the
-.B owner hack\fR:
+also supports
+.B variable envelope return paths
+(VERPs):
 if
 .B .qmail\-\fIext\fB-owner\fP
 and
 .B .qmail\-\fIext\fB-owner-default\fP
 both exist, it uses
-.I local\fB\-owner\-
+.I local\fB\-owner\-@\fIdomain\fB-@[]
 as the envelope sender.
 This will cause a recipient
 .I recip\fB@\fIreciphost

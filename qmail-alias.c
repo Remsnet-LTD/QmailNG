@@ -30,7 +30,7 @@
 
 void err(s) char *s; { substdio_putsflush(subfderr,s); }
 void soft() { _exit(111); }
-void hard() { _exit(112); }
+void hard() { _exit(100); }
 
 void temp_childcrashed() { err("Aack, child crashed. (#4.3.0)\n"); soft(); }
 void temp_rewind() { err("Unable to rewind message. (#4.3.0)\n"); soft(); }
@@ -274,10 +274,11 @@ char *prog;
    temp_childcrashed();
  switch(wait_exitcode(wstat))
   {
-   case 111: case 120: case 71: case 74: case 75: soft();
+   case 100:
+   case 64: case 65: case 70: case 76: case 77: case 78: case 112: hard();
    case 0: break;
    case 99: flag99 = 1; break;
-   default: hard();
+   default: soft();
   }
 }
 
@@ -403,25 +404,22 @@ unsigned long count_forward = 0;
 unsigned long count_program = 0;
 char count_buf[FMT_ULONG];
 
-char countssbuf[128];
-static struct substdio countss = SUBSTDIO_FDBUF(write,1,countssbuf,128);
-
 void count_print()
 {
- substdio_puts(&countss,"did ");
- substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_file));
- substdio_puts(&countss,"+");
- substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_forward));
- substdio_puts(&countss,"+");
- substdio_put(&countss,count_buf,fmt_ulong(count_buf,count_program));
- substdio_puts(&countss,"\n");
+ substdio_puts(subfdoutsmall,"did ");
+ substdio_put(subfdoutsmall,count_buf,fmt_ulong(count_buf,count_file));
+ substdio_puts(subfdoutsmall,"+");
+ substdio_put(subfdoutsmall,count_buf,fmt_ulong(count_buf,count_forward));
+ substdio_puts(subfdoutsmall,"+");
+ substdio_put(subfdoutsmall,count_buf,fmt_ulong(count_buf,count_program));
+ substdio_puts(subfdoutsmall,"\n");
  if (mailforward_qp)
   {
-   substdio_puts(&countss,"qp ");
-   substdio_put(&countss,count_buf,fmt_ulong(count_buf,mailforward_qp));
-   substdio_puts(&countss,"\n");
+   substdio_puts(subfdoutsmall,"qp ");
+   substdio_put(subfdoutsmall,count_buf,fmt_ulong(count_buf,mailforward_qp));
+   substdio_puts(subfdoutsmall,"\n");
   }
- substdio_flush(&countss);
+ substdio_flush(subfdoutsmall);
 }
 
 void sayit(type,cmd,len)
@@ -429,9 +427,9 @@ char *type;
 char *cmd;
 int len;
 {
- substdio_puts(&countss,type);
- substdio_put(&countss,cmd,len);
- substdio_putsflush(&countss,"\n");
+ substdio_puts(subfdoutsmall,type);
+ substdio_put(subfdoutsmall,cmd,len);
+ substdio_putsflush(subfdoutsmall,"\n");
 }
 
 void main(argc,argv)

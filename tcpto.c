@@ -75,6 +75,7 @@ void tcpto_err(ip,flagerr) struct ip_address *ip; int flagerr;
  datetime_sec when;
  datetime_sec firstwhen;
  int firstpos;
+ datetime_sec lastwhen;
 
  if (!flagerr)
    if (!flagwasthere)
@@ -92,8 +93,15 @@ void tcpto_err(ip,flagerr) struct ip_address *ip; int flagerr;
        record[4] = 0;
      else
       {
-       if (++record[4] > 10) record[4] = 10;
+       lastwhen = (unsigned long) (unsigned char) record[11];
+       lastwhen = (lastwhen << 8) + (unsigned long) (unsigned char) record[10];
+       lastwhen = (lastwhen << 8) + (unsigned long) (unsigned char) record[9];
+       lastwhen = (lastwhen << 8) + (unsigned long) (unsigned char) record[8];
        when = now();
+
+       if (record[4] && (when < 120 + lastwhen)) { close(fdlock); return; }
+
+       if (++record[4] > 10) record[4] = 10;
        record[8] = when; when >>= 8;
        record[9] = when; when >>= 8;
        record[10] = when; when >>= 8;

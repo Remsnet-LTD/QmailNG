@@ -56,7 +56,7 @@ int len;
      substdio_put(ss,"Z",1); break;
    case 0:
      substdio_put(ss,"K",1); break;
-   case 112:
+   case 100:
    default:
      substdio_put(ss,"D",1); break;
   }

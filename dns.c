@@ -52,6 +52,8 @@ int type;
    if (h_errno == TRY_AGAIN) return DNS_SOFT;
    return DNS_HARD;
   }
+ if (responselen >= sizeof(response))
+   responselen = sizeof(response);
  responseend = response.buf + responselen;
  responsepos = response.buf + sizeof(HEADER);
  n = ntohs(response.hdr.qdcount);
@@ -267,6 +269,19 @@ stralloc *sa;
 int pref;
 {
  int r;
+ struct ip_mx ix;
+
+ if (sa->len && (sa->s[0] == '['))
+  {
+   if (!stralloc_copy(&glue,sa)) return DNS_MEM;
+   if (!stralloc_0(&glue)) return DNS_MEM;
+   ix.pref = 0;
+   if (!glue.s[ip_scanbracket(glue.s,&ix.ip)])
+    {
+     if (!ipalloc_append(ia,&ix)) return DNS_MEM;
+     return 0;
+    }
+  }
 
  switch(resolve(sa,T_A))
   {
@@ -276,7 +291,6 @@ int pref;
   }
  while ((r = findip(T_A)) != 2)
   {
-   struct ip_mx ix;
    ix.ip = ip;
    ix.pref = pref;
    if (r == DNS_SOFT) return DNS_SOFT;

@@ -43,8 +43,9 @@ char *def;
 {
  int r;
  r = control_readline(sa,fn);
- if (!r) if (flagme) if (meok) if (stralloc_copy(sa,&me)) r = 1;
- if (!r) if (def) if (stralloc_copys(sa,def)) r = 1;
+ if (r) return r;
+ if (flagme) if (meok) return stralloc_copy(sa,&me) ? 1 : -1;
+ if (def) return stralloc_copys(sa,def) ? 1 : -1;
  return r;
 }
 
@@ -101,8 +102,8 @@ int flagme;
     {
      if (flagme && meok)
       {
-       if (!stralloc_copy(sa,&me)) return 0;
-       if (!stralloc_0(sa)) return 0;
+       if (!stralloc_copy(sa,&me)) return -1;
+       if (!stralloc_0(sa)) return -1;
        return 1;
       }
      return 0;
@@ -118,7 +119,9 @@ int flagme;
    if (!match && !line.len) { close(fd); return 1; }
    striptrailingwhitespace(&line);
    if (!stralloc_0(&line)) break;
-   if (!stralloc_cat(sa,&line)) break;
+   if (line.s[0])
+     if (line.s[0] != '#')
+       if (!stralloc_cat(sa,&line)) break;
    if (!match) { close(fd); return 1; }
   }
  close(fd);

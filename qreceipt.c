@@ -18,7 +18,7 @@
 #include "qqtalk.h"
 
 void die_noreceipt() { _exit(0); }
-void die() { _exit(1); }
+void die() { _exit(100); }
 void die_temp() { _exit(111); }
 void die_nomem() {
  substdio_putsflush(subfderr,"qreceipt: fatal: out of memory\n"); die_temp(); }
@@ -127,5 +127,5 @@ char **argv;
  if (!(target = argv[1])) die_usage();
  if (!(returnpath = env_get("SENDER"))) die_usage();
  if (headerbody(subfdin,doheaderfield,finishheader,dobody) == -1) die_read();
- _exit(0);
+ die_noreceipt();
 }

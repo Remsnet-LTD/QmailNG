@@ -6,8 +6,8 @@ instructions for user-whatever go into ~user/.qmail-whatever.
 * qmail makes it really easy to set up mailing list owners. If the user
 touches ~user/.qmail-whatever-owner, all bounces will come back to him.
 
-* qmail supports the owner hack, which permits completely reliable
-automated bounce handling for mailing lists of any size.
+* qmail supports VERPs, which permit completely reliable automated
+bounce handling for mailing lists of any size.
 
 * SPEED---qmail blasts through mailing lists an order of magnitude
 faster than sendmail. For example, one message was successfully

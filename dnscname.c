@@ -12,10 +12,10 @@ void main(argc,argv)
 int argc;
 char **argv;
 {
- if (!argv[1]) _exit(1);
+ if (!argv[1]) _exit(100);
 
  if (!stralloc_copys(&sa,argv[1]))
-  { substdio_putsflush(subfderr,"out of memory\n"); _exit(1); }
+  { substdio_putsflush(subfderr,"out of memory\n"); _exit(111); }
 
  dns_init(0);
  dnsdoe(dns_cname(&sa));

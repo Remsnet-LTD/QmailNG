@@ -14,7 +14,7 @@ void fatal(type,name) char *type; char *name;
  substdio_puts(subfderr," ");
  substdio_puts(subfderr,name);
  substdio_putsflush(subfderr,"\n");
- _exit(1);
+ _exit(111);
 }
 
 void define(s,d) char *s; int d;

@@ -1,9 +1,9 @@
 Background: Every few months CERT announces Yet Another Security Hole In
 Sendmail---something that lets local or even remote users take complete
 control of the machine. I'm sure there are many more holes waiting to be
-discovered; sendmail's design means that any minor bug in 41000 lines of
+discovered; sendmail's design means that any minor bug in 46000 lines of
 code is a major security risk. Other popular mailers, such as Smail, and
-even mailing-list managers, such as Majordomo, seem just as bad.
+even mailing-list managers, such as Majordomo, seem nearly as bad.
 
 I started working on qmail because I was sick of this cycle of doom.
 Here are some of the things I did to make sure that qmail will never let
@@ -20,10 +20,10 @@ has proven to be an unmitigated disaster.
 
 In qmail, programs and files are not addresses. The local delivery
 agent, qmail-alias, can run programs or write to files as directed by
-~user/.qmail, but it's always running as that user. (A ``user'' means
-someone who is not root and who owns his home directory. To prevent
-silly mistakes, qmail-alias makes sure that neither ~user nor
-~user/.qmail is group-writable or world-writable.)
+~user/.qmail, but it's always running as that user. (The notion of
+``user'' is configurable, but root is never a user. To prevent silly
+mistakes, qmail-alias makes sure that neither ~user nor ~user/.qmail is
+group-writable or world-writable.)
 
 Security impact: .qmail, like .cshrc and .exrc and various other files,
 means that anyone who can write arbitrary files as a user can execute
@@ -38,7 +38,7 @@ timers, signals, and more. Even worse, the list of controlled items
 varies from one vendor's UNIX to the next, so it is very difficult to
 write portable code that cleans up everything.
 
-Of the eleven most recent sendmail security holes, five worked only
+Of the twelve most recent sendmail security holes, six worked only
 because the entire sendmail system is setuid.
 
 Only one qmail program is setuid: qmail-queue. Its only purpose is to

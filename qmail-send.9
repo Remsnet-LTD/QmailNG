@@ -34,6 +34,11 @@ receives a TERM signal,
 it will exit cleanly, after waiting
 (possibly more than a minute)
 for current delivery attempts to finish.
+
+If
+.B qmail-send
+receives an ALRM signal,
+it will reschedule every message in the queue for immediate delivery.
 .SH "CONTROL FILES"
 .B WARNING:
 .B qmail-send
@@ -41,6 +46,14 @@ reads its control files only when it starts.
 If you change the control files,
 you must stop and restart
 .BR qmail-send .
+Exception:
+If
+.B qmail-send
+receives a HUP signal,
+it will reread
+.I locals
+and
+.IR virtualdomains .
 .TP 5
 .I bouncefrom
 Bounce username.
@@ -212,7 +225,11 @@ is not a virtual domain.
 handles
 .I virtualdomains
 after
-.IR locals .
+.IR locals :
+if a domain is listed in
+.IR locals ,
+.I virtualdomains
+does not apply.
 .SH "SEE ALSO"
 nice(1),
 addresses(5),

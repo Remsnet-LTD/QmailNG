@@ -14,4 +14,7 @@
 
 #define GETPW_USERLEN 32
 
+#define QUEUE_EXTRA ""
+#define QUEUE_EXTRALEN 0
+
 #endif

@@ -12,6 +12,7 @@
 #include "byte.h"
 #include "ip.h"
 #include "ipalloc.h"
+#include "stralloc.h"
 #include "ipme.h"
 
 static int ipmeok = 0;
@@ -29,9 +30,10 @@ struct ip_address *ip;
  return 0;
 }
 
+static stralloc buf = {0};
+
 int ipme_init()
 {
- char buf[1024];
  struct ifconf ifc;
  char *x;
  struct ifreq *ifr;
@@ -46,11 +48,23 @@ int ipme_init()
  ix.pref = 0;
 
  if ((s = socket(AF_INET,SOCK_STREAM,0)) == -1) return -1;
- ifc.ifc_buf = buf;
- ifc.ifc_len = sizeof(buf);
- if (ioctl(s,SIOCGIFCONF,&ifc) == -1) { close(s); return -1; }
- x = buf;
- while (x < buf + ifc.ifc_len)
+
+ len = 256;
+ for (;;) {
+   if (!stralloc_ready(&buf,len)) { close(s); return 0; }
+   buf.len = 0;
+   ifc.ifc_buf = buf.s;
+   ifc.ifc_len = len;
+   if (ioctl(s,SIOCGIFCONF,&ifc) == 0)
+     if (ifc.ifc_len + sizeof(*ifr) + 64 < len) { /* what a stupid interface */
+       buf.len = ifc.ifc_len;
+       break;
+     }
+   if (len > 200000) { close(s); return -1; }
+   len += 100 + (len >> 2);
+ }
+ x = buf.s;
+ while (x < buf.s + buf.len)
   {
    ifr = (struct ifreq *) x;
 #ifdef HASSALEN
@@ -63,7 +77,7 @@ int ipme_init()
      byte_copy(&ix.ip,4,&sin->sin_addr);
      if (ioctl(s,SIOCGIFFLAGS,x) == 0)
        if (ifr->ifr_flags & IFF_UP)
-         if (!ipalloc_append(&ipme,&ix)) return 0;
+         if (!ipalloc_append(&ipme,&ix)) { close(s); return 0; }
     }
 #else
    len = sizeof(*ifr);
@@ -74,7 +88,7 @@ int ipme_init()
 	  {
 	   sin = (struct sockaddr_in *) &ifr->ifr_addr;
 	   byte_copy(&ix.ip,4,&sin->sin_addr);
-	   if (!ipalloc_append(&ipme,&ix)) return 0;
+	   if (!ipalloc_append(&ipme,&ix)) { close(s); return 0; }
 	  }
 #endif
    x += len;

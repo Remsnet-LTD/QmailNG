@@ -10,7 +10,7 @@
 void nomem()
 {
  substdio_putsflush(subfderr,"sendmail: fatal: out of memory\n");
- _exit(1);
+ _exit(111);
 }
 
 int flagh;
@@ -28,12 +28,12 @@ char **argv;
  if (chdir(CONF_HOME) == -1)
   {
    substdio_putsflush(subfderr,"sendmail: fatal: unable to switch to qmail home directory\n");
-   _exit(1);
+   _exit(111);
   }
 
  flagh = 0;
  sender = 0;
- while ((opt = getopt(argc,argv,"vimte:f:p:o:B:F:EJ")) != opteof)
+ while ((opt = getopt(argc,argv,"vimte:f:p:o:B:F:EJx")) != opteof)
    switch(opt)
     {
      case 'B': break;
@@ -59,7 +59,7 @@ char **argv;
        while (argv[optind][optpos]) ++optpos; /* skip optional argument */
        break;
      default:
-       _exit(1);
+       _exit(100);
     }
  argc -= optind;
  argv += optind;
@@ -67,13 +67,13 @@ char **argv;
  if (!str_diff(optprogname,"mailq"))
   {
    substdio_putsflush(subfderr,"sendmail: fatal: please use qmail-qread instead\n");
-   _exit(1);
+   _exit(100);
   }
 
  if (!str_diff(optprogname,"newaliases"))
   {
    substdio_putsflush(subfderr,"sendmail: fatal: please use the qmsmac newaliases instead\n");
-   _exit(1);
+   _exit(100);
   }
 
  qiargv = (char **) alloc((argc + 10) * sizeof(char *));
@@ -94,5 +94,5 @@ char **argv;
  execv(*qiargv,qiargv);
  
  substdio_putsflush(subfderr,"sendmail: fatal: unable to run qmail-inject\n");
- _exit(1);
+ _exit(111);
 }

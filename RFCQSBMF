@@ -1,7 +1,7 @@
 
 Network Working Group                                       D. Bernstein
 XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                   13 August 1996
+Category: Informational                                 10 November 1996
 
 
 		The qmail-send Bounce Message Format (QSBMF)
@@ -25,9 +25,10 @@ Status of this memo
    copy of the original message, in a format that is easy for both
    humans and programs to read. For example:
 
-      Date: 17 Mar 1996 03:54:40 GMT
+      Date: 17 Mar 1996 03:54:40 -0000
       From: MAILER-DAEMON@silverton.berkeley.edu
       To: djb@silverton.berkeley.edu
+      Subject: failure notice
       
       Hi. This is the qmail-send program at silverton.berkeley.edu.
       I'm afraid I wasn't able to deliver your message to the
@@ -40,9 +41,9 @@ Status of this memo
       --- Below this line is a copy of the message.
       
       Return-Path: <djb@silverton.berkeley.edu>
-      Received: (qmail-queue invoked by uid 7); 17 Mar 1996 03:54:38 GMT
-      Date: 17 Mar 1996 03:54:38 GMT
-      Message-ID: <19960317035438.26563.qmail@silverton.berkeley.edu>
+      Received: (qmail 317 invoked by uid 7); 17 Mar 1996 03:54:38 -0000
+      Date: 17 Mar 1996 03:54:38 -0000
+      Message-ID: <19960317035438.316.qmail@silverton.berkeley.edu>
       From: djb@silverton.berkeley.edu (D. J. Bernstein)
       To: god@heaven.af.mil
       Subject: are you there?
@@ -54,10 +55,9 @@ Status of this memo
 
 
 
-
 Bernstein                                                       [Page 1]
 
-XXX NNNN         The qmail-send Bounce Message Format        August 1996
+XXX NNNN         The qmail-send Bounce Message Format      November 1996
 
 
    In this document, a string of 8-bit bytes may be written in two
@@ -115,7 +115,7 @@ XXX NNNN         The qmail-send Bounce Message Format        August 1996
 
 Bernstein                                                       [Page 2]
 
-XXX NNNN         The qmail-send Bounce Message Format        August 1996
+XXX NNNN         The qmail-send Bounce Message Format      November 1996
 
 
 3. Comparison with 1892/1894
@@ -151,8 +151,8 @@ XXX NNNN         The qmail-send Bounce Message Format        August 1996
    envelope recipient address specified by the sender. Unfortunately,
    this information will almost never be available, since it requires
    support by every intermediate MTA. All of the applications of this
-   information can be handled reliably, right now, with the owner hack;
-   this requires support from the sender's MTA but not from other hosts.
+   information can be handled reliably, right now, with VERPs; this
+   requires support from the sender's MTA but not from other hosts.
 
    RFC 1894 includes several pieces of information that might be of
    human interest but can be seen just as easily from Received lines:
@@ -175,7 +175,7 @@ XXX NNNN         The qmail-send Bounce Message Format        August 1996
 
 Bernstein                                                       [Page 3]
 
-XXX NNNN         The qmail-send Bounce Message Format        August 1996
+XXX NNNN         The qmail-send Bounce Message Format      November 1996
 
 
 4. Security considerations

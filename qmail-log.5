@@ -67,6 +67,21 @@ is having trouble reading a file list from disk,
 usually because the system's file descriptor table is full,
 but possibly because permissions are set incorrectly.
 It will try again in ten seconds.
+.TP
+.B alert: unable to switch back...
+.B qmail-send
+was sent SIGHUP,
+and it is unable to reenter the queue directory.
+This is a very serious problem;
+.B qmail-send
+cannot proceed outside the queue directory.
+It will try again in ten seconds.
+.TP
+.B alert: unable to reread...
+.B qmail-send
+was sent SIGHUP,
+but it is unable to read the new controls.
+It will continue operating with the original controls.
 .SH "MESSAGES"
 .TP
 .B new msg \fIm\fB

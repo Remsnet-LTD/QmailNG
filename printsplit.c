@@ -1,4 +1,5 @@
 #include "substdio.h"
+#include "subfd.h"
 #include "readwrite.h"
 #include "exit.h"
 #include "fmt.h"
@@ -6,13 +7,11 @@
 #include "conf-unusual.h"
 
 char num[FMT_ULONG];
-char buf[16];
-substdio out = SUBSTDIO_FDBUF(write,1,buf,sizeof(buf));
 
 void main()
 {
- substdio_put(&out,num,fmt_ulong(num,QFN_SPLIT));
- substdio_puts(&out,"\n");
- substdio_flush(&out);
+ substdio_put(subfdoutsmall,num,fmt_ulong(num,QFN_SPLIT));
+ substdio_puts(subfdoutsmall,"\n");
+ substdio_flush(subfdoutsmall);
  _exit(0);
 }

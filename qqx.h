@@ -1,7 +1,7 @@
 #ifndef QQX_H
 #define QQX_H
 
-#define QQX_USAGE 100
+#define QQX_USAGE 112
 #define QQX_BUG 101
 #define QQX_CHDIR 102
 #define QQX_PIDUSED 103

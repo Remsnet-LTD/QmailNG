@@ -7,7 +7,8 @@ qmail-tcpto \- print TCP timeout table
 After an SMTP connection attempt times out,
 .B qmail-remote
 records the relevant IP address.
-If the same address fails again,
+If the same address fails again (after at least two minutes with
+no intervening successful connections),
 .B qmail-remote
 assumes that further attempts will fail for at least another hour.
 

@@ -71,6 +71,8 @@ int chanfdin[CHANNELS] = { 2, 4 };
 int chanskip[CHANNELS] = { 10, 20 };
 
 int flagexitasap = 0; void sigterm() { flagexitasap = 1; }
+int flagrunasap = 0; void sigalrm() { flagrunasap = 1; }
+int flagreadasap = 0; void sighup() { flagreadasap = 1; }
 
 void cleandied() { log1("alert: oh no! lost qmail-clean connection! dying...\n");
  flagexitasap = 1; }
@@ -475,6 +477,17 @@ void pqfinish()
     }
 }
 
+void pqrun()
+{
+ int c;
+ int i;
+ for (c = 0;c < CHANNELS;++c)
+   if (pqchan[c].p)
+     if (pqchan[c].len)
+       for (i = 0;i < pqchan[c].len;++i)
+	 pqchan[c].p[i].dt = recent;
+}
+
 
 /* this file is too long ---------------------------------------------- JOBS */
 
@@ -692,7 +705,7 @@ unsigned long id;
    else { bouncesender = "#@[]"; bouncerecip = doublebounceto.s; }
 
    while (!newfield_datemake(now())) nomem();
-   qqtalk_puts(&qqt,newfield_date);
+   qqtalk_put(&qqt,newfield_date.s,newfield_date.len);
    qqtalk_puts(&qqt,"From: ");
    while (!quote(&quoted,&bouncefrom)) nomem();
    qqtalk_put(&qqt,quoted.s,quoted.len);
@@ -925,7 +938,12 @@ int c;
        strnum3[fmt_ulong(strnum3,d[c][delnum].delid)] = 0;
        if (dline[c].s[1] == 'Z')
 	 if (jo[d[c][delnum].j].flagdying)
+	  {
 	   dline[c].s[1] = 'D';
+	   --dline[c].len;
+	   while (!stralloc_cats(&dline[c],"I'm not going to try again; this message has been in the queue too long.\n")) nomem();
+	   while (!stralloc_0(&dline[c])) nomem();
+	  }
        switch(dline[c].s[1])
 	{
 	 case 'K':
@@ -1027,7 +1045,7 @@ datetime_sec *wakeup;
      *wakeup = pe.dt;
 }
 
-static datetime_sec sqrt(x) /* result^2 <= x < (result + 1)^2 */
+static datetime_sec squareroot(x) /* result^2 <= x < (result + 1)^2 */
 datetime_sec x; /* assuming: >= 0 */
 {
  datetime_sec y;
@@ -1051,7 +1069,7 @@ int c;
  int n;
 
  if (birth > recent) n = 0;
- else n = sqrt(recent - birth); /* no need to add fuzz to recent */
+ else n = squareroot(recent - birth); /* no need to add fuzz to recent */
  n += chanskip[c];
  return birth + n * n;
 }
@@ -1472,6 +1490,49 @@ int getcontrols() { if (control_init() == -1) return 0;
   }
  return 1; }
 
+stralloc newlocals = {0};
+stralloc newvdoms = {0};
+
+void regetcontrols()
+{
+ int r;
+
+ if (control_readfile(&newlocals,"control/locals",1) != 1)
+  { log1("alert: unable to reread control/locals\n"); return; }
+ r = control_readfile(&newvdoms,"control/virtualdomains",0);
+ if (r == -1)
+  { log1("alert: unable to reread control/virtualdomains\n"); return; }
+
+ constmap_free(&maplocals);
+ constmap_free(&mapvdoms);
+
+ while (!stralloc_copy(&locals,&newlocals)) nomem();
+ while (!constmap_init(&maplocals,locals.s,locals.len,0)) nomem();
+
+ if (r)
+  {
+   while (!stralloc_copy(&vdoms,&newvdoms)) nomem();
+   while (!constmap_init(&mapvdoms,vdoms.s,vdoms.len,1)) nomem();
+  }
+ else
+   while (!constmap_init(&mapvdoms,"",0,1)) nomem();
+}
+
+void reread()
+{
+ if (chdir(CONF_HOME) == -1)
+  {
+   log1("alert: unable to reread controls: unable to switch to home directory\n");
+   return;
+  }
+ regetcontrols();
+ while (chdir("queue") == -1)
+  {
+   log1("alert: unable to switch back to queue directory; HELP! sleeping...\n");
+   sleep(10);
+  }
+}
+
 void main()
 {
  int fd;
@@ -1483,21 +1544,23 @@ void main()
  int c;
 
  if (chdir(CONF_HOME) == -1)
-  { log1("alert: cannot start: unable to switch to home directory\n"); _exit(1); }
+  { log1("alert: cannot start: unable to switch to home directory\n"); _exit(111); }
  if (!getcontrols())
-  { log1("alert: cannot start: unable to read controls\n"); _exit(1); }
+  { log1("alert: cannot start: unable to read controls\n"); _exit(111); }
  if (chdir("queue") == -1)
-  { log1("alert: cannot start: unable to switch to queue directory\n"); _exit(1); }
+  { log1("alert: cannot start: unable to switch to queue directory\n"); _exit(111); }
  signal_init();
  signal_catchterm(sigterm);
+ signal_catchalarm(sigalrm);
+ signal_catchhangup(sighup);
  signal_uncatchchild();
  umask(077);
 
  fd = open_write("lock/sendmutex");
  if (fd == -1)
-  { log1("alert: cannot start: unable to open mutex\n"); _exit(1); }
+  { log1("alert: cannot start: unable to open mutex\n"); _exit(111); }
  if (lock_exnb(fd) == -1)
-  { log1("alert: cannot start: qmail-send is already running\n"); _exit(1); }
+  { log1("alert: cannot start: qmail-send is already running\n"); _exit(111); }
 
  numjobs = 0;
  for (c = 0;c < CHANNELS;++c)
@@ -1509,7 +1572,7 @@ void main()
      r = read(chanfdin[c],&ch,1);
    while ((r == -1) && (errno == error_intr));
    if (r < 1)
-    { log1("alert: cannot start: hath the daemon spawn no fire?\n"); _exit(1); }
+    { log1("alert: cannot start: hath the daemon spawn no fire?\n"); _exit(111); }
    u = (unsigned int) (unsigned char) ch;
    if (concurrency[c] > u) concurrency[c] = u;
    numjobs += concurrency[c];
@@ -1538,6 +1601,9 @@ void main()
 
    recent = now();
 
+   if (flagrunasap) { flagrunasap = 0; pqrun(); }
+   if (flagreadasap) { flagreadasap = 0; reread(); }
+
    wakeup = recent + SLEEP_FOREVER;
    FD_ZERO(&rfds);
    FD_ZERO(&wfds);
@@ -1549,7 +1615,7 @@ void main()
    todo_selprep(&nfds,&rfds,&wakeup);
    cleanup_selprep(&wakeup);
 
-   if (wakeup < recent) tv.tv_sec = 0;
+   if (wakeup <= recent) tv.tv_sec = 0;
    else tv.tv_sec = wakeup - recent + SLEEP_FUZZ;
    tv.tv_usec = 0;
 

@@ -1,6 +1,6 @@
 As you've seen, qmail has essentially no pre-compilation configuration.
 You should never have to recompile it unless you want to change the
-qmail home directory or usernames (or uids).
+qmail home directory, usernames, or uids.
 
 qmail does allow quite a bit of easy post-installation configuration. If
 you care how your machine greets other machines via SMTP, for example,

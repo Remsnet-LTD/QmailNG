@@ -77,12 +77,6 @@ void (*dobl)();
        break;
       }
    flaglineok = 1;
-   if (hfield_mort(line.s,line.len))
-    {
-     dohf(&line);
-     hdone();
-     break;
-    }
   }
  for (;;)
    switch(getsa(ss,&nextline,&match))

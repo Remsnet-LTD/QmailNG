@@ -83,7 +83,7 @@ void main()
  if (chdir(CONF_HOME) == -1)
   {
    substdio_putflush(subfderr,"qmail-check: fatal: unable to switch to home directory\n");
-   _exit(1);
+   _exit(111);
   }
 
  check(".",S_IFDIR,UID_OWNER,0755);
@@ -117,8 +117,8 @@ void main()
  check("bin/qmail-home",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-inject",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-lspawn",S_IFREG,UID_OWNER,0755);
- check("bin/qmail-newuser",S_IFREG,UID_OWNER,0755);
- check("bin/qmail-pw2user",S_IFREG,UID_OWNER,0755);
+ check("bin/qmail-newu",S_IFREG,UID_OWNER,0755);
+ check("bin/qmail-pw2u",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-getpw",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-qread",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-tcpto",S_IFREG,UID_OWNER,0755);
@@ -134,7 +134,10 @@ void main()
  check("bin/qmail-qmtpd",S_IFREG,UID_OWNER,0755);
  check("bin/qmail-start",S_IFREG,UID_OWNER,0755);
  check("bin/sendmail",S_IFREG,UID_OWNER,0755);
+ check("bin/predate",S_IFREG,UID_OWNER,0755);
+ check("bin/datemail",S_IFREG,UID_OWNER,0755);
  check("bin/mailsubj",S_IFREG,UID_OWNER,0755);
+ check("bin/splogger",S_IFREG,UID_OWNER,0755);
  check("bin/tcp-env",S_IFREG,UID_OWNER,0755);
  check("bin/qlist",S_IFREG,UID_OWNER,0755);
  check("bin/qlist2",S_IFREG,UID_OWNER,0755);
@@ -146,8 +149,6 @@ void main()
  check("bin/condredirect",S_IFREG,UID_OWNER,0755);
  check("bin/maildirmake",S_IFREG,UID_OWNER,0755);
  check("bin/maildir2mbox",S_IFREG,UID_OWNER,0755);
- check("bin/maildir2qmtp",S_IFREG,UID_OWNER,0755);
- check("bin/maildir2smtp",S_IFREG,UID_OWNER,0755);
  check("bin/maildirwatch",S_IFREG,UID_OWNER,0755);
  check("bin/elq",S_IFREG,UID_OWNER,0755);
  check("bin/qail",S_IFREG,UID_OWNER,0755);
@@ -163,8 +164,6 @@ void main()
  check("man/cat5/dot-qmail.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/maildirmake.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/maildir2mbox.0",S_IFREG,UID_OWNER,0644);
- check("man/cat1/maildir2qmtp.0",S_IFREG,UID_OWNER,0644);
- check("man/cat1/maildir2smtp.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/maildirwatch.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/mailsubj.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/qlist.0",S_IFREG,UID_OWNER,0644);
@@ -180,8 +179,8 @@ void main()
  check("man/cat7/qmail-limits.0",S_IFREG,UID_OWNER,0644);
  check("man/cat5/qmail-log.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-lspawn.0",S_IFREG,UID_OWNER,0644);
- check("man/cat8/qmail-newuser.0",S_IFREG,UID_OWNER,0644);
- check("man/cat8/qmail-pw2user.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/qmail-newu.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/qmail-pw2u.0",S_IFREG,UID_OWNER,0644);
  check("man/cat5/qmail-users.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-getpw.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-queue.0",S_IFREG,UID_OWNER,0644);
@@ -197,6 +196,7 @@ void main()
  check("man/cat8/qmail-qmtpd.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-start.0",S_IFREG,UID_OWNER,0644);
  check("man/cat8/qmail-showctl.0",S_IFREG,UID_OWNER,0644);
+ check("man/cat8/splogger.0",S_IFREG,UID_OWNER,0644);
  check("man/cat7/qmail-upgrade.0",S_IFREG,UID_OWNER,0644);
  check("man/cat7/qmail.0",S_IFREG,UID_OWNER,0644);
  check("man/cat1/tcp-env.0",S_IFREG,UID_OWNER,0644);

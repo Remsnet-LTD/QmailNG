@@ -38,5 +38,16 @@ from
 .B MAILDIR
 until the messages have been successfully appended to
 .BR MAIL .
+
+.B maildir2mbox
+locks
+.B MAIL
+to protect against simultaneous access by a mail reader.
+This locking system does not protect against simultaneous access
+by another
+.BR maildir2mbox ;
+you should run only one
+.B maildir2mbox
+at a time.
 .SH "SEE ALSO"
 maildir(5)

@@ -71,6 +71,8 @@ void temp_chdir() { out("Z\
 Unable to switch to home directory. (#4.3.0)\n"); zerodie(); }
 void temp_control() { out("Z\
 Unable to read control files. (#4.3.0)\n"); zerodie(); }
+void perm_partialline() { out("D\
+SMTP cannot transfer messages with partial final lines. (#5.6.2)\n"); zerodie(); }
 void perm_usage() { out("D\
 I (qmail-remote) was invoked improperly. (#5.3.5)\n"); zerodie(); }
 void perm_dns() { out("D\
@@ -194,12 +196,12 @@ substdio *ssfrom;
   {
    if (getline2(ssfrom,&dataline,&match,'\n') != 0) temp_read();
    if (!match && !dataline.len) break;
-   if (match) --dataline.len; /* no way to pass this info over SMTP */
+   if (!match) perm_partialline();
+   --dataline.len;
    if (dataline.len && (dataline.s[0] == '.'))
      if (substdio_put(ssto,".",1) == -1) writeerr();
    if (substdio_put(ssto,dataline.s,dataline.len) == -1) writeerr();
    if (substdio_put(ssto,"\r\n",2) == -1) writeerr();
-   if (!match) break;
   }
  if (substdio_put(ssto,".\r\n",3) == -1) writeerr();
  if (substdio_flush(ssto) == -1) writeerr();

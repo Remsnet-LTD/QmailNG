@@ -7,6 +7,8 @@ extern void signal_ignoremisc();
 extern void signal_catchbug();
 extern void signal_catchterm();
 extern void signal_uncatchterm();
+extern void signal_catchhangup();
+extern void signal_uncatchhangup();
 extern void signal_catchalarm();
 extern void signal_uncatchalarm();
 extern void signal_catchchild();

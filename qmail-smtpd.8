@@ -34,6 +34,19 @@ accepts messages that contain long lines or non-ASCII characters,
 even though such messages violate the SMTP protocol.
 .SH "CONTROL FILES"
 .TP 5
+.I badmailfrom
+Unacceptable envelope sender addresses.
+.B qmail-smtpd
+will reject every recipient address for a message
+if the envelope sender address is listed in
+.IR badmailfrom .
+A line in
+.I badmailfrom
+may be of the form
+.BR @\fIhost ,
+meaning every address at
+.IR host .
+.TP 5
 .I localiphost
 Replacement host name for local IP addresses.
 Default:
@@ -74,6 +87,17 @@ will ignore
 and will append the value of
 .B RELAYCLIENT
 to each incoming recipient address.
+
+.I rcpthosts
+may include wildcards:
+
+.EX
+   heaven.af.mil
+   .heaven.af.mil
+.EE
+
+Envelope recipient addresses without @ signs are
+always allowed through.
 .TP 5
 .I smtpgreeting
 SMTP greeting message.

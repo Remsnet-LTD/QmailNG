@@ -11,12 +11,15 @@ sunos-5.*)
   RANLIB=:
   ;;
 unix_sv*)
-  LIBS='-lsocket -lnsl'
+  LIBS='-lsocket -lnsl -lgen'
   DNSLIBS=-lresolv
   RANLIB=:
   ;;
 sunos-4.*)
   DNSLIBS=-lresolv
+  ;;
+irix64-*)
+  RANLIB=:
   ;;
 irix-*)
   RANLIB=:

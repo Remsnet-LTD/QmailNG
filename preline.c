@@ -11,10 +11,10 @@
 #include "error.h"
 
 void die(e,s) int e; char *s; { substdio_putsflush(subfderr,s); _exit(e); }
-void die_usage() { die(1,"preline: fatal: incorrect usage\n"); }
+void die_usage() { die(100,"preline: fatal: incorrect usage\n"); }
 void die_temp() { die(111,"preline: fatal: temporary problem\n"); }
 void die_read() { die(111,"preline: fatal: unable to read message\n"); }
-void die_badcmd() { die(1,"preline: fatal: command not found\n"); }
+void die_badcmd() { die(100,"preline: fatal: command not found\n"); }
 
 int flagufline = 1; char *ufline;
 int flagrpline = 1; char *rpline;
@@ -50,7 +50,7 @@ char **argv;
      case 'R': flagrpline = 1; break;
      case 'D': flagdtline = 1; break;
      default:
-       _exit(1);
+       _exit(100);
     }
  argc -= optind;
  argv += optind;

@@ -185,11 +185,11 @@ void main()
  fd_set rfds;
  int nfds;
 
- if (chdir(CONF_HOME) == -1) _exit(1);
- if (chdir("queue/mess") == -1) _exit(1);
- if (!stralloc_copys(&messid,"")) _exit(1);
- if (!stralloc_copys(&sender,"")) _exit(1);
- if (!stralloc_copys(&recip,"")) _exit(1);
+ if (chdir(CONF_HOME) == -1) _exit(111);
+ if (chdir("queue/mess") == -1) _exit(111);
+ if (!stralloc_copys(&messid,"")) _exit(111);
+ if (!stralloc_copys(&sender,"")) _exit(111);
+ if (!stralloc_copys(&recip,"")) _exit(111);
 
  substdio_fdbuf(&ssout,okwrite,1,outbuf,sizeof(outbuf));
 

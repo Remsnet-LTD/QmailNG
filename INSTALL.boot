@@ -10,6 +10,6 @@ Find sendmail in your boot scripts. It's usually in either /etc/rc or
 -q15m means it should run the queue every 15 minutes; you may see a
 different number. Comment out this line, and replace it with
 
-        csh -cf 'qmail-start logger -p mail.info -t qmail &'
+        env - PATH="/var/qmail/bin:$PATH" csh -cf 'qmail-start splogger qmail &'
 
-That's it.
+That's it. (Make sure you include the &.)

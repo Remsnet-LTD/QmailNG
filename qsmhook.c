@@ -16,10 +16,10 @@
 #include "signal.h"
 
 void die(e,s) int e; char *s; { substdio_putsflush(subfderr,s); _exit(e); }
-void die_usage() { die(1,"qsmhook: fatal: incorrect usage\n"); }
+void die_usage() { die(100,"qsmhook: fatal: incorrect usage\n"); }
 void die_temp() { die(111,"qsmhook: fatal: temporary problem\n"); }
 void die_read() { die(111,"qsmhook: fatal: unable to read message\n"); }
-void die_badcmd() { die(1,"qsmhook: fatal: command not found\n"); }
+void die_badcmd() { die(100,"qsmhook: fatal: command not found\n"); }
 
 int flagrpline = 0; char *rpline;
 int flagufline = 1; char *ufline;
@@ -71,7 +71,7 @@ char **argv;
 	 recip += str_len(optarg);
        break;
      default:
-       _exit(1);
+       _exit(100);
     }
  argc -= optind;
  argv += optind;

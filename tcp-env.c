@@ -16,7 +16,7 @@
 #include "exit.h"
 #include "case.h"
 
-void die() { _exit(1); }
+void die() { _exit(111); }
 
 struct sockaddr_in salocal;
 unsigned long localport;
@@ -76,11 +76,11 @@ char *argv[];
 
    switch(dns_ptr(&localname,&iplocal))
     {
-     case DNS_MEM: _exit(1);
+     case DNS_MEM: die();
      case DNS_SOFT:
        if (!stralloc_copys(&localname,"softdnserror")) die();
      case 0:
-       if (!stralloc_0(&localname)) _exit(1);
+       if (!stralloc_0(&localname)) die();
        case_lowers(localname.s);
        if (!env_put2("TCPLOCALHOST",localname.s)) die();
        break;
@@ -101,11 +101,11 @@ char *argv[];
 
    switch(dns_ptr(&remotename,&ipremote))
     {
-     case DNS_MEM: _exit(1);
+     case DNS_MEM: die();
      case DNS_SOFT:
        if (!stralloc_copys(&remotename,"softdnserror")) die();
      case 0:
-       if (!stralloc_0(&remotename)) _exit(1);
+       if (!stralloc_0(&remotename)) die();
        case_lowers(remotename.s);
        if (!env_put2("TCPREMOTEHOST",remotename.s)) die();
        break;

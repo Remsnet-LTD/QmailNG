@@ -56,7 +56,7 @@ void put(s,len) char *s; int len;
 { if (flagqueue) qqtalk_put(&qqt,s,len); else substdio_put(subfdout,s,len); }
 void puts(s) char *s; { put(s,str_len(s)); }
 
-void perm() { _exit(1); }
+void perm() { _exit(100); }
 void temp() { _exit(111); }
 void die_nomem() {
  substdio_putsflush(subfderr,"qmail-inject: fatal: out of memory\n"); temp(); }
@@ -410,7 +410,7 @@ token822_alloc tr = {0};
 void dorecip(s)
 char *s;
 {
- if (!stralloc_copys(&torecip,s)) die_nomem();
+ if (!quote2(&torecip,s)) die_nomem();
  switch(token822_parse(&tr,&torecip,&hfbuf))
   {
    case -1: die_nomem();
@@ -560,13 +560,13 @@ void finishheader()
     {
      if (!newfield_datemake(starttime)) die_nomem();
      puts("Resent-");
-     puts(newfield_date);
+     put(newfield_date.s,newfield_date.len);
     }
    if (!htypeseen[H_R_MESSAGEID])
     {
      if (!newfield_msgidmake(control_idhost.s,control_idhost.len,starttime)) die_nomem();
      puts("Resent-");
-     puts(newfield_msgid);
+     put(newfield_msgid.s,newfield_msgid.len);
     }
    if (!htypeseen[H_R_FROM])
     {
@@ -575,23 +575,19 @@ void finishheader()
      put(defaultfrom.s,defaultfrom.len);
     }
    if (!htypeseen[H_R_TO] && !htypeseen[H_R_CC])
-    {
-     if (!newfield_ccmake()) die_nomem();
-     puts("Resent-");
-     puts(newfield_cc);
-    }
+     puts("Resent-Cc: recipient list not shown: ;\n");
   }
  else
   {
    if (!htypeseen[H_DATE])
     {
      if (!newfield_datemake(starttime)) die_nomem();
-     puts(newfield_date);
+     put(newfield_date.s,newfield_date.len);
     }
    if (!htypeseen[H_MESSAGEID])
     {
      if (!newfield_msgidmake(control_idhost.s,control_idhost.len,starttime)) die_nomem();
-     puts(newfield_msgid);
+     put(newfield_msgid.s,newfield_msgid.len);
     }
    if (!htypeseen[H_FROM])
     {
@@ -599,10 +595,7 @@ void finishheader()
      put(defaultfrom.s,defaultfrom.len);
     }
    if (!htypeseen[H_TO] && !htypeseen[H_CC])
-    {
-     if (!newfield_ccmake()) die_nomem();
-     puts(newfield_cc);
-    }
+     puts("Cc: recipient list not shown: ;\n");
   }
 
  savedh_print();
@@ -611,29 +604,38 @@ void finishheader()
 void getcontrols()
 {
  static stralloc sa = {0};
+ char *x;
 
  if (control_init() == -1) die_read();
 
  if (control_rldef(&control_defaultdomain,"control/defaultdomain",1,"defaultdomain") != 1)
    die_read();
+ x = env_get("QMAILDEFAULTDOMAIN");
+ if (x) if (!stralloc_copys(&control_defaultdomain,x)) die_nomem();
  if (!stralloc_copys(&sa,".")) die_nomem();
  if (!stralloc_cat(&sa,&control_defaultdomain)) die_nomem();
  doordie(&sa,token822_parse(&defaultdomain,&sa,&defaultdomainbuf));
 
  if (control_rldef(&control_defaulthost,"control/defaulthost",1,"defaulthost") != 1)
    die_read();
+ x = env_get("QMAILDEFAULTHOST");
+ if (x) if (!stralloc_copys(&control_defaulthost,x)) die_nomem();
  if (!stralloc_copys(&sa,"@")) die_nomem();
  if (!stralloc_cat(&sa,&control_defaulthost)) die_nomem();
  doordie(&sa,token822_parse(&defaulthost,&sa,&defaulthostbuf));
 
  if (control_rldef(&control_plusdomain,"control/plusdomain",1,"plusdomain") != 1)
    die_read();
+ x = env_get("QMAILPLUSDOMAIN");
+ if (x) if (!stralloc_copys(&control_plusdomain,x)) die_nomem();
  if (!stralloc_copys(&sa,".")) die_nomem();
  if (!stralloc_cat(&sa,&control_plusdomain)) die_nomem();
  doordie(&sa,token822_parse(&plusdomain,&sa,&plusdomainbuf));
 
  if (control_rldef(&control_idhost,"control/idhost",1,"idhost") != 1)
    die_read();
+ x = env_get("QMAILIDHOST");
+ if (x) if (!stralloc_copys(&control_idhost,x)) die_nomem();
 }
 
 #define RECIP_DEFAULT 1
@@ -704,7 +706,7 @@ char **argv;
      case 'n': flagqueue = 0; break;
      case 'N': flagqueue = 1; break;
      case 'f':
-       if (!stralloc_copys(&sender,optarg)) die_nomem();
+       if (!quote2(&sender,optarg)) die_nomem();
        doordie(&sender,token822_parse(&envs,&sender,&envsbuf));
        token822_reverse(&envs);
        rwgeneric(&envs);

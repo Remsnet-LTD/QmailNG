@@ -40,10 +40,11 @@ shared directory. Even if you don't install qmail, you should destroy
 
    C. Put ``setenv MAIL $HOME/Mailbox'' in your system-wide .cshrc,
    ``MAIL=$HOME/Mailbox; export MAIL'' in your system-wide .profile,
-   and ``inbox-path=Mailbox'' in your system-wide pine.conf. If you have
-   any elm users, put ``setenv TMPDIR $HOME/Temp'' into your system-wide
-   .cshrc, and make a ~/Temp for each user; this avoids an elm bug, and
-   has other good effects.
+   ``inbox-path=Mailbox'' in your system-wide pine.conf. If you're using
+   qpopper 2.2, you'll have to recompile with -DHOMEDIRMAIL in CFLAGS
+   and with /.mail changed to /Mailbox in pop_dropcopy.c. If you're
+   using elm on a multiuser system, you'll have to recompile elm with
+   "mailbox" changed to "Mailbox" around line 388 of newmbox.c.
 
    D. Announce the change.
 

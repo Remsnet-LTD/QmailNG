@@ -8,6 +8,7 @@
 #include "getline.h"
 #include "stralloc.h"
 #include "substdio.h"
+#include "subfd.h"
 #include "byte.h"
 #include "scan.h"
 #include "fmt.h"
@@ -44,11 +45,9 @@ void cleanuppid()
  closedir(dir);
 }
 
-char outbuf[2]; substdio ssout;
-char inbuf[128]; substdio ssin;
 char fnbuf[FMTQFN];
 
-void respond(s) char *s; { if (substdio_putflush(&ssout,s,1) == -1) _exit(1); }
+void respond(s) char *s; { if (substdio_putflush(subfdoutsmall,s,1) == -1) _exit(100); }
 
 void main()
 {
@@ -57,22 +56,19 @@ void main()
  int cleanuploop;
  unsigned long id;
 
- if (chdir(CONF_HOME) == -1) _exit(1);
- if (chdir("queue") == -1) _exit(1);
+ if (chdir(CONF_HOME) == -1) _exit(111);
+ if (chdir("queue") == -1) _exit(111);
 
  signal_init();
 
- substdio_fdbuf(&ssout,write,1,outbuf,sizeof(outbuf));
- substdio_fdbuf(&ssin,read,0,inbuf,sizeof(inbuf));
-
- if (!stralloc_ready(&line,200)) _exit(1);
+ if (!stralloc_ready(&line,200)) _exit(111);
 
  cleanuploop = 0;
 
  for (;;)
   {
    if (cleanuploop) --cleanuploop; else { cleanuppid(); cleanuploop = 30; }
-   if (getline2(&ssin,&line,&match,'\0') == -1) break;
+   if (getline2(subfdinsmall,&line,&match,'\0') == -1) break;
    if (!match) break;
    if (line.len < 7) { respond("x"); continue; }
    if (line.len > 100) { respond("x"); continue; }

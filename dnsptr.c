@@ -15,7 +15,7 @@ void main(argc,argv)
 int argc;
 char **argv;
 {
- if (!argv[1]) _exit(1);
+ if (!argv[1]) _exit(100);
 
  ip_scan(argv[1],&ip);
 

@@ -8,7 +8,7 @@
 #include "substdio.h"
 
 void die_success() { _exit(0); }
-void die_perm(s) char *s; { substdio_putsflush(subfderr,s); _exit(1); }
+void die_perm(s) char *s; { substdio_putsflush(subfderr,s); _exit(100); }
 void die_temp(s) char *s; { substdio_putsflush(subfderr,s); _exit(111); }
 void die_nomem() { die_temp("forward: fatal: out of memory\n"); }
 
@@ -34,7 +34,6 @@ char **argv;
 
  signal_init();
 
- if (!argv[1]) die_perm("forward: usage: forward newaddress ...\n");
  sender = env_get("NEWSENDER");
  if (!sender) die_perm("forward: fatal: NEWSENDER not set\n");
  dtline = env_get("DTLINE");

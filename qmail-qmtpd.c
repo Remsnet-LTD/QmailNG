@@ -1,5 +1,6 @@
 #include "stralloc.h"
 #include "substdio.h"
+#include "subfd.h"
 #include "qqtalk.h"
 #include "now.h"
 #include "str.h"
@@ -13,25 +14,12 @@
 #include "readwrite.h"
 #include "control.h"
 #include "constmap.h"
-
-static char subfd_outbuf[128];
-static struct substdio out = SUBSTDIO_FDBUF(write,1,subfd_outbuf,128);
-static struct substdio *subfdout = &out;
-
-static int subfd_read(fd,buf,len) int fd; char *buf; int len;
-{
- if (substdio_flush(subfdout) == -1) return -1;
- return read(fd,buf,len);
-}
-
-static char subfd_inbuf[1024];
-static struct substdio in = SUBSTDIO_FDBUF(subfd_read,0,subfd_inbuf,1024);
-static struct substdio *subfdin = &in;
+#include "received.h"
 
 struct qqtalk qqt;
 
 void dropped() { _exit(0); }
-void badproto() { _exit(1); }
+void badproto() { _exit(100); }
 void resources() { _exit(111); }
 void sigalrm() { _exit(111); }
 
@@ -43,7 +31,7 @@ unsigned long getlen()
  len = 0;
  for (;;)
   {
-   if (substdio_get(subfdin,&ch,1) < 1) dropped();
+   if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
    if (ch == ':') return len;
    if (len > 200000000) resources();
    len = 10 * len + (ch - '0');
@@ -54,34 +42,8 @@ void getcomma()
 {
  char ch;
 
- if (substdio_get(subfdin,&ch,1) < 1) dropped();
+ if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
  if (ch != ',') badproto();
-}
-
-static int issafe(ch) char ch;
-{
- if (ch == '.') return 1;
- if (ch == '@') return 1;
- if (ch == '%') return 1;
- if (ch == '+') return 1;
- if (ch == '/') return 1;
- if (ch == '=') return 1;
- if (ch == ':') return 1;
- if (ch == '-') return 1;
- if ((ch >= 'a') && (ch <= 'z')) return 1;
- if ((ch >= 'A') && (ch <= 'Z')) return 1;
- if ((ch >= '0') && (ch <= '9')) return 1;
- return 0;
-}
-
-void safeput(s) char *s;
-{
- char ch;
- while (ch = *s++)
-  {
-   if (!issafe(ch)) ch = '?';
-   qqtalk_put(&qqt,&ch,1);
-  }
 }
 
 struct datetime dt;
@@ -159,38 +121,25 @@ main()
    if (qqtalk_open(&qqt,0) == -1) resources();
    qp = qqtalk_qp(&qqt);
 
-   if (substdio_get(subfdin,&ch,1) < 1) dropped();
+   if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
    --len;
 
    if (ch == 10) flagdos = 0;
    else if (ch == 13) flagdos = 1;
    else badproto();
 
-   qqtalk_puts(&qqt,"Received: from ");
-   safeput(remotehost);
-   qqtalk_puts(&qqt," (");
-   if (remoteinfo)
-    {
-     safeput(remoteinfo);
-     qqtalk_puts(&qqt,"@");
-    }
-   safeput(remoteip);
-   qqtalk_puts(&qqt,")\n  by ");
-   safeput(local);
-   qqtalk_puts(&qqt," with QMTP; ");
-   datetime_tai(&dt,now());
-   qqtalk_put(&qqt,buf2,date822fmt(buf2,&dt));
+   received(&qqt,"QMTP",local,remoteip,remotehost,remoteinfo,(char *) 0);
 
    /* XXX: check for loops? only if len is big? */
 
    if (flagdos)
      while (len > 0)
       {
-       if (substdio_get(subfdin,&ch,1) < 1) dropped();
+       if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
        --len;
        while ((ch == 13) && len)
         {
-         if (substdio_get(subfdin,&ch,1) < 1) dropped();
+         if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
          --len;
          if (ch == 10) break;
          qqtalk_put(&qqt,"\015",1);
@@ -200,7 +149,7 @@ main()
    else
      while (len > 0) /* XXX: could speed this up, obviously */
       {
-       if (substdio_get(subfdin,&ch,1) < 1) dropped();
+       if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
        --len;
        qqtalk_put(&qqt,&ch,1);
       }
@@ -213,13 +162,13 @@ main()
      buf[0] = 0;
      flagsenderok = 0;
      for (i = 0;i < len;++i)
-       if (substdio_get(subfdin,&ch,1) < 1) dropped();
+       if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
     }
    else
     {
      for (i = 0;i < len;++i)
       {
-       if (substdio_get(subfdin,buf + i,1) < 1) dropped();
+       if (substdio_get(subfdinsmall,buf + i,1) < 1) dropped();
        if (!buf[i]) flagsenderok = 0;
       }
      buf[len] = 0;
@@ -238,7 +187,7 @@ main()
      for (;;)
       {
        if (!biglen) badproto();
-       if (substdio_get(subfdin,&ch,1) < 1) dropped();
+       if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
        --biglen;
        if (ch == ':') break;
        if (len > 200000000) resources();
@@ -249,13 +198,13 @@ main()
       {
        failure.s[failure.len - 1] = 'L';
        for (i = 0;i < len;++i)
-         if (substdio_get(subfdin,&ch,1) < 1) dropped();
+         if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
       }
      else
       {
        for (i = 0;i < len;++i)
         {
-         if (substdio_get(subfdin,buf + i,1) < 1) dropped();
+         if (substdio_get(subfdinsmall,buf + i,1) < 1) dropped();
          if (!buf[i]) failure.s[failure.len - 1] = 'N';
         }
        buf[len] = 0;
@@ -314,19 +263,19 @@ main()
      switch(failure.s[i])
       {
        case 0:
-         if (substdio_put(subfdout,buf,len) == -1)
+         if (substdio_put(subfdoutsmall,buf,len) == -1)
            dropped();
 	 break;
        case 'D':
-         if (substdio_puts(subfdout,"66:Dsorry, that domain isn't in my list of allowed rcpthosts (#5.7.1),") == -1)
+         if (substdio_puts(subfdoutsmall,"66:Dsorry, that domain isn't in my list of allowed rcpthosts (#5.7.1),") == -1)
 	   dropped();
 	 break;
        default:
-         if (substdio_puts(subfdout,"46:Dsorry, I can't handle that recipient (#5.1.3),") == -1)
+         if (substdio_puts(subfdoutsmall,"46:Dsorry, I can't handle that recipient (#5.1.3),") == -1)
 	   dropped();
 	 break;
       }
 
-   /* subfdout will be flushed when we read from the network again */
+   /* subfdoutsmall will be flushed when we read from the network again */
   }
 }

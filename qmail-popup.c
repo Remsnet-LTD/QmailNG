@@ -5,6 +5,7 @@
 #include "getline.h"
 #include "stralloc.h"
 #include "substdio.h"
+#include "subfd.h"
 #include "alloc.h"
 #include "datetime.h"
 #include "error.h"
@@ -16,9 +17,6 @@
 #include "readwrite.h"
 
 int timeout = 1200;
-
-char ssoutbuf[128];
-substdio ssout = SUBSTDIO_FDBUF(write,1,ssoutbuf,sizeof(ssoutbuf));
 
 int timeoutread(fd,buf,n) int fd; char *buf; int n;
 {
@@ -36,19 +34,19 @@ substdio ssin = SUBSTDIO_FDBUF(timeoutread,0,ssinbuf,sizeof(ssinbuf));
 void die() { _exit(1); }
 void out(s) char *s;
 {
- if (substdio_puts(&ssout,s) == -1) die();
+ if (substdio_puts(subfdoutsmall,s) == -1) die();
 }
 void outflush(s) char *s; 
 {
  out(s);
- if (substdio_flush(&ssout) == -1) die();
+ if (substdio_flush(subfdoutsmall) == -1) die();
 }
 void err(s) char *s;
 {
- if (substdio_puts(&ssout,"-ERR ") == -1) die();
- if (substdio_puts(&ssout,s) == -1) die();
- if (substdio_puts(&ssout,"\r\n") == -1) die();
- if (substdio_flush(&ssout) == -1) die();
+ if (substdio_puts(subfdoutsmall,"-ERR ") == -1) die();
+ if (substdio_puts(subfdoutsmall,s) == -1) die();
+ if (substdio_puts(subfdoutsmall,"\r\n") == -1) die();
+ if (substdio_flush(subfdoutsmall) == -1) die();
 }
 void die_usage() { err("usage: popup hostname subprogram"); die(); }
 void die_nomem() { err("out of memory"); die(); }

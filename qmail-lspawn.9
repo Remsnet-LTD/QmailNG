@@ -19,15 +19,13 @@ so the results may not be in the same order as the commands.
 
 For each recipient address,
 .B qmail-lspawn
-first checks the
+finds out which local user controls that address.
+It first checks the
 .B qmail-users
-mechanism, and then
-invokes
-.B qmail-getpw
-if necessary,
-to find out which local user controls that address.
+mechanism; if the address is not listed there, it invokes
+.BR qmail-getpw .
 .B qmail-lspawn
-runs
+then runs
 .B qmail-alias
 under the user's uid and gid.
 It does not set up any supplementary groups.

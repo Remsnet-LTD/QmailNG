@@ -105,7 +105,12 @@ quoting,
 and
 .I without
 an extra blank line at the end.
-The message is probably in RFC 822 format,
+The message is normally in RFC 822 format,
+starting with a
+.B Return-Path
+line and a
+.B Delivered-To
+line,
 but it could contain arbitrary binary data.
 It might not even end with a newline.
 
@@ -194,18 +199,19 @@ It looks through the
 .B new
 directory for new messages.
 Say there is a new message,
-.BR new/\fItime.pid.host .
+.BR new/\fIunique .
 The reader may freely display the contents of
-.BR new/\fItime.pid.host ,
+.BR new/\fIunique ,
 delete
-.BR new/\fItime.pid.host ,
+.BR new/\fIunique ,
 or rename
-.B new/\fItime.pid.host
+.B new/\fIunique
 as
-.BR cur/\fItime.pid.host:info .
-The meaning of
-.I info
-is up to the mail reader.
+.BR cur/\fIunique:info .
+See
+.B http://pobox.com/~djb/maildir.html
+for the meaning of
+.IR info .
 
 The reader is also expected to look through the
 .B tmp
@@ -214,6 +220,13 @@ A file in
 .B tmp
 may be safely removed if it
 has not been accessed in 36 hours.
+
+It is a good idea for readers to skip all filenames in
+.B new
+and
+.B cur
+starting with a dot.
+Other than this, readers should not attempt to parse filenames.
 .SH "ENVIRONMENT VARIABLES"
 Mail readers supporting
 .I maildir

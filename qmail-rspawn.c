@@ -95,7 +95,7 @@ char *s; char *r; int at;
    if (fd_copy(2,1) == -1) _exit(111);
    execvp(*args,args);
    if (error_temp(errno)) _exit(111);
-   _exit(1);
+   _exit(100);
   }
  return f;
 }

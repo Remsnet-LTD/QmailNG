@@ -11,6 +11,7 @@
 #include "datetime.h"
 #include "now.h"
 #include "triggerpull.h"
+#include "conf-unusual.h"
 #include "conf-home.h"
 #include "auto-uids.h"
 #include "qqx.h"
@@ -226,6 +227,8 @@ void main()
    if (!ch) break;
   }
  if (len >= ADDR) die(QQX_TOOLONG);
+
+ if (substdio_bput(&ssout,QUEUE_EXTRA,QUEUE_EXTRALEN) == -1) die_write();
 
  for (;;)
   {

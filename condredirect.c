@@ -13,7 +13,7 @@
 
 void die_success() { _exit(0); }
 void die_99() { _exit(99); }
-void die_perm(s) char *s; { substdio_putsflush(subfderr,s); _exit(1); }
+void die_perm(s) char *s; { substdio_putsflush(subfderr,s); _exit(100); }
 void die_temp(s) char *s; { substdio_putsflush(subfderr,s); _exit(111); }
 void die_nomem() { die_temp("condredirect: fatal: out of memory\n"); }
 
@@ -48,7 +48,7 @@ char **argv;
    case 0:
      execvp(argv[2],argv + 2);
      if (error_temp(errno)) _exit(111);
-     _exit(1);
+     _exit(100);
   }
  if (wait_pid(&wstat,pid) != pid)
    die_perm("condredirect: fatal: internal bug\n");

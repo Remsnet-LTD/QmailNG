@@ -1,10 +1,10 @@
-.TH qmail-newuser 8
+.TH qmail-newu 8
 .SH NAME
-qmail-newuser \- prepare address assignments for qmail-lspawn
+qmail-newu \- prepare address assignments for qmail-lspawn
 .SH SYNOPSIS
-.B qmail-newuser
+.B qmail-newu
 .SH DESCRIPTION
-.B qmail-newuser
+.B qmail-newu
 reads the assignments in
 .B /var/qmail/users/assign
 and writes them into
@@ -15,22 +15,22 @@ for quick access by
 
 If there is a problem with
 .BR users/assign ,
-.B qmail-newuser
+.B qmail-newu
 complains and leaves
 .B users/cdb
 alone.
 
-.B qmail-newuser
+.B qmail-newu
 ensures that
 .B users/cdb
 is updated atomically,
 so
 .B qmail-lspawn
 never has to wait for
-.B qmail-newuser
+.B qmail-newu
 to finish.
 However,
-.B qmail-newuser
+.B qmail-newu
 makes no attempt to protect against two simultaneous updates of
 .BR users/cdb .
 
@@ -40,4 +40,4 @@ format is portable across machines.
 .SH "SEE ALSO"
 qmail-users(5),
 qmail-lspawn(8),
-qmail-pw2user(8)
+qmail-pw2u(8)

@@ -54,6 +54,8 @@ void signal_blocknone()
 
 void signal_init() { catch(SIGPIPE,SIG_IGN); }
 void signal_uninit() { catch(SIGPIPE,SIG_DFL); }
+void signal_uncatchhangup() { catch(SIGHUP,SIG_DFL); }
+void signal_catchhangup(f) void (*f)(); { catch(SIGHUP,f); }
 void signal_uncatchalarm() { catch(SIGALRM,SIG_DFL); }
 void signal_catchalarm(f) void (*f)(); { catch(SIGALRM,f); }
 void signal_uncatchterm() { catch(SIGTERM,SIG_DFL); }

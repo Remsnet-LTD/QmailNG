@@ -18,32 +18,32 @@
 
 void die_chdir()
 {
-  substdio_putsflush(subfderr,"qmail-pw2user: fatal: unable to chdir\n");
+  substdio_putsflush(subfderr,"qmail-pw2u: fatal: unable to chdir\n");
   _exit(111);
 }
 void die_nomem()
 {
-  substdio_putsflush(subfderr,"qmail-pw2user: fatal: out of memory\n");
+  substdio_putsflush(subfderr,"qmail-pw2u: fatal: out of memory\n");
   _exit(111);
 }
 void die_read()
 {
-  substdio_putsflush(subfderr,"qmail-pw2user: fatal: unable to read input\n");
+  substdio_putsflush(subfderr,"qmail-pw2u: fatal: unable to read input\n");
   _exit(111);
 }
 void die_write()
 {
-  substdio_putsflush(subfderr,"qmail-pw2user: fatal: unable to write output\n");
+  substdio_putsflush(subfderr,"qmail-pw2u: fatal: unable to write output\n");
   _exit(111);
 }
 void die_control()
 {
-  substdio_putsflush(subfderr,"qmail-pw2user: fatal: unable to read controls\n");
+  substdio_putsflush(subfderr,"qmail-pw2u: fatal: unable to read controls\n");
   _exit(111);
 }
 void die_alias()
 {
-  substdio_puts(subfderr,"qmail-pw2user: fatal: unable to find ");
+  substdio_puts(subfderr,"qmail-pw2u: fatal: unable to find ");
   substdio_puts(subfderr,CONF_USERA);
   substdio_puts(subfderr," user\n");
   substdio_flush(subfderr);
@@ -51,7 +51,7 @@ void die_alias()
 }
 void die_home(fn) char *fn;
 {
-  substdio_puts(subfderr,"qmail-pw2user: fatal: unable to stat ");
+  substdio_puts(subfderr,"qmail-pw2u: fatal: unable to stat ");
   substdio_puts(subfderr,fn);
   substdio_puts(subfderr,"\n");
   substdio_flush(subfderr);
@@ -59,7 +59,7 @@ void die_home(fn) char *fn;
 }
 void die_user(s,len) char *s; unsigned int len;
 {
-  substdio_puts(subfderr,"qmail-pw2user: fatal: unable to find ");
+  substdio_puts(subfderr,"qmail-pw2u: fatal: unable to find ");
   substdio_put(subfderr,s,len);
   substdio_puts(subfderr," user for subuser\n");
   substdio_flush(subfderr);
@@ -68,7 +68,6 @@ void die_user(s,len) char *s; unsigned int len;
 
 int flagalias = 0;
 int flagnoupper = 1;
-int flagnobreak = 1;
 char breakchar = USEREXT_BREAK;
 int homestrategy = 2;
 /* 2: skip if home does not exist; skip if home is not owned by user */
@@ -121,8 +120,6 @@ void doaccount()
     for (i = 0;i < user.len;++i)
       if ((user.s[i] >= 'A') && (user.s[i] <= 'Z'))
 	return;
-  if (flagnobreak && breakchar)
-    if (byte_chr(user.s,user.len,breakchar) < user.len) return;
   if (okincl)
     if (!constmap(&mapincl,user.s,user.len - 1))
       return;
@@ -235,20 +232,18 @@ char **argv;
   int opt;
   int match;
 
-  while ((opt = getopt(argc,argv,"ohHuUbBc:C")) != opteof)
+  while ((opt = getopt(argc,argv,"ohHuUc:C")) != opteof)
     switch(opt) {
       case 'o': homestrategy = 2; break;
       case 'h': homestrategy = 1; break;
       case 'H': homestrategy = 0; break;
       case 'u': flagnoupper = 0; break;
       case 'U': flagnoupper = 1; break;
-      case 'b': flagnobreak = 0; break;
-      case 'B': flagnobreak = 1; break;
       case 'c': breakchar = *optarg; break;
       case 'C': breakchar = 0; break;
       case '?':
       default:
-	_exit(1);
+	_exit(100);
     }
 
   if (chdir(CONF_HOME) == -1) die_chdir();
@@ -292,6 +287,19 @@ char **argv;
     }
 
     close(fd);
+  }
+
+  fd = open_read("users/append");
+  if (fd == -1) {
+    if (errno != error_noent) die_control();
+  }
+  else {
+    substdio_fdbuf(&ss,read,fd,ssbuf,sizeof(ssbuf));
+    for (;;) {
+      if (getline2(&ss,&line,&match,'\n') == -1) die_read();
+      if (substdio_put(subfdout,line.s,line.len) == -1) die_write();
+      if (!match) break;
+    }
   }
 
   if (substdio_puts(subfdout,".\n") == -1) die_write();

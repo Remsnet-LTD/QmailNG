@@ -1,10 +1,11 @@
-think about SIGALRM for qmail-send to run everything
-think about SIGHUP for qmail-send to reread locals, virtualdomains
-make a non-/bin/sh version of program delivery
-have maildir2smtp produce bounces, tnx TG, MD
-think about ways to deal with SIOCGIFCONF stupidity, tnx MD
-maybe give qmail-lspawn power to disable program deliveries in qmail-alias
-in version 1.00 and following, allow free distribution
 do some serious coverage testing, preferably under Purify, without alloc slop
-replace INTERNALS with a real paper describing qmail
+replace INTERNALS and THOUGHTS with a real paper describing qmail
+reorganize qmail-inject to do most rw on characters, not tokens
+allow concurrency over 255
+handle IPv6
+turn qmail-upq into a more serious queue-moving utility
+expand strerr coverage
+handle dgux port, tnx HWM; better, put in auto-ranlib detection
+handle unixware port, tnx JD
+clean up maildir scanning to skip all dot files
 rewrite everything from scratch

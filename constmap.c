@@ -111,3 +111,13 @@ int flagcolon;
   }
  return 0;
 }
+
+void constmap_free(cm)
+struct constmap *cm;
+{
+ alloc_free(cm->next);
+ alloc_free(cm->hash);
+ alloc_free(cm->inputlen);
+ alloc_free(cm->input);
+ alloc_free(cm->first);
+}

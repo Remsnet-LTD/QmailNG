@@ -49,14 +49,12 @@ considers an account in
 .B /etc/passwd
 to be a user if
 (1) the account has a nonzero uid,
-(2) the account's home directory exists,
+(2) the account's home directory exists (and is visible to
+.BR qmail-getpw ),
 and
 (3) the account owns its home directory.
 .B qmail-getpw
-ignores account names containing uppercase letters
-or
-.B CONF-BREAK
-characters.
+ignores account names containing uppercase letters.
 
 .B qmail-getpw
 gives each user

@@ -51,10 +51,17 @@ then
   linux)
     # as in bsd 4.4, uname -v does not have useful info.
     oper="$sys-$unamer"
-    arch="i386" # always correct for now
     syst=""
     chip="$unamem"
     kern=""
+    case "$chip" in
+    i386|i486|i586|i686)
+      arch="i386"
+      ;;
+    alpha)
+      arch="alpha"
+      ;;
+    esac
     ;;
   aix)
     # naturally IBM has to get uname -r and uname -v backwards. dorks.
@@ -105,9 +112,22 @@ else
     kern=""
     ;;
   esac
+  rm -f trycpp.o trycpp
 fi
 
 case "$chip" in
+80486)
+  # let's try to be consistent here. (BSD/OS)
+  chip=i486
+  ;;
+i486dx)
+  # respect the hyphen hierarchy. (FreeBSD)
+  chip=i486-dx
+  ;;
+i486.dx2)
+  # respect the hyphen hierarchy. (FreeBSD)
+  chip=i486-dx2
+  ;;
 Intel.586)
   # no, you nitwits, there is no such chip. (NeXTStep)
   chip=pentium
@@ -116,6 +136,9 @@ i586)
   # no, you nitwits, there is no such chip. (Linux)
   chip=pentium
   ;;
+i686)
+  # STOP SAYING THAT! (Linux)
+  chip=ppro
 esac
 
 echo "$oper-:$arch-:$syst-:$chip-:$kern-" | tr ' [A-Z]' '.[a-z]'

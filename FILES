@@ -21,9 +21,9 @@ RFCLOOPS
 RFCMXPS
 RFCNETSTR
 RFCNRUDT
-RFCOWNER
 RFCQMTP
 RFCQSBMF
+RFCVERP
 SECURITY
 INTERNALS
 FILES
@@ -59,10 +59,9 @@ dot-qmail.9
 maildir.5
 maildirmake.1
 maildir2mbox.1
-maildir2qmtp.1
-maildir2smtp.1
 maildirwatch.1
 mailsubj.1
+splogger.8
 mbox.5
 preline.1
 qbiff.1
@@ -78,8 +77,8 @@ qmail-limits.9
 qmail-log.5
 qmail-lspawn.9
 qmail-users.5
-qmail-newuser.8
-qmail-pw2user.9
+qmail-newu.8
+qmail-pw2u.9
 qmail-getpw.9
 qmail-qread.8
 qmail-tcpto.8
@@ -121,6 +120,7 @@ dnsdoe.h
 dnsdoe.c
 datetime.h
 datetime.c
+datetime_un.c
 fmtqfn.h
 fmtqfn.c
 gfrom.h
@@ -157,6 +157,8 @@ quote.h
 quote.c
 readsubdir.h
 readsubdir.c
+received.h
+received.c
 remoteinfo.h
 remoteinfo.c
 signal.h
@@ -190,8 +192,6 @@ qreceipt.c
 qsmhook.c
 maildirmake.c
 maildir2mbox.c
-maildir2qmtp.c
-maildir2smtp.c
 maildirwatch.c
 qail.sh
 elq.sh
@@ -202,8 +202,8 @@ qmail-clean.c
 qmail-home.c
 qmail-inject.c
 qmail-lspawn.c
-qmail-newuser.c
-qmail-pw2user.c
+qmail-newu.c
+qmail-pw2u.c
 qmail-getpw.c
 qmail-qread.c
 qmail-tcpto.c
@@ -214,7 +214,7 @@ qmail-remote.c
 qmail-rspawn.c
 qmail-send.c
 qmail-setup.c
-qmail-sctl.sh
+qmail-showctl.c
 qmail-pop3d.c
 qmail-popup.c
 qmail-qmtpd.c
@@ -228,8 +228,11 @@ dnsmxip.c
 dnsfq.c
 hostname.c
 ipmeprint.c
+splogger.c
 mailsubj.sh
 sendmail.c
+predate.c
+datemail.sh
 printuids.c
 printsplit.c
 printbreak.c
@@ -243,7 +246,9 @@ substdo.c
 substdio_copy.c
 substdio.c
 subfdin.c
+subfdins.c
 subfdout.c
+subfdouts.c
 subfderr.c
 stralloc.h
 stralloc_pend.c

@@ -51,17 +51,31 @@ int t2;
 static int atomok(ch)
 char ch;
 {
- if (ch <= 32) return 0;
- if (ch >= 127) return 0;
  switch(ch)
   {
-   case '(': case ')': case '[': case ']':
-   case '"': case '\\':
+   case ' ': case '\t': case '\r': case '\n':
+   case '(': case '[': case '"':
    case '<': case '>': case ';': case ':':
    case '@': case ',': case '.':
      return 0;
   }
  return 1;
+}
+
+static void atomcheck(t)
+struct token822 *t;
+{
+ int i;
+ char ch;
+ for (i = 0;i < t->slen;++i)
+  {
+   ch = t->s[i];
+   if ((ch < 32) || (ch > 126) || (ch == ')') || (ch == ']') || (ch == '\\'))
+    {
+     t->type = TOKEN822_QUOTE;
+     return;
+    }
+  }
 }
 
 int token822_unparse(sa,ta,linelen)
@@ -375,6 +389,7 @@ stralloc *buf;
 	   break;
 	}
        while (atomok(sa->s[i]));
+       atomcheck(t);
        --i;
        ++t;
     }

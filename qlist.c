@@ -21,7 +21,7 @@
 
 #define ADDRLIMIT 100
 
-void die() { _exit(1); }
+void die() { _exit(100); }
 void die_temp() { _exit(111); }
 void die_nomem() {
  substdio_putsflush(subfderr,"qlist: fatal: out of memory\n"); die_temp(); }

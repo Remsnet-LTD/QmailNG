@@ -1,10 +1,10 @@
 
 Network Working Group                                       D. Bernstein
 XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                   13 August 1996
+Category: Informational                                 10 November 1996
 
 
-			    The Owner Hack
+		    Variable Envelope Return Paths
 
 
 Status of this memo
@@ -37,12 +37,12 @@ Status of this memo
    the subscriber address is difficult even on the occasions that the
    address is available.
 
-   The owner hack completely eliminates this problem _right now_. It
-   automatically and reliably identifies the subscription address
-   relevant to each bounce message. It provides the address in a form
-   that is trivial for automated bounce handlers to parse. It requires
-   support from the local mailer, but it does not require support from
-   any other hosts.
+   Variable envelope return paths (VERPs) completely eliminate this
+   problem _right now_. They automatically and reliably identify the
+   subscription address relevant to each bounce message. They provide
+   the address in a form that is trivial for automated bounce handlers
+   to parse. They require support from the local mailer, but they do not
+   require support from any other hosts.
 
 
 
@@ -57,12 +57,12 @@ Status of this memo
 
 Bernstein                                                       [Page 1]
 
-XXX NNNN                    The Owner Hack                   August 1996
+XXX NNNN            Variable Envelope Return Paths         November 1996
 
 
-2. The owner hack
+2. Variable envelope return paths
 
-   Here is the owner hack: each recipient of the message sees a
+   Here is how VERPs work: each recipient of the message sees a
    different envelope sender address. When a message to the
    djb-sos@silverton.berkeley.edu mailing list is sent to
    God@heaven.af.mil, for example, it has the following envelope sender:
@@ -77,14 +77,14 @@ XXX NNNN                    The Owner Hack                   August 1996
    uninformative the bounce message is, it will display God's
    subscription address in its envelope.
 
-   Another benefit of the owner hack is that God Himself can see what
-   address He used to subscribe.
+   Another benefit of VERPs is that God Himself can see what address He
+   used to subscribe.
 
-   Making the owner hack work requires two pieces of local software
-   support. First: it must be easy to modify the outgoing sender address
+   Making VERPs work requires two pieces of local software support.
+   First: it must be easy to modify the outgoing sender address
    separately for each envelope recipient. For example, with one mailer,
    qmail, a user can simply touch ~/.qmail-list-owner and
-   ~/.qmail-list-owner-default to apply the owner hack to user-list.
+   ~/.qmail-list-owner-default to apply VERPs to user-list.
 
    Second, and more important: it must be easy to identify a collection
    of addresses, such as djb-sos-owner-*, and send all mail for those
@@ -93,10 +93,10 @@ XXX NNNN                    The Owner Hack                   August 1996
    touches ~/.qmail-list-owner-default. Sending the mail through an
    automated bounce-handling program is just as easy.
 
-   With older mailers, applying the owner hack would require setting up
-   a new user-list-owner-recipient alias for each new recipient. This 
-   inconvenience has prevented the owner hack from being widely
-   exploited, even though the idea is not new.
+   With older mailers, applying VERPs would require setting up a new
+   user-list-owner-recipient alias for each new recipient. This
+   inconvenience has prevented VERPs from being widely exploited, even
+   though the idea is not new.
 
 
 
@@ -114,24 +114,24 @@ XXX NNNN                    The Owner Hack                   August 1996
 
 
 
-Bernstein                                                       [Page 1]
+Bernstein                                                       [Page 2]
 
-XXX NNNN                    The Owner Hack                   August 1996
+XXX NNNN            Variable Envelope Return Paths         November 1996
 
 
-3. The per-message owner hack
+3. Per-message VERPs
 
-   The owner hack is not restricted to distinguishing mailing list
-   subscribers; it can also be used to distinguish messages.
+   VERPs are not restricted to distinguishing mailing list subscribers;
+   they can also be used to distinguish messages.
 
    For example, a user can send one message with an envelope sender
    address of user-dsn-1, the next message with user-dsn-2, and so on.
    As long as the local mailer gives all user-dsn-* back to that user,
    he can reliably match up incoming bounces with outgoing messages.
 
-   The per-message owner hack can be combined with the per-recipient
-   owner hack. Every application of RFC 1891's ORCPT and ENVID can be
-   handled with the owner hack---easily, reliably, and right now.
+   Per-message VERPs can be combined with per-recipient VERPs. Every
+   application of RFC 1891's ORCPT and ENVID can be handled with
+   VERPs---easily, reliably, and right now.
 
 
 4. Security considerations
@@ -173,5 +173,5 @@ Author's address
 
 
 
-Bernstein                                                       [Page 7]
+Bernstein                                                       [Page 3]
 

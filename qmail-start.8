@@ -52,7 +52,7 @@ manually:
 .EX
    # env - PATH="/var/qmail/bin:$PATH"
 .br
-   qmail-start logger -p mail.info -t qmail &
+   qmail-start splogger qmail &
 .br
    (all on one line)
 .EE
@@ -71,6 +71,7 @@ you can run
 with a low priority.
 .SH "SEE ALSO"
 logger(1),
+splogger(1),
 nice(1),
 qmail-log(5),
 qmail-alias(8),

@@ -1,5 +1,10 @@
-(In this list, ``sendmail'' means Allman's creation; ``sendmail-clone''
-means the program in this package.)
+Please note that this file is not called ``Internet Mail For Dummies.''
+It _records_ my thoughts on various issues. It does not _explain_ them.
+Paragraphs are not organized except by section. The required background
+varies wildly from one paragraph to the next.
+
+In this file, ``sendmail'' means Allman's creation; ``sendmail-clone''
+means the program in this package.
 
 
 1. Security
@@ -15,14 +20,13 @@ qmail-send's log was originally designed for profiling. It subsequently
 sprouted some tracing features. However, there's no way to verify
 securely that a particular message came from a particular local user;
 how do you know the recipient is telling you the truth about the
-contents of the message? It'd be possible to record a one-way hash of
-each outgoing message, but a user who wants to send ``bad'' mail can
-avoid qmail entirely.
+contents of the message? With QUEUE_EXTRA it'd be possible to record a
+one-way hash of each outgoing message, but a user who wants to send
+``bad'' mail can avoid qmail entirely.
 
 I originally decided on security grounds not to put qmail advertisements
 into SMTP responses: advertisements often act as version identifiers.
-However, now that I have a reasonably stable home page location for
-qmail, I don't think this will be a problem.
+But this problem went away when I found a stable qmail URL.
 
 As qmail grows in popularity, the mere knowledge that rcpthosts is so
 easily available will deter people from setting up unauthorized MXs.
@@ -41,7 +45,9 @@ smaller resolver library into qmail. (Bonus: I'd avoid system-specific
 problems with old resolvers.) The problem is that I'd then be writing a
 fundamentally insecure library. I'd no longer be able to blame the BIND
 authors and vendors for the fact that attackers can easily use DNS to
-steal mail.
+steal mail. Possible solution: replace dns.c with something that passes
+requests (reliably!) to a local daemon; call the original resolver
+library from that daemon.
 
 NFS is the primary enemy of security partitioning under UNIX. Here's the
 story. Sun knew from the start that NFS was completely insecure. It
@@ -72,10 +78,9 @@ If you will suffer from someone sending you ``flash mail,'' go find a
 better mail reader.
 
 qmail-inject's ``Cc: recipient list not shown: ;'' successfully stops
-sendmail from adding Apparently-To, but it doesn't stop sendmail from
-getting confused. Several times I've seen someone's sendmail incorrectly
-append a host name. (Ah, I see that this was fixed in sendmail 8.7...
-How many years has it been since RFC 822 came out?)
+sendmail from adding Apparently-To. Unfortunately, old versions of
+sendmail will append a host name. This wasn't fixed until sendmail 8.7.
+How many years has it been since RFC 822 came out?
 
 sendmail discards duplicate addresses. This has probably resulted in
 more lost and stolen mail over the years than the entire Chicago branch
@@ -120,9 +125,12 @@ specification? ... They say that VRFY and EXPN are important for
 tracking down cross-host mailing list loops. Catch up to the 1990s,
 guys: with Delivered-To, mailing list loops do absolutely no damage,
 _and_ one of the list administrators gets a bounce that shows exactly
-how the loop occurred. Solve the problem, not the symptom.
+how the loop occurred. Solve the problem, not the symptom. ... There's a
+vastly superior alternative to EXPN. Hint: finger postmaster@ai.mit.edu.
 
 Should dns.c make special allowances for 127.0.0.1/localhost?
+
+badmailfrom (like 8BITMIME) is a waste of code space.
 
 
 4. Adding messages to the queue (qmail-queue)
@@ -142,22 +150,17 @@ Should qmail-queue not bother queueing a message with no recipients?
 
 5. Handling queued mail (qmail-send, qmail-clean)
 
-qmail-send is the only long-running program that reads control files.
-Perhaps it should automatically watch for changes in the control files,
-or at least have some mechanism (like HUP) to reread them. On the other
-hand, restart code is very easy to screw up, as recent versions of named
-illustrate. Anyway, since TERM is safe, who cares? ... RN suggests a
-qmail-config-edit program that does the following: kill qmail-send, wait
-for it to stop, edit config files (atomically---qmail-smtpd and
-qmail-inject can still run at any moment), and restart qmail-send.
-
 The queue directory must be local. Mounting it over NFS is extremely
 dangerous---not that this stops people from running sendmail that way!
 Perhaps it is worth putting together a diskless-host qmail package with
-just qmail-inject, a bastard version of qmail-queue, and qmail-remote.
-Sending mail to the server via SMTP is of course vastly better than
-trying to do anything over NFS. If the NFS server is up but the mail
-server is down, users will just have to wait.
+just qmail-inject and an SMTP client in place of qmail-queue. Sending
+mail to the server via SMTP is of course vastly better than trying to do
+anything over NFS. If the NFS server is up but the mail server is down,
+users will just have to wait.
+
+Queue reliability demands that single-byte writes be atomic. This is
+true for a fixed-block filesystem such as UFS, and for a logging
+filesystem such as LFS.
 
 qmail-send uses 8 bytes of memory per queued message. Double that for
 reallocation. (Fix: use a small forest of heaps; i.e., keep several
@@ -170,7 +173,7 @@ Some mail systems organize the queue by host. This is pointless as a
 means of splitting up the queue directory. The real issue is what to do
 when you suddenly find out that a host is up. For local SLIP/PPP links
 you know in advance which hosts need this treatment, so you can handle
-them with virtualdomains and maildir2smtp.
+them with virtualdomains and serialmail.
 
 For the old queue structure I implemented recipient list compression:
 if mail goes out to a giant mailing list, and most of the recipients are
@@ -207,11 +210,10 @@ would require some housekeeping, but could speed things up a bit.
 (Making bounces asynchronous, without POSIX waitpid(), means that
 wait_pid() has to keep a buffer of previous wait()s. Ugh.)
 
-It's beginning to look like fsync() will be a bottleneck. To make this
-asynchronous would require gobs of dedicated output processes whose only
-purpose in life is to watch data get written to the disk. Inconceivable!
-(``You keep using that word. I do not think that word means what you
-think it means.'')
+fsync() is a bottleneck. To make this asynchronous would require gobs of
+dedicated output processes whose only purpose in life is to watch data
+get written to the disk. Inconceivable! (``You keep using that word. I
+do not think that word means what you think it means.'')
 
 On the other hand, I could survive without fsync()ing the local and
 remote and info files as long as I don't unlink todo. This would require
@@ -317,7 +319,7 @@ the server's reply text doesn't contain bare LFs.
 qmail-alias doesn't support comsat. comsat is a pointless abomination.
 Use qbiff if you want that kind of notification.
 
-The getpwnam() interface hides I/O errors. Solution: qmail-pw2user.
+The getpwnam() interface hides I/O errors. Solution: qmail-pw2u.
 
 
 8. sendmail V8's new features
@@ -327,8 +329,7 @@ sendmail 8.8.0 over sendmail 5.67. Here's how qmail stacks up against
 each of those improvements. (Of course, qmail has its own improvements,
 but that's not the point of this list.)
 
-Connection caching, MX piggybacking: Nope. However, even without these,
-qmail handles the queue an order of magnitude faster than sendmail.
+Connection caching, MX piggybacking: Nope. (Profile. Don't speculate.)
 
 Response to RCPT command is fast: Yup.
 
@@ -336,8 +337,7 @@ IP addresses show up in Received lines: Yup.
 
 Self domain literal is properly handled: Yup.
 
-Different timeouts for QUIT, RCPT, etc.: No, just a single timeout. Who
-cares?
+Different timeouts for QUIT, RCPT, etc.: No, just a single timeout.
 
 Proper <> handling, route-address pruning: Yes, but not configurable.
 
@@ -354,8 +354,8 @@ Keyed files: Yes, in qmsmac.
 
 931/1413/Ident/TAP: Yup.
 
-Parsing bug fixes: No need; qmail-inject's RFC 822 compliance is perfect.
-sendmail still has major problems with quoting.
+Correct 822 address list parsing: Yup. (Note that sendmail still has
+some major problems with quoting.)
 
 List-owner handling: Yup.
 
@@ -369,11 +369,11 @@ Error message configuration: Nope.
 
 GECOS matching: Not directly, but easy to hook in.
 
-Hop limit configuration: No. qmail's limit is 100 hops. qmail offers
-automatic loop protection much more advanced than hop counting.
+Hop limit configuration: No. (qmail's limit is 100 hops. qmail offers
+automatic loop protection much more advanced than hop counting.)
 
-MIME error messages: No. qmail uses QSBMF error messages, which are much
-easier to parse.
+MIME error messages: No. (qmail uses QSBMF error messages, which are
+much easier to parse.)
 
 Forward file path: Yes, via /etc/passwd.
 
@@ -412,14 +412,11 @@ do right, and pointless if it isn't done right.
 RN suggests automatically putting together a reasonable set of lines for
 /etc/passwd. I perceive this as getting into the adduser business, which
 is worrisome: I'll be lynched the first time I screw up somebody's
-passwd file. But I'll think about it.
+passwd file. This should be left to OS-specific installation scripts.
 
-The BSD 4.2 inetd didn't allow a username. I'm not sure whether I should
-mention this in INSTALL. (DS notes that the username works under Ultrix
-even though it's undocumented.)
-
-To whoever invented SIOCGIFCONF: Wtf do you expect people to do if the
-buffer fills up?
+The BSD 4.2 inetd didn't allow a username. I think I can safely forget
+about this. (DS notes that the username works under Ultrix even though
+it's undocumented.)
 
 I should clean up the bput/put choices.
 
@@ -430,17 +427,7 @@ RN suggests having qlist smash the case of the incoming host name.
 
 K1J suggests that mailing list subscription managers should have
 a three-way handshake, to prevent person A from subscribing person B to
-a mailing list. Some of the fancy ones do this already; qlist doesn't.
-
-Conventional wisdom says that you can't safely mix select() with
-SIGCHLD (or other signals): the SIGCHLD might go off while select() is
-starting, too early to interrupt it, to late to change its timeout.
-Solution: the self-pipe trick. Maintain a self-pipe and select for
-readability on the input. Inside SIGCHLD, write a byte (non-blocking,
-just in case) to the output. Done. (Of course, the Right Thing would be
-to have fork() return a file descriptor, not a PID.) Although this isn't
-used in qmail with the new lspawn/rspawn structure, I figure I'll keep
-this note here in case someone else finds the trick useful.
+a mailing list. qlist doesn't do this, but ezmlm does.
 
 qmail assumes that all times are positive; that pid_t, time_t and ino_t
 fit into unsigned long; that gid_t fits into int; that the character set
@@ -450,4 +437,4 @@ The bat book justifies sendmail's insane line-splitting mechanism by
 pointing out that it might be useful for ``a 40-character braille
 print-driving program.'' C'mon, guys, is that your best excuse?
 
-qmail's logo is a dolphin.
+qmail's mascot is a dolphin.
