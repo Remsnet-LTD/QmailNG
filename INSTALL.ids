@@ -1,0 +1,40 @@
+Here's how to set up the qmail groups and the qmail users.
+
+On some systems there are commands that make this easy. Solaris:
+
+   # groupadd nofiles
+   # useradd -g nofiles -d /var/qmail qmaild
+   # useradd -g nofiles -d /var/qmail/alias alias
+   # groupadd qmail
+   # useradd -g qmail -d /var/qmail qmailq
+   # useradd -g qmail -d /var/qmail qmailr
+   # useradd -g qmail -d /var/qmail qmails
+
+BSDI 2.0:
+
+   # addgroup nofiles
+   # adduser -g nofiles -H/var/qmail -G,,, -s/dev/null -P'*' qmaild
+   # adduser -g nofiles -H/var/qmail/alias -G,,, -s/dev/null -P'*' alias
+   # addgroup qmail
+   # adduser -g qmail -H/var/qmail -G,,, -s/dev/null -P'*' qmailq
+   # adduser -g qmail -H/var/qmail -G,,, -s/dev/null -P'*' qmailr
+   # adduser -g qmail -H/var/qmail -G,,, -s/dev/null -P'*' qmails
+
+On other systems, you will have to edit /etc/group and /etc/passwd
+manually. First add two new lines to /etc/group, something like
+
+        qmail:*:2107:
+        nofiles:*:2108:
+
+where 2107 and 2108 are different from the other gids in /etc/group.
+Next (using vipw) add five new lines to /etc/passwd, something like
+
+        qmaild:*:7770:2108::/var/qmail:/bin/true
+        alias:*:7771:2108::/var/qmail/alias:/bin/true
+        qmailq:*:7772:2107::/var/qmail:/bin/true
+        qmailr:*:7773:2107::/var/qmail:/bin/true
+        qmails:*:7774:2107::/var/qmail:/bin/true
+
+where 7770 through 7774 are _new_ uids, 2107 is the qmail gid, and 2108
+is the nofiles gid. Make sure you use the nofiles gid for only qmaild
+and alias.

@@ -1,0 +1,68 @@
+.TH addresses 5
+.SH "NAME"
+addresses \- formats for Internet mail addresses
+.SH "INTRODUCTION"
+An
+.B Internet mail address
+always looks like
+.IR box@domain .
+
+The
+.B domain part
+of the address,
+.IR domain ,
+identifies one or more computers
+that can accept mail for
+.IR box@domain .
+
+The
+.B local part
+of the address,
+.IR box ,
+can be any string of characters.
+Its interpretation is up to the
+.I domain
+computers.
+Often it is the real name or login name of a user.
+
+When an Internet mail address appears in the header of a mail message,
+it may be encoded in a wide variety of ways,
+as specified by RFC 822.
+For example, the addresses
+
+.EX
+     a"quote@heaven.org
+.EE
+.EX
+     The Almighty.One@heaven.org
+.EE
+
+could appear as
+
+.EX
+     To: <@brl.mil:a\\"quote@heaven.org>,
+       "The Almighty".One@heaven.org
+.EE
+
+or perhaps
+
+.EX
+     To: "a\\"quote" (Who?) @ heaven . org
+       , God <"The Almighty.One"@heaven.org>
+.EE
+
+When an address is used in
+the Simple Mail Transfer Protocol, it is encoded differently,
+as specified by RFC 821:
+
+.EX
+     a\\"quote@heaven.org
+.EE
+.EX
+     The\\ Almighty.One@heaven.org
+.EE
+.SH "SEE ALSO"
+qmail-header(5),
+qmail-inject(8),
+qmail-remote(8),
+qmail-smtpd(8)

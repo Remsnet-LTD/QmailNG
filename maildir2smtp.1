@@ -1,0 +1,112 @@
+.TH maildir2smtp 1
+.SH NAME
+maildir2smtp \- blast a maildir across SMTP
+.SH SYNOPSIS
+.B maildir2smtp
+.I dir
+.I prefix
+.I targetip
+.I helohost
+.SH DESCRIPTION
+.B maildir2smtp
+removes messages
+from a
+.IR maildir -format
+directory,
+.IR dir ,
+and sends them to
+.I targetip
+via SMTP.
+.I targetip
+must be a dotted-decimal IP address.
+
+.B maildir2smtp
+retrieves a message's envelope sender address and envelope recipient address
+from the
+.B Return-Path
+and
+.B Delivered-To
+lines at the top of the message header.
+It removes these lines before passing the message along.
+
+.B maildir2smtp
+removes
+.I prefix
+from the beginning of each envelope recipient address.
+It ignores any message whose recipient address does not begin with
+.IR prefix .
+
+.B maildir2smtp
+is designed to pass messages along a SLIP or PPP link.
+To set this up on the disconnected end, put
+
+.EX
+   :alias-ppp
+.EE
+
+into
+.B control/virtualdomains
+and
+
+.EX
+   ./pppdir/
+.EE
+
+into
+.BR ~alias/.qmail-ppp-default .
+Don't forget the extra slash in
+.BR pppdir/ .
+Then, in the PPP startup script, do
+
+.EX
+   maildir2smtp ~alias/pppdir alias-ppp- $IP `hostname`
+.EE
+
+replacing $IP with the remote IP address.
+A similar procedure works on the connected end: put
+
+.EX
+   virt.host:joe-ppp
+.EE
+
+into
+.B control/virtualdomains
+and
+.B ./pppdir/
+into
+.BR ~joe/.qmail-ppp-default ;
+then
+.B joe
+can run
+
+.EX
+   maildir2smtp $HOME/pppdir joe-ppp- $IP `hostname`
+.EE
+
+when he establishes a connection.
+
+.B maildir2smtp
+is reliable:
+it will not remove a message from
+.I maildir
+until the message has been successfully received and acknowledged
+by
+.IR targethost .
+
+.B maildir2smtp
+uses
+.I helohost
+as the local host name for saying hello to the remote SMTP server.
+.I helohost
+must be a fully-qualified domain name.
+
+.B maildir2smtp
+supports ESMTP PIPELINING.
+
+.B maildir2smtp
+assumes that all sender and recipient domain names
+have already been canonicalized.
+.SH "SEE ALSO"
+maildir2qmtp(1),
+maildir(5),
+qmail-send(8)
