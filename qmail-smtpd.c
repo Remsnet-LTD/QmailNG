@@ -29,6 +29,8 @@
 unsigned int databytes = 0;
 int timeout = 1200;
 unsigned int spfbehavior = 0;
+int rcptcounter = 0;
+int maxrcpt = -1;
 
 int safewrite(fd,buf,len) int fd; char *buf; int len;
 {
@@ -115,6 +117,7 @@ void setup()
   if (liphostok == -1) die_control();
   if (control_readint(&timeout,"control/timeoutsmtpd") == -1) die_control();
   if (timeout <= 0) timeout = 1;
+  if (control_readint(&maxrcpt,"control/maxrcpt") == -1) die_control();
 
   if (rcpthosts_init() == -1) die_control();
 
@@ -263,6 +266,7 @@ void smtp_mail(arg) char *arg;
 {
   int r;
 
+  rcptcounter = 0 ;
   if (!addrparse(arg)) { err_syntax(); return; }
   flagbarf = bmfcheck();
   flagbarfspf = 0;
@@ -327,7 +331,9 @@ void err_spf() {
 }
 
 void smtp_rcpt(arg) char *arg; {
+  rcptcounter++;
   if (!seenmail) { err_wantmail(); return; }
+  if (checkrcptcount() == 1) { err_syntax(); return; }
   if (!addrparse(arg)) { err_syntax(); return; }
   if (flagbarf) { err_bmf(); return; }
   if (flagbarfspf) { err_spf(); return; }
@@ -518,4 +524,10 @@ void main()
   out(" ESMTP\r\n");
   if (commands(&ssin,&smtpcommands) == 0) die_read();
   die_nomem();
+}
+
+int checkrcptcount() {
+  if (maxrcpt == -1) { return 0;}
+  else if (rcptcounter > maxrcpt ) { return 1;}
+  return 0;
 }
