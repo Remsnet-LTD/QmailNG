@@ -1,9 +1,9 @@
-The qmail package includes a local delivery agent, qmail-alias, which
+The qmail package includes a local delivery agent, qmail-local, which
 provides user-controlled mailing lists, cross-host alias loop detection,
 and many other important qmail features.
 
-There's one part of qmail-alias that you need to know about right now:
-qmail-alias doesn't support an insecure central mail spool. It delivers
+There's one part of qmail-local that you need to know about right now:
+qmail-local doesn't support an insecure central mail spool. It delivers
 mail by default into ~user/Mailbox (in mbox format).
 
 This file explains what you should do to deal with this change. It also

@@ -8,4 +8,6 @@ extern void byte_copyr();
 extern int byte_diff();
 extern void byte_zero();
 
+#define byte_equal(s,n,t) (!byte_diff((s),(n),(t)))
+
 #endif

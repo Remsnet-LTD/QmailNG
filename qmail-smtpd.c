@@ -1,17 +1,17 @@
-#include "signal.h"
+#include "sig.h"
 #include "readwrite.h"
-#include "getline.h"
+#include "getln.h"
 #include "stralloc.h"
 #include "substdio.h"
 #include "alloc.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "control.h"
 #include "received.h"
 #include "constmap.h"
 #include "error.h"
 #include "ipme.h"
 #include "ip.h"
-#include "qqtalk.h"
+#include "qmail.h"
 #include "str.h"
 #include "fmt.h"
 #include "byte.h"
@@ -47,7 +47,7 @@ substdio ssin = SUBSTDIO_FDBUF(timeoutread,0,ssinbuf,sizeof(ssinbuf));
 void outofmem() { out("421 out of memory (#4.3.0)\r\n"); die(); }
 void sigalrm() { out("451 timeout (#4.4.2)\r\n"); die(); }
 
-struct qqtalk qqt;
+struct qmail qqt;
 stralloc greeting = {0};
 int liphostok = 0;
 stralloc liphost = {0};
@@ -156,15 +156,15 @@ int *hops;
        break;
      case 3: /* \r\n + .\r */
        if (ch == '\n') return;
-       qqtalk_put(&qqt,".\r",2);
+       qmail_put(&qqt,".\r",2);
        if (ch == '\r') { state = 4; continue; }
        state = 0;
        break;
      case 4: /* + \r */
        if (ch == '\n') { state = 1; break; }
-       if (ch != '\r') { qqtalk_put(&qqt,"\r",1); state = 0; }
+       if (ch != '\r') { qmail_put(&qqt,"\r",1); state = 0; }
     }
-   qqtalk_put(&qqt,&ch,1);
+   qmail_put(&qqt,&ch,1);
   }
 }
 
@@ -322,32 +322,32 @@ void smtp_data() {
  if (!seenmail) { err_wantmail(); return; }
  if (!rcptto.len) { err_wantrcpt(); return; }
  seenmail = 0;
- if (qqtalk_open(&qqt,0) == -1) { err_qqt(); return; }
- qp = qqtalk_qp(&qqt);
+ if (qmail_open(&qqt) == -1) { err_qqt(); return; }
+ qp = qmail_qp(&qqt);
  out("354 go ahead\r\n");
 
  received(&qqt,"SMTP",local,remoteip,remotehost,remoteinfo,case_diffs(remotehost,helohost.s) ? helohost.s : 0);
  blast(&ssin,&hops);
  hops = (hops >= MAXHOPS);
- if (hops) qqtalk_fail(&qqt);
- qqtalk_from(&qqt,mailfrom.s);
- qqtalk_eput(&qqt,rcptto.s,rcptto.len);
+ if (hops) qmail_fail(&qqt);
+ qmail_from(&qqt,mailfrom.s);
+ qmail_put(&qqt,rcptto.s,rcptto.len);
 
- r = qqtalk_close(&qqt);
+ r = qmail_close(&qqt);
  if (!r) { acceptmessage(qp); return; }
  if (hops) { out("554 too many hops, this message is looping (#5.4.6)\r\n"); return; }
  switch(r)
   {
-   case QQT_TOOLONG: out("554 address too long (#5.1.3)\r\n"); return;
-   case QQT_SYS: out("451 qq system error (#4.3.0)\r\n"); return;
-   case QQT_READ: out("451 qq read error (#4.3.0)\r\n"); return;
-   case QQT_WRITE: out("451 qq write error or disk full (#4.3.0)\r\n"); return;
-   case QQT_NOMEM: out("451 qq out of memory (#4.3.0)\r\n"); return;
-   case QQT_EXECSOFT: out("451 could not exec qq (#4.3.0)\r\n"); return;
-   case QQT_TIMEOUT: out("451 qq timeout (#4.3.0)\r\n"); return;
-   case QQT_WAITPID: out("451 qq waitpid surprise (#4.3.0)\r\n"); return;
-   case QQT_CRASHED: out("451 qq crashed (#4.3.0)\r\n"); return;
-   case QQT_USAGE: out("451 qq usage surprise (#4.3.0)\r\n"); return;
+   case QMAIL_TOOLONG: out("554 address too long (#5.1.3)\r\n"); return;
+   case QMAIL_SYS: out("451 qq system error (#4.3.0)\r\n"); return;
+   case QMAIL_READ: out("451 qq read error (#4.3.0)\r\n"); return;
+   case QMAIL_WRITE: out("451 qq write error or disk full (#4.3.0)\r\n"); return;
+   case QMAIL_NOMEM: out("451 qq out of memory (#4.3.0)\r\n"); return;
+   case QMAIL_EXECSOFT: out("451 could not exec qq (#4.3.0)\r\n"); return;
+   case QMAIL_TIMEOUT: out("451 qq timeout (#4.3.0)\r\n"); return;
+   case QMAIL_WAITPID: out("451 qq waitpid surprise (#4.3.0)\r\n"); return;
+   case QMAIL_CRASHED: out("451 qq crashed (#4.3.0)\r\n"); return;
+   case QMAIL_USAGE: out("451 qq usage surprise (#4.3.0)\r\n"); return;
    default: out("451 qq internal bug (#4.3.0)\r\n"); return;
   }
 }
@@ -423,10 +423,10 @@ void main()
  static stralloc cmd = {0};
  int match;
 
- signal_catchalarm(sigalrm);
- signal_init();
+ sig_alarmcatch(sigalrm);
+ sig_pipeignore();
 
- if (chdir(CONF_HOME) == -1) die();
+ if (chdir(auto_qmail) == -1) die();
  getcontrols();
  getenvs();
 
@@ -438,7 +438,7 @@ void main()
  for (;;)
   {
    /* XXX: recipient can contain quoted lf. aargh. */
-   if (getline2(&ssin,&cmd,&match,'\n') == -1) die();
+   if (getln(&ssin,&cmd,&match,'\n') == -1) die();
    if (!match) die();
    if (cmd.len == 0) die();
    if (cmd.s[--cmd.len] != '\n') die();

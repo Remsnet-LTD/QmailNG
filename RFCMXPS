@@ -1,18 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Experimental                                    18 August 1996
-
-
-             The Mail Exchanger Protocol Switch (MXPS)
-
-
-Status of this memo
-
-   This memo defines an experimental protocol for the Internet
-   community. This memo does not specify an Internet standard of any
-   kind. Discussion and suggestions for improvement are requested.
-   Distribution of this memo is unlimited.
+The Mail Exchanger Protocol Switch (MXPS)
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -39,26 +27,6 @@ Status of this memo
    assigned to each possible preference.
 
    SMTP is assigned to preferences 0 through 10000.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN        The Mail Exchanger Protocol Switch           August 1996
-
 
    The initial MXPS experiment will involve preferences between 12800
    and 13055 inclusive. These preferences are sliced into 16 portions:
@@ -109,16 +77,6 @@ XXX NNNN        The Mail Exchanger Protocol Switch           August 1996
    domains.
 
 
-
-
-
-
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN        The Mail Exchanger Protocol Switch           August 1996
-
-
 3. Protocol requirements
 
    MXPS operates purely at the link level. It does not change the
@@ -162,16 +120,3 @@ XXX NNNN        The Mail Exchanger Protocol Switch           August 1996
    MXPS does not change the following facts: An attacker who can subvert
    the Domain Name System can steal or forge mail. An attacker who can
    subvert TCP/IP can also steal or forge mail.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-Bernstein                                                       [Page 3]
-

@@ -5,15 +5,14 @@ register char *s;
 register char *t;
 unsigned int len;
 {
- register char x;
+  register char x;
 
- for (;;)
-  {
-   if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
-   if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
-   if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
-   if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
+  for (;;) {
+    if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
+    if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
+    if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
+    if (!len--) return 0; x = *s; if (x != *t) break; if (!x) break; ++s; ++t;
   }
- return ((int)(unsigned int)(unsigned char) x)
-      - ((int)(unsigned int)(unsigned char) *t);
+  return ((int)(unsigned int)(unsigned char) x)
+       - ((int)(unsigned int)(unsigned char) *t);
 }

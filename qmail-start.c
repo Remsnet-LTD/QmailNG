@@ -2,11 +2,11 @@
 #include "prot.h"
 #include "exit.h"
 #include "fork.h"
-#include "auto-uids.h"
+#include "auto_uids.h"
 
 char *(qsargs[]) = { "qmail-send", 0 };
 char *(qcargs[]) = { "qmail-clean", 0 };
-char *(qlargs[]) = { "qmail-lspawn", 0 };
+char *(qlargs[]) = { "qmail-lspawn", "./Mailbox", 0 };
 char *(qrargs[]) = { "qmail-rspawn", 0 };
 
 void die() { _exit(111); }
@@ -33,7 +33,7 @@ char **argv;
 {
   if (chdir("/") == -1) die();
   umask(077);
-  if (prot_gid(GID_QMAIL) == -1) die();
+  if (prot_gid(auto_gidq) == -1) die();
 
   if (fd_copy(2,0) == -1) die();
   if (fd_copy(3,0) == -1) die();
@@ -42,13 +42,18 @@ char **argv;
   if (fd_copy(6,0) == -1) die();
 
   if (argv[1]) {
+    qlargs[1] = argv[1];
+    ++argv;
+  }
+
+  if (argv[1]) {
     if (pipe(pi0) == -1) die();
     switch(fork()) {
       case -1:
 	die();
       case 0:
-        if (prot_gid(GID_NOFILES) == -1) die();
-        if (prot_uid(UID_LOG) == -1) die();
+        if (prot_gid(auto_gidn) == -1) die();
+        if (prot_uid(auto_uidl) == -1) die();
         close(pi0[1]);
         if (fd_move(0,pi0[0]) == -1) die();
         close23456();
@@ -80,7 +85,7 @@ char **argv;
   switch(fork()) {
     case -1: die();
     case 0:
-      if (prot_uid(UID_REMOTE) == -1) die();
+      if (prot_uid(auto_uidr) == -1) die();
       if (fd_copy(0,pi3[0]) == -1) die();
       if (fd_copy(1,pi4[1]) == -1) die();
       close23456();
@@ -92,7 +97,7 @@ char **argv;
   switch(fork()) {
     case -1: die();
     case 0:
-      if (prot_uid(UID_QUEUE) == -1) die();
+      if (prot_uid(auto_uidq) == -1) die();
       if (fd_copy(0,pi5[0]) == -1) die();
       if (fd_copy(1,pi6[1]) == -1) die();
       close23456();
@@ -101,7 +106,7 @@ char **argv;
       die();
   }
  
-  if (prot_uid(UID_SEND) == -1) die();
+  if (prot_uid(auto_uids) == -1) die();
   if (fd_copy(0,1) == -1) die();
   if (fd_copy(1,pi1[1]) == -1) die();
   if (fd_copy(2,pi2[0]) == -1) die();

@@ -1,6 +1,6 @@
 #include "fmtqfn.h"
 #include "fmt.h"
-#include "conf-unusual.h"
+#include "auto_split.h"
 
 unsigned int fmtqfn(s,dirslash,id,flagsplit)
 char *s;
@@ -15,7 +15,7 @@ int flagsplit;
  i = fmt_str(s,dirslash); len += i; if (s) s += i;
  if (flagsplit)
   {
-   i = fmt_ulong(s,id % QFN_SPLIT); len += i; if (s) s += i;
+   i = fmt_ulong(s,id % auto_split); len += i; if (s) s += i;
    i = fmt_str(s,"/"); len += i; if (s) s += i;
   }
  i = fmt_ulong(s,id); len += i; if (s) s += i;

@@ -136,11 +136,11 @@ badmailfrom (like 8BITMIME) is a waste of code space.
 4. Adding messages to the queue (qmail-queue)
 
 Should qmail-queue try to make sure enough disk space is free in
-advance? When qmail-queue is invoked by qmail-alias or (with ESMTP)
+advance? When qmail-queue is invoked by qmail-local or (with ESMTP)
 qmail-smtpd or qmail-qmtpd, it could be told a size in advance. I wish
 UNIX had an atomic allocate-disk-space routine... 
 
-The qqtalk interface (reflecting the qmail-queue interface, which in
+The qmail.h interface (reflecting the qmail-queue interface, which in
 turn reflects the current queue file structure) is constitutionally
 incapable of handling an address that contains a 0 byte. I can't imagine
 that this will be a problem.
@@ -251,9 +251,6 @@ job_open() or pass_dochan() could be paranoid about the same id,channel
 already being open; but, since messdone() is so paranoid, the worst
 possible effect of a bug along these lines would be double delivery.
 
-RDM suggests being able to rewrite entire addresses. This should happen
-before any other rewrites; control/recipientmap, perhaps.
-
 Mathematical amusement: The optimal retry schedule is essentially,
 though not exactly, independent of the actual distribution of message
 delay times. What really matters is how much cost you assign to retries
@@ -314,9 +311,9 @@ RFC 821 doesn't say what it means by ``text.'' qmail-remote assumes that
 the server's reply text doesn't contain bare LFs.
 
 
-7. Delivering mail locally (qmail-lspawn, qmail-alias)
+7. Delivering mail locally (qmail-lspawn, qmail-local)
 
-qmail-alias doesn't support comsat. comsat is a pointless abomination.
+qmail-local doesn't support comsat. comsat is a pointless abomination.
 Use qbiff if you want that kind of notification.
 
 The getpwnam() interface hides I/O errors. Solution: qmail-pw2u.
@@ -406,8 +403,8 @@ sendmail-clone and qsmhook are too bletcherous to be documented. (The
 official replacement for qsmhook is preline, together with the
 qmail-command environment variables.)
 
-I've considered making qmail-setup atomic, but this is very difficult to
-do right, and pointless if it isn't done right.
+I've considered making install atomic, but this is very difficult to do
+right, and pointless if it isn't done right.
 
 RN suggests automatically putting together a reasonable set of lines for
 /etc/passwd. I perceive this as getting into the adduser business, which

@@ -8,13 +8,14 @@
 #include "constmap.h"
 #include "stralloc.h"
 #include "fmt.h"
+#include "str.h"
 #include "scan.h"
 #include "open.h"
 #include "error.h"
-#include "getline.h"
-#include "conf-unusual.h"
-#include "conf-home.h"
-#include "conf-user.h"
+#include "getln.h"
+#include "auto_break.h"
+#include "auto_qmail.h"
+#include "auto_usera.h"
 
 void die_chdir()
 {
@@ -44,7 +45,7 @@ void die_control()
 void die_alias()
 {
   substdio_puts(subfderr,"qmail-pw2u: fatal: unable to find ");
-  substdio_puts(subfderr,CONF_USERA);
+  substdio_puts(subfderr,auto_usera);
   substdio_puts(subfderr," user\n");
   substdio_flush(subfderr);
   _exit(111);
@@ -68,7 +69,6 @@ void die_user(s,len) char *s; unsigned int len;
 
 int flagalias = 0;
 int flagnoupper = 1;
-char breakchar = USEREXT_BREAK;
 int homestrategy = 2;
 /* 2: skip if home does not exist; skip if home is not owned by user */
 /* 1: stop if home does not exist; skip if home is not owned by user */
@@ -151,7 +151,7 @@ void doaccount()
   if (!stralloc_catb(&allusers,uugh.s,uugh.len)) die_nomem();
   if (!stralloc_0(&allusers)) die_nomem();
 
-  if (!str_diff(user.s,CONF_USERA)) {
+  if (str_equal(user.s,auto_usera)) {
     if (substdio_puts(subfdout,"+") == -1) die_write();
     if (substdio_put(subfdout,uugh.s,uugh.len) == -1) die_write();
     if (substdio_puts(subfdout,"-::\n") == -1) die_write();
@@ -175,10 +175,10 @@ void doaccount()
     if (substdio_put(subfdout,uugh.s,uugh.len) == -1) die_write();
     if (substdio_puts(subfdout,"::\n") == -1) die_write();
   
-    if (breakchar) {
+    if (*auto_break) {
       if (substdio_puts(subfdout,"+") == -1) die_write();
       if (substdio_put(subfdout,mailnames,i) == -1) die_write();
-      if (substdio_put(subfdout,&breakchar,1) == -1) die_write();
+      if (substdio_put(subfdout,auto_break,1) == -1) die_write();
       if (substdio_put(subfdout,uugh.s,uugh.len) == -1) die_write();
       if (substdio_puts(subfdout,"-::\n") == -1) die_write();
     }
@@ -210,10 +210,10 @@ void dosubuser()
   if (substdio_put(subfdout,x,i) == -1) die_write();
   if (substdio_puts(subfdout,":\n") == -1) die_write();
 
-  if (breakchar) {
+  if (*auto_break) {
     if (substdio_puts(subfdout,"+") == -1) die_write();
     if (substdio_put(subfdout,sub.s,sub.len) == -1) die_write();
-    if (substdio_put(subfdout,&breakchar,1) == -1) die_write();
+    if (substdio_put(subfdout,auto_break,1) == -1) die_write();
     if (substdio_puts(subfdout,uugh) == -1) die_write();
     if (substdio_puts(subfdout,"-:") == -1) die_write();
     if (substdio_put(subfdout,x,i) == -1) die_write();
@@ -239,14 +239,14 @@ char **argv;
       case 'H': homestrategy = 0; break;
       case 'u': flagnoupper = 0; break;
       case 'U': flagnoupper = 1; break;
-      case 'c': breakchar = *optarg; break;
-      case 'C': breakchar = 0; break;
+      case 'c': *auto_break = *optarg; break;
+      case 'C': *auto_break = 0; break;
       case '?':
       default:
 	_exit(100);
     }
 
-  if (chdir(CONF_HOME) == -1) die_chdir();
+  if (chdir(auto_qmail) == -1) die_chdir();
 
   /* no need for control_init() */
 
@@ -265,7 +265,7 @@ char **argv;
   if (!stralloc_copys(&allusers,"")) die_nomem();
 
   for (;;) {
-    if (getline2(subfdin,&line,&match,'\n') == -1) die_read();
+    if (getln(subfdin,&line,&match,'\n') == -1) die_read();
     doaccount();
     if (!match) break;
   }
@@ -281,7 +281,7 @@ char **argv;
     if (!constmap_init(&mapuser,allusers.s,allusers.len,1)) die_nomem();
 
     for (;;) {
-      if (getline2(&ss,&line,&match,'\n') == -1) die_read();
+      if (getln(&ss,&line,&match,'\n') == -1) die_read();
       dosubuser();
       if (!match) break;
     }
@@ -296,7 +296,7 @@ char **argv;
   else {
     substdio_fdbuf(&ss,read,fd,ssbuf,sizeof(ssbuf));
     for (;;) {
-      if (getline2(&ss,&line,&match,'\n') == -1) die_read();
+      if (getln(&ss,&line,&match,'\n') == -1) die_read();
       if (substdio_put(subfdout,line.s,line.len) == -1) die_write();
       if (!match) break;
     }

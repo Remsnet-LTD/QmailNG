@@ -3,7 +3,7 @@ Here are some of qmail's features.
 Setup:
 *  automatic adaptation to your UNIX variant---no configuration needed
 *  AIX, BSD/OS, FreeBSD, HP/UX, Irix, Linux, OSF/1, SunOS, Solaris, and more
-*  automatic per-host configuration (qmail-makectl)
+*  automatic per-host configuration (qmail-config)
 *  quick installation---no big list of decisions to make
 
 Security:
@@ -65,7 +65,7 @@ SMTP delivery (qmail-remote):
 *  per-buffer timeouts
 *  passive SMTP queue---perfect for SLIP/PPP (serialmail, available separately)
 
-Forwarding and mailing lists (qmail-alias):
+Forwarding and mailing lists (qmail-local):
 *  address wildcards (.qmail-default, .qmail-foo-default, etc.)
 *  sendmail/smail /etc/aliases compatibility (qmsmac, available separately)
 *  mailing list owners---automatically divert bounces and vacation messages
@@ -73,7 +73,7 @@ Forwarding and mailing lists (qmail-alias):
 *  Delivered-To---automatic loop prevention, even across hosts
 *  automatic subscription management (qlist)
 
-Local delivery (qmail-alias):
+Local delivery (qmail-local):
 *  user-controlled address hierarchy---fred controls fred-anything
 *  mbox delivery
 *  reliable NFS delivery (maildir)

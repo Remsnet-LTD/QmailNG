@@ -1,7 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "readwrite.h"
-#include "signal.h"
+#include "sig.h"
 #include "exit.h"
 #include "open.h"
 #include "seek.h"
@@ -11,10 +11,9 @@
 #include "datetime.h"
 #include "now.h"
 #include "triggerpull.h"
-#include "conf-unusual.h"
-#include "conf-home.h"
-#include "auto-uids.h"
-#include "qqx.h"
+#include "extra.h"
+#include "auto_qmail.h"
+#include "auto_uids.h"
 #include "date822fmt.h"
 #include "fmtqfn.h"
 
@@ -56,10 +55,10 @@ void cleanup()
 }
 
 void die(e) int e; { _exit(e); }
-void die_write() { cleanup(); die(QQX_WRITE); }
-void die_read() { cleanup(); die(QQX_READ); }
-void sigalrm() { /* thou shalt not clean up here */ die(QQX_TIMEOUT); }
-void sigbug() { die(QQX_BUG); }
+void die_write() { cleanup(); die(122); }
+void die_read() { cleanup(); die(121); }
+void sigalrm() { /* thou shalt not clean up here */ die(124); }
+void sigbug() { die(101); }
 
 unsigned int receivedlen;
 char *received;
@@ -74,11 +73,11 @@ char *s;
  i = fmt_str(s,"Received: (qmail "); len += i; if (s) s += i;
  i = fmt_ulong(s,mypid); len += i; if (s) s += i;
  i = fmt_str(s," invoked "); len += i; if (s) s += i;
- if (uid == UID_ALIAS)
+ if (uid == auto_uida)
   { i = fmt_str(s,"by alias"); len += i; if (s) s += i; }
- else if (uid == UID_DAEMON)
+ else if (uid == auto_uidd)
   { i = fmt_str(s,"from network"); len += i; if (s) s += i; }
- else if (uid == UID_SEND)
+ else if (uid == auto_uids)
   { i = fmt_str(s,"for bounce"); len += i; if (s) s += i; }
  else
   {
@@ -94,7 +93,7 @@ void received_setup()
 {
  receivedlen = receivedfmt((char *) 0);
  received = alloc(receivedlen + 1);
- if (!received) die(QQX_NOMEM);
+ if (!received) die(123);
  receivedfmt(received);
 }
 
@@ -124,7 +123,7 @@ int flagsplit;
  char *s;
 
  s = alloc(fmtqfn((char *) 0,dirslash,messnum,flagsplit));
- if (!s) die(QQX_NOMEM);
+ if (!s) die(123);
  fmtqfn(s,dirslash,messnum,flagsplit);
  return s;
 }
@@ -137,17 +136,17 @@ void pidopen()
  seq = 1;
  len = pidfmt((char *) 0,seq);
  pidfn = alloc(len);
- if (!pidfn) die(QQX_NOMEM);
+ if (!pidfn) die(123);
 
  for (seq = 1;seq < 10;++seq)
   {
-   if (pidfmt((char *) 0,seq) > len) die(QQX_BUG); /* paranoia */
+   if (pidfmt((char *) 0,seq) > len) die(101); /* paranoia */
    pidfmt(pidfn,seq);
    messfd = open_excl(pidfn);
    if (messfd != -1) return;
   }
 
- die(QQX_PIDUSED);
+ die(103);
 }
 
 char tmp[FMT_ULONG];
@@ -157,10 +156,10 @@ void main()
  unsigned int len;
  char ch;
 
- signal_blocknone();
+ sig_blocknone();
  umask(033);
- if (chdir(CONF_HOME) == -1) die(QQX_CHDIR);
- if (chdir("queue") == -1) die(QQX_CHDIR);
+ if (chdir(auto_qmail) == -1) die(102);
+ if (chdir("queue") == -1) die(102);
 
  mypid = getpid();
  uid = getuid();
@@ -169,23 +168,23 @@ void main()
 
  received_setup();
 
- signal_init();
- signal_ignoremisc();
- signal_catchalarm(sigalrm);
- signal_catchbug(sigbug);
+ sig_pipeignore();
+ sig_miscignore();
+ sig_alarmcatch(sigalrm);
+ sig_bugcatch(sigbug);
 
  alarm(DEATH);
 
  pidopen();
- if (fstat(messfd,&pidst) == -1) die(QQX_STAT);
+ if (fstat(messfd,&pidst) == -1) die(104);
 
  messnum = pidst.st_ino;
  messfn = fnnum("mess/",1);
  todofn = fnnum("todo/",0);
  intdfn = fnnum("intd/",0);
 
- if (link(pidfn,messfn) == -1) die(QQX_LINK1);
- if (unlink(pidfn) == -1) die(QQX_LINK1);
+ if (link(pidfn,messfn) == -1) die(105);
+ if (unlink(pidfn) == -1) die(105);
  flagmademess = 1;
 
  substdio_fdbuf(&ssout,write,messfd,outbuf,sizeof(outbuf));
@@ -203,7 +202,7 @@ void main()
  if (fsync(messfd) == -1) die_write();
 
  intdfd = open_excl(intdfn);
- if (intdfd == -1) die(QQX_TODO);
+ if (intdfd == -1) die(108);
  flagmadeintd = 1;
 
  substdio_fdbuf(&ssout,write,intdfd,outbuf,sizeof(outbuf));
@@ -218,7 +217,7 @@ void main()
  if (substdio_bput(&ssout,"",1) == -1) die_write();
 
  if (substdio_get(&ssin,&ch,1) < 1) die_read();
- if (ch != 'F') die(QQX_USAGE);
+ if (ch != 'F') die(112);
  if (substdio_bput(&ssout,&ch,1) == -1) die_write();
  for (len = 0;len < ADDR;++len)
   {
@@ -226,7 +225,7 @@ void main()
    if (substdio_put(&ssout,&ch,1) == -1) die_write();
    if (!ch) break;
   }
- if (len >= ADDR) die(QQX_TOOLONG);
+ if (len >= ADDR) die(115);
 
  if (substdio_bput(&ssout,QUEUE_EXTRA,QUEUE_EXTRALEN) == -1) die_write();
 
@@ -234,7 +233,7 @@ void main()
   {
    if (substdio_get(&ssin,&ch,1) < 1) die_read();
    if (!ch) break;
-   if (ch != 'T') die(QQX_USAGE);
+   if (ch != 'T') die(112);
    if (substdio_bput(&ssout,&ch,1) == -1) die_write();
    for (len = 0;len < ADDR;++len)
     {
@@ -242,13 +241,13 @@ void main()
      if (substdio_bput(&ssout,&ch,1) == -1) die_write();
      if (!ch) break;
     }
-   if (len >= ADDR) die(QQX_TOOLONG);
+   if (len >= ADDR) die(115);
   }
 
  if (substdio_flush(&ssout) == -1) die_write();
  if (fsync(intdfd) == -1) die_write();
 
- if (link(intdfn,todofn) == -1) die(QQX_LINK2);
+ if (link(intdfn,todofn) == -1) die(106);
 
  triggerpull();
  die(0);

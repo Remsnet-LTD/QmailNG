@@ -32,7 +32,7 @@ char **argv;
   int wstat;
   int pid;
 
-  signal_init();
+  sig_pipeignore();
 
   if (!argv[1]) {
     substdio_putsflush(subfderr,"predate: usage: predate child\n");
@@ -54,7 +54,7 @@ char **argv;
         substdio_putsflush(subfderr,"predate: fatal: unable to set up fds\n");
         _exit(111);
       }
-      signal_uninit();
+      sig_pipedefault();
       execvp(argv[1],argv + 1);
       substdio_putsflush(subfderr,"predate: fatal: unable to exec\n");
       _exit(111);

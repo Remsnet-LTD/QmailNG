@@ -5,7 +5,5 @@ allow concurrency over 255
 handle IPv6
 turn qmail-upq into a more serious queue-moving utility
 expand strerr coverage
-handle dgux port, tnx HWM; better, put in auto-ranlib detection
-handle unixware port, tnx JD
-clean up maildir scanning to skip all dot files
 rewrite everything from scratch
+maybe allow root to clear tcpto on the fly

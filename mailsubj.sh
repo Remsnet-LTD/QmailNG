@@ -4,4 +4,4 @@ shift
   echo To: ${1+"$@"}
   echo ''
   cat
-) | HOME/bin/qmail-inject
+) | QMAIL/bin/qmail-inject

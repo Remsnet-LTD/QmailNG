@@ -6,6 +6,6 @@
 
 void foo()
 {
- struct sockaddr sa;
- sa.sa_len = 0;
+  struct sockaddr sa;
+  sa.sa_len = 0;
 }

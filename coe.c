@@ -4,5 +4,5 @@
 int coe(fd)
 int fd;
 {
- return fcntl(fd,F_SETFD,1);
+  return fcntl(fd,F_SETFD,1);
 }

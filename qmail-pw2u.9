@@ -43,7 +43,7 @@ are ignored by
 If you put the output of
 .B qmail-pw2u
 into
-.BR /var/qmail/users/assign ,
+.BR QMAILHOME/users/assign ,
 and then run
 .BR qmail-newu ,
 .B qmail-lspawn
@@ -86,13 +86,13 @@ control over the basic
 .I user
 address and
 all addresses of the form
-.IR user\fBCONF-BREAK\fIanything .
+.IR user\fBBREAK\fIanything .
 A catch-all user,
 .BR alias ,
 controls all other addresses.
 
 You may change these rules by setting up files in
-.BR /var/qmail/users :
+.BR QMAILHOME/users :
 .TP
 .B include
 Allowed users, one per line.
@@ -127,7 +127,7 @@ Each line has the form
 The addresses
 .I mailname1
 and
-.I mailname1\fBCONF-BREAK\fIext
+.I mailname1\fBBREAK\fIext
 and
 .I mailname2
 and so on will be delivered
@@ -138,7 +138,7 @@ to
 The addresses
 .I user
 and
-.I user\fBCONF-BREAK\fIext
+.I user\fBBREAK\fIext
 will not be delivered to
 .I user
 unless
@@ -166,7 +166,7 @@ where
 is
 .IR user 's
 home directory;
-.I sub\fBCONF-BREAK\fIext
+.I sub\fBBREAK\fIext
 will be handled by
 .IR home\fB/.qmail-\fIpre\fB-\fIext .
 .TP
@@ -224,7 +224,7 @@ Use
 .I char
 as the user-extension delimiter
 in place of
-.BR CONF-BREAK .
+.BR BREAK .
 .TP
 .B \-C
 Disable the user-extension mechanism.

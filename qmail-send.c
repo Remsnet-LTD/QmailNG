@@ -1,7 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "readwrite.h"
-#include "signal.h"
+#include "sig.h"
 #include "direntry.h"
 #include "control.h"
 #include "select.h"
@@ -11,7 +11,7 @@
 #include "lock.h"
 #include "ndelay.h"
 #include "now.h"
-#include "getline.h"
+#include "getln.h"
 #include "substdio.h"
 #include "alloc.h"
 #include "error.h"
@@ -21,11 +21,11 @@
 #include "fmt.h"
 #include "scan.h"
 #include "case.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "trigger.h"
 #include "newfield.h"
 #include "quote.h"
-#include "qqtalk.h"
+#include "qmail.h"
 #include "qsutil.h"
 #include "prioq.h"
 #include "constmap.h"
@@ -48,6 +48,8 @@ stralloc percenthack = {0};
 struct constmap mappercenthack;
 stralloc locals = {0};
 struct constmap maplocals;
+stralloc redir = {0};
+struct constmap mapredir;
 stralloc vdoms = {0};
 struct constmap mapvdoms;
 stralloc envnoathost = {0};
@@ -118,60 +120,63 @@ stralloc rwline = {0};
 int rewrite(recip)
 char *recip;
 {
- int i;
- char *prepend;
- static stralloc domain = {0};
- static stralloc box = {0};
+  int i;
+  int j;
+  char *x;
+  static stralloc addr = {0};
+  static stralloc domain = {0};
 
- if (!stralloc_copys(&rwline,"T")) return 0;
- i = str_rchr(recip,'@');
- if (recip[i])
-  {
-   recip[i] = 0;
-   if (!stralloc_copys(&domain,recip + i + 1)) return 0;
-  }
- else
-  {
-   if (!stralloc_copy(&domain,&envnoathost)) return 0;
-  }
- if (!stralloc_copys(&box,recip)) return 0;
+  if (!stralloc_copys(&rwline,"T")) return 0;
+  if (!stralloc_copys(&addr,recip)) return 0;
 
- while (constmap(&mappercenthack,domain.s,domain.len))
-  {
-   i = byte_rchr(box.s,box.len,'%');
-   if (i >= box.len) break;
-   if (!stralloc_copyb(&domain,box.s + i + 1,box.len - i - 1)) return 0;
-   box.len = i;
+  i = byte_rchr(addr.s,addr.len,'@');
+  if (i == addr.len) {
+    if (!stralloc_cats(&addr,"@")) return 0;
+    if (!stralloc_cat(&addr,&envnoathost)) return 0;
   }
 
- if (constmap(&maplocals,domain.s,domain.len))
-  {
-   if (!stralloc_cat(&rwline,&box)) return 0;
-   if (!stralloc_cats(&rwline,"@")) return 0;
-   if (!stralloc_cat(&rwline,&domain)) return 0;
-   if (!stralloc_0(&rwline)) return 0;
-   return 1;
+  while (constmap(&mappercenthack,addr.s + i + 1,addr.len - i - 1)) {
+    j = byte_rchr(addr.s,i,'%');
+    if (j == i) break;
+    addr.len = i;
+    i = j;
+    addr.s[i] = '@';
   }
 
- for (i = 0;i <= domain.len;++i)
-   if ((i == 0) || (i == domain.len) || (domain.s[i] == '.'))
-     if (prepend = constmap(&mapvdoms,domain.s + i,domain.len - i))
-      {
-       if (!*prepend) break;
-       if (!stralloc_cats(&rwline,prepend)) return 0;
-       if (!stralloc_cats(&rwline,"-")) return 0;
-       if (!stralloc_cat(&rwline,&box)) return 0;
-       if (!stralloc_cats(&rwline,"@")) return 0;
-       if (!stralloc_cat(&rwline,&domain)) return 0;
-       if (!stralloc_0(&rwline)) return 0;
-       return 1;
+  if (x = constmap(&mapredir,addr.s,addr.len))
+    if (x[str_chr(x,'@')])
+      if (!stralloc_copys(&addr,x)) return 0;
+
+  i = byte_rchr(addr.s,addr.len,'@');
+  if (!stralloc_copyb(&domain,addr.s + i + 1,addr.len - i - 1)) return 0;
+  addr.len = i;
+
+  if (constmap(&maplocals,domain.s,domain.len)) {
+    if (!stralloc_cat(&rwline,&addr)) return 0;
+    if (!stralloc_cats(&rwline,"@")) return 0;
+    if (!stralloc_cat(&rwline,&domain)) return 0;
+    if (!stralloc_0(&rwline)) return 0;
+    return 1;
+  }
+
+  for (i = 0;i <= domain.len;++i)
+    if ((i == 0) || (i == domain.len) || (domain.s[i] == '.'))
+      if (x = constmap(&mapvdoms,domain.s + i,domain.len - i)) {
+        if (!*x) break;
+        if (!stralloc_cats(&rwline,x)) return 0;
+        if (!stralloc_cats(&rwline,"-")) return 0;
+        if (!stralloc_cat(&rwline,&addr)) return 0;
+        if (!stralloc_cats(&rwline,"@")) return 0;
+        if (!stralloc_cat(&rwline,&domain)) return 0;
+        if (!stralloc_0(&rwline)) return 0;
+        return 1;
       }
-
- if (!stralloc_cat(&rwline,&box)) return 0;
- if (!stralloc_cats(&rwline,"@")) return 0;
- if (!stralloc_cat(&rwline,&domain)) return 0;
- if (!stralloc_0(&rwline)) return 0;
- return 2;
+ 
+  if (!stralloc_cat(&rwline,&addr)) return 0;
+  if (!stralloc_cats(&rwline,"@")) return 0;
+  if (!stralloc_cat(&rwline,&domain)) return 0;
+  if (!stralloc_0(&rwline)) return 0;
+  return 2;
 }
 
 void senderadd(sa,sender,recip)
@@ -185,7 +190,7 @@ char *recip;
 
  i = str_len(sender);
  if (i >= 4)
-   if (!str_diff(sender + i - 4,"-@[]"))
+   if (str_equal(sender + i - 4,"-@[]"))
     {
      j = byte_rchr(sender,i - 4,'@');
      k = str_rchr(recip,'@');
@@ -224,7 +229,7 @@ unsigned long id;
  if (fdinfo == -1) return 0;
  if (fstat(fdinfo,&st) == -1) { close(fdinfo); return 0; }
  substdio_fdbuf(&ss,read,fdinfo,buf,sizeof(buf));
- if (getline2(&ss,&line,&match,'\0') == -1) { close(fdinfo); return 0; }
+ if (getln(&ss,&line,&match,'\0') == -1) { close(fdinfo); return 0; }
  close(fdinfo);
  if (!match) return 0;
  if (line.s[0] != 'F') return 0;
@@ -249,7 +254,7 @@ void comm_init()
  substdio_fdbuf(&sstoqc,write,5,sstoqcbuf,sizeof(sstoqcbuf));
  substdio_fdbuf(&ssfromqc,read,6,ssfromqcbuf,sizeof(ssfromqcbuf));
  for (c = 0;c < CHANNELS;++c)
-   if (ndelay(chanfdout[c]) == -1)
+   if (ndelay_on(chanfdout[c]) == -1)
    /* this is so stupid: NDELAY semantics should be default on write */
      spawndied(c); /* drastic, but better than risking deadlock */
 }
@@ -660,7 +665,7 @@ char *report;
 int injectbounce(id)
 unsigned long id;
 {
- struct qqtalk qqt;
+ struct qmail qqt;
  struct stat st;
  char *bouncesender;
  char *bouncerecip;
@@ -678,7 +683,7 @@ unsigned long id;
 
  /* owner-@host-@[] -> owner-@host */
  if (sender.len >= 5)
-   if (!str_diff(sender.s + sender.len - 5,"-@[]"))
+   if (str_equal(sender.s + sender.len - 5,"-@[]"))
     {
      sender.len -= 4;
      sender.s[sender.len - 1] = 0;
@@ -693,33 +698,33 @@ unsigned long id;
    log3("warning: unable to stat ",fn2.s,"\n");
    return 0;
   }
- if (!str_diff(sender.s,"#@[]"))
+ if (str_equal(sender.s,"#@[]"))
    log3("triple bounce: discarding ",fn2.s,"\n");
  else
   {
-   if (qqtalk_open(&qqt,1) == -1)
+   if (qmail_open(&qqt) == -1)
     { log1("warning: unable to start qmail-queue, will try later\n"); return 0; }
-   qp = qqtalk_qp(&qqt);
+   qp = qmail_qp(&qqt);
 
    if (*sender.s) { bouncesender = ""; bouncerecip = sender.s; }
    else { bouncesender = "#@[]"; bouncerecip = doublebounceto.s; }
 
    while (!newfield_datemake(now())) nomem();
-   qqtalk_put(&qqt,newfield_date.s,newfield_date.len);
-   qqtalk_puts(&qqt,"From: ");
+   qmail_put(&qqt,newfield_date.s,newfield_date.len);
+   qmail_puts(&qqt,"From: ");
    while (!quote(&quoted,&bouncefrom)) nomem();
-   qqtalk_put(&qqt,quoted.s,quoted.len);
-   qqtalk_puts(&qqt,"@");
-   qqtalk_put(&qqt,bouncehost.s,bouncehost.len);
-   qqtalk_puts(&qqt,"\nTo: ");
+   qmail_put(&qqt,quoted.s,quoted.len);
+   qmail_puts(&qqt,"@");
+   qmail_put(&qqt,bouncehost.s,bouncehost.len);
+   qmail_puts(&qqt,"\nTo: ");
    while (!quote2(&quoted,bouncerecip)) nomem();
-   qqtalk_put(&qqt,quoted.s,quoted.len);
-   qqtalk_puts(&qqt,"\n\
+   qmail_put(&qqt,quoted.s,quoted.len);
+   qmail_puts(&qqt,"\n\
 Subject: failure notice\n\
 \n\
 Hi. This is the qmail-send program at ");
-   qqtalk_put(&qqt,bouncehost.s,bouncehost.len);
-   qqtalk_puts(&qqt,*sender.s ? ".\n\
+   qmail_put(&qqt,bouncehost.s,bouncehost.len);
+   qmail_puts(&qqt,*sender.s ? ".\n\
 I'm afraid I wasn't able to deliver your message to the following addresses.\n\
 This is a permanent error; I've given up. Sorry it didn't work out.\n\
 \n\
@@ -730,39 +735,39 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
 
    fd = open_read(fn2.s);
    if (fd == -1)
-     qqtalk_fail(&qqt);
+     qmail_fail(&qqt);
    else
     {
      substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
      while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
-       qqtalk_put(&qqt,buf,r);
+       qmail_put(&qqt,buf,r);
      close(fd);
      if (r == -1)
-       qqtalk_fail(&qqt);
+       qmail_fail(&qqt);
     }
 
-   qqtalk_puts(&qqt,*sender.s ? "--- Below this line is a copy of the message.\n\n" : "--- Below this line is the original bounce.\n\n");
-   qqtalk_puts(&qqt,"Return-Path: <");
+   qmail_puts(&qqt,*sender.s ? "--- Below this line is a copy of the message.\n\n" : "--- Below this line is the original bounce.\n\n");
+   qmail_puts(&qqt,"Return-Path: <");
    while (!quote2(&quoted,sender.s)) nomem();
-   qqtalk_put(&qqt,quoted.s,quoted.len);
-   qqtalk_puts(&qqt,">\n");
+   qmail_put(&qqt,quoted.s,quoted.len);
+   qmail_puts(&qqt,">\n");
 
    fd = open_read(fn.s);
    if (fd == -1)
-     qqtalk_fail(&qqt);
+     qmail_fail(&qqt);
    else
     {
      substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
      while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
-       qqtalk_put(&qqt,buf,r);
+       qmail_put(&qqt,buf,r);
      close(fd);
      if (r == -1)
-       qqtalk_fail(&qqt);
+       qmail_fail(&qqt);
     }
 
-   qqtalk_from(&qqt,bouncesender);
-   qqtalk_to(&qqt,bouncerecip);
-   if (qqtalk_close(&qqt))
+   qmail_from(&qqt,bouncesender);
+   qmail_to(&qqt,bouncerecip);
+   if (qmail_close(&qqt))
     { log1("warning: trouble injecting bounce message, will try later\n"); return 0; }
 
    strnum2[fmt_ulong(strnum2,id)] = 0;
@@ -1106,7 +1111,7 @@ int c;
 
  if (!del_avail(c)) return;
 
- if (getline2(&pass[c].ss,&line,&match,'\0') == -1)
+ if (getln(&pass[c].ss,&line,&match,'\0') == -1)
   {
    fnmake_chanaddr(pass[c].id,c);
    log3("warning: trouble reading ",fn.s,"; will try again later\n");
@@ -1308,8 +1313,8 @@ fd_set *rfds;
    tododir = 0;
    return;
   }
- if (!str_diff(d->d_name,".")) return;
- if (!str_diff(d->d_name,"..")) return;
+ if (str_equal(d->d_name,".")) return;
+ if (str_equal(d->d_name,"..")) return;
  len = scan_ulong(d->d_name,&id);
  if (!len || d->d_name[len]) return;
 
@@ -1351,7 +1356,7 @@ fd_set *rfds;
 
  for (;;)
   {
-   if (getline2(&ss,&todoline,&match,'\0') == -1)
+   if (getln(&ss,&todoline,&match,'\0') == -1)
     {
      /* perhaps we're out of memory, perhaps an I/O error */
      fnmake_todo(id);
@@ -1482,6 +1487,12 @@ int getcontrols() { if (control_init() == -1) return 0;
    case 0: if (!constmap_init(&mappercenthack,"",0,0)) return 0; break;
    case 1: if (!constmap_init(&mappercenthack,percenthack.s,percenthack.len,0)) return 0; break;
   }
+ switch(control_readfile(&redir,"control/recipientmap",0))
+  {
+   case -1: return 0;
+   case 0: if (!constmap_init(&mapredir,"",0,1)) return 0; break;
+   case 1: if (!constmap_init(&mapredir,redir.s,redir.len,1)) return 0; break;
+  }
  switch(control_readfile(&vdoms,"control/virtualdomains",0))
   {
    case -1: return 0;
@@ -1520,7 +1531,7 @@ void regetcontrols()
 
 void reread()
 {
- if (chdir(CONF_HOME) == -1)
+ if (chdir(auto_qmail) == -1)
   {
    log1("alert: unable to reread controls: unable to switch to home directory\n");
    return;
@@ -1543,17 +1554,17 @@ void main()
  struct timeval tv;
  int c;
 
- if (chdir(CONF_HOME) == -1)
+ if (chdir(auto_qmail) == -1)
   { log1("alert: cannot start: unable to switch to home directory\n"); _exit(111); }
  if (!getcontrols())
   { log1("alert: cannot start: unable to read controls\n"); _exit(111); }
  if (chdir("queue") == -1)
   { log1("alert: cannot start: unable to switch to queue directory\n"); _exit(111); }
- signal_init();
- signal_catchterm(sigterm);
- signal_catchalarm(sigalrm);
- signal_catchhangup(sighup);
- signal_uncatchchild();
+ sig_pipeignore();
+ sig_termcatch(sigterm);
+ sig_alarmcatch(sigalrm);
+ sig_hangupcatch(sighup);
+ sig_childdefault();
  umask(077);
 
  fd = open_write("lock/sendmutex");

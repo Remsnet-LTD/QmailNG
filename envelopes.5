@@ -178,7 +178,7 @@ command.
 When a message is delivered by
 .B qmail
 to a single local recipient,
-.B qmail-alias
+.B qmail-local
 records the recipient in
 .B Delivered-To
 and the envelope sender in
@@ -222,10 +222,10 @@ as a UUCP-style
 Note that this line is less reliable than the
 .B Return-Path
 line added by
-.B qmail-alias
+.B qmail-local
 or
 .B sendmail\fP.
 .SH "SEE ALSO"
 qmail-header(5),
-qmail-alias(8),
+qmail-local(8),
 qmail-inject(8)

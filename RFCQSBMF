@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                 10 November 1996
-
-
-		The qmail-send Bounce Message Format (QSBMF)
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+The qmail-send Bounce Message Format (QSBMF)
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -51,14 +40,6 @@ Status of this memo
       Just checking.
 
    This document defines qmail-send's format for bounce messages.
-
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN         The qmail-send Bounce Message Format      November 1996
-
 
    In this document, a string of 8-bit bytes may be written in two
    different forms: as a series of hexadecimal numbers between angle
@@ -110,14 +91,6 @@ XXX NNNN         The qmail-send Bounce Message Format      November 1996
    showing the envelope sender.
 
 
-
-
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN         The qmail-send Bounce Message Format      November 1996
-
-
 3. Comparison with 1892/1894
 
    RFC 1892 and RFC 1894 together describe a format for delivery status
@@ -167,17 +140,6 @@ XXX NNNN         The qmail-send Bounce Message Format      November 1996
    uninteresting information and are difficult to parse visually.
 
 
-
-
-
-
-
-
-Bernstein                                                       [Page 3]
-
-XXX NNNN         The qmail-send Bounce Message Format      November 1996
-
-
 4. Security considerations
 
    Bounce messages may be forged. Never remove someone from a mailing
@@ -191,46 +153,3 @@ XXX NNNN         The qmail-send Bounce Message Format      November 1996
    secret forwarding, use a mailing list, not a forwarder.
 
    See RFC 1894 for further discussion of these points.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 4]
-

@@ -1,26 +1,26 @@
-#include "signal.h"
+#include "sig.h"
 #include "substdio.h"
 #include "stralloc.h"
 #include "subfd.h"
 #include "sgetopt.h"
-#include "getline.h"
+#include "getln.h"
 #include "alloc.h"
 #include "str.h"
 #include "fmt.h"
 #include "hfield.h"
-#include "newfield.h"
 #include "token822.h"
 #include "control.h"
-#include "conf-home.h"
 #include "env.h"
 #include "gen_alloc.h"
 #include "gen_allocdefs.h"
 #include "error.h"
-#include "qqtalk.h"
+#include "qmail.h"
 #include "now.h"
 #include "exit.h"
 #include "quote.h"
 #include "headerbody.h"
+#include "auto_qmail.h"
+#include "newfield.h"
 
 #define LINELEN 80
 
@@ -50,10 +50,10 @@ token822_alloc envs = {0};
 int flagrh;
 
 int flagqueue;
-struct qqtalk qqt;
+struct qmail qqt;
 
 void put(s,len) char *s; int len;
-{ if (flagqueue) qqtalk_put(&qqt,s,len); else substdio_put(subfdout,s,len); }
+{ if (flagqueue) qmail_put(&qqt,s,len); else substdio_put(subfdout,s,len); }
 void puts(s) char *s; { put(s,str_len(s)); }
 
 void perm() { _exit(100); }
@@ -112,38 +112,38 @@ void exitnicely()
    int i;
 
    if (!stralloc_0(&sender)) die_nomem();
-   qqtalk_from(&qqt,sender.s);
+   qmail_from(&qqt,sender.s);
 
    for (i = 0;i < reciplist.len;++i)
     {
      if (!stralloc_0(&reciplist.sa[i])) die_nomem();
-     qqtalk_to(&qqt,reciplist.sa[i].s);
+     qmail_to(&qqt,reciplist.sa[i].s);
     }
    if (flagrh)
      if (flagresent)
        for (i = 0;i < hrrlist.len;++i)
 	{
          if (!stralloc_0(&hrrlist.sa[i])) die_nomem();
-	 qqtalk_to(&qqt,hrrlist.sa[i].s);
+	 qmail_to(&qqt,hrrlist.sa[i].s);
 	}
      else
        for (i = 0;i < hrlist.len;++i)
 	{
          if (!stralloc_0(&hrlist.sa[i])) die_nomem();
-	 qqtalk_to(&qqt,hrlist.sa[i].s);
+	 qmail_to(&qqt,hrlist.sa[i].s);
 	}
 
-   switch(qqtalk_close(&qqt))
+   switch(qmail_close(&qqt))
     {
      case 0: break;
-     case QQT_CRASHED: die_qqsig();
-     case QQT_USAGE: case QQT_BUG: die_bug();
-     case QQT_EXECSOFT: die_exec();
-     case QQT_NOMEM: die_nomem();
-     case QQT_READ: die_comm();
-     case QQT_WRITE: die_qqwrite();
-     case QQT_TOOLONG: die_qqtoolong();
-     case QQT_TIMEOUT: die_qqtimeout();
+     case QMAIL_CRASHED: die_qqsig();
+     case QMAIL_USAGE: case QMAIL_BUG: die_bug();
+     case QMAIL_EXECSOFT: die_exec();
+     case QMAIL_NOMEM: die_nomem();
+     case QMAIL_READ: die_comm();
+     case QMAIL_WRITE: die_qqwrite();
+     case QMAIL_TOOLONG: die_qqtoolong();
+     case QMAIL_TIMEOUT: die_qqtimeout();
      default: die_qq();
     }
   }
@@ -552,7 +552,7 @@ void finishheader()
 
  /* could check at this point whether there are any recipients */
  if (flagqueue)
-   if (qqtalk_open(&qqt,0) == -1) die_qqt();
+   if (qmail_open(&qqt) == -1) die_qqt();
 
  if (flagresent)
   {
@@ -651,7 +651,7 @@ char **argv;
  int opt;
  int recipstrategy;
 
- signal_init();
+ sig_pipeignore();
 
  starttime = now();
 
@@ -688,7 +688,7 @@ char **argv;
  recipstrategy = RECIP_DEFAULT;
  flagqueue = 1;
 
- if (chdir(CONF_HOME) == -1)
+ if (chdir(auto_qmail) == -1)
    die_chdir();
  getcontrols();
 

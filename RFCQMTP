@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                   18 August 1996
-
-
-                Quick Mail Transfer Protocol (QMTP)
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+Quick Mail Transfer Protocol (QMTP)
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -51,14 +40,6 @@ Status of this memo
    the same order as given by the client. The server is not permitted to
    change the order under any circumstances, even if two addresses are
    the same. See section 5 for the format of a response.
-
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN           Quick Mail Transfer Protocol              August 1996
-
 
    The server is not permitted to send any portion of its responses to a
    package until the client has sent the final byte of the package. The
@@ -108,17 +89,6 @@ XXX NNNN           Quick Mail Transfer Protocol              August 1996
    ignore it whether or not it is empty.
 
 
-
-
-
-
-
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN           Quick Mail Transfer Protocol              August 1996
-
-
 4. Packages
 
    A package is the concatenation of three strings:
@@ -153,7 +123,6 @@ XXX NNNN           Quick Mail Transfer Protocol              August 1996
    copy the file.
 
 
-
 5. Responses
 
    Each response is a nonempty string of 8-bit bytes, encoded as a
@@ -167,16 +136,6 @@ XXX NNNN           Quick Mail Transfer Protocol              August 1996
       "Z" Temporary failure. The client should try again later.
 
       "D" Permanent failure.
-
-
-
-
-
-
-Bernstein                                                       [Page 3]
-
-XXX NNNN           Quick Mail Transfer Protocol              August 1996
-
 
    The remaining bytes are a description of what happened. It is
    expected that the description, when interpreted as UTF-2 characters,
@@ -225,19 +184,7 @@ XXX NNNN           Quick Mail Transfer Protocol              August 1996
    TCP connections on port 209.
 
 
-8. Security considerations
-
-   Security issues are not discussed in this memo.
-
-
-
-
-Bernstein                                                       [Page 4]
-
-XXX NNNN           Quick Mail Transfer Protocol              August 1996
-
-
-9. Examples
+8. Examples
 
    A client opens a connection and sends the concatenation of the
    following strings:
@@ -280,16 +227,3 @@ XXX NNNN           Quick Mail Transfer Protocol              August 1996
       "21:Kok 838640135 qp 1391,"
 
    The client closes the connection.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-Bernstein                                                       [Page 5]
-

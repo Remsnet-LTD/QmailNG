@@ -1,8 +1,7 @@
 #ifndef DATETIME_H
 #define DATETIME_H
 
-struct datetime
- {
+struct datetime {
   int hour;
   int min;
   int sec;
@@ -11,8 +10,7 @@ struct datetime
   int yday;
   int mon;
   int year;
- }
-;
+} ;
 
 typedef long datetime_sec;
 

@@ -120,11 +120,11 @@ case "$chip" in
   # let's try to be consistent here. (BSD/OS)
   chip=i486
   ;;
-i486dx)
+i486DX)
   # respect the hyphen hierarchy. (FreeBSD)
   chip=i486-dx
   ;;
-i486.dx2)
+i486.DX2)
   # respect the hyphen hierarchy. (FreeBSD)
   chip=i486-dx2
   ;;

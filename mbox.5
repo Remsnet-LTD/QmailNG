@@ -195,7 +195,7 @@ readers.
 There are many locking mechanisms for
 .I mbox
 files.
-.B qmail-alias
+.B qmail-local
 always uses
 .B flock
 on systems that have it, otherwise
@@ -204,7 +204,7 @@ on systems that have it, otherwise
 The delivery date in a
 .B From_
 line does not specify a time zone.
-.B qmail-alias
+.B qmail-local
 always creates the delivery date in GMT
 so that 
 .I mbox
@@ -219,7 +219,7 @@ the new mail has been read.
 If the atime equals the mtime,
 there is no way to tell whether the file has new mail,
 since
-.B qmail-alias
+.B qmail-local
 takes much less than a second to run.
 One solution is for a mail reader to artificially set the
 atime to the mtime plus 1.
@@ -232,4 +232,4 @@ fields in each message to indicate which messages have been read.
 .SH "SEE ALSO"
 maildir(5),
 qmail-header(5),
-qmail-alias(8)
+qmail-local(8)

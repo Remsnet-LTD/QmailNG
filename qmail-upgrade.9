@@ -9,7 +9,7 @@ to
 .BR qmail .
 .TP 5
 1.
-.B qmail-alias
+.B qmail-local
 sends incoming mail to
 .B ~\fIyou\fB/Mailbox
 by default,
@@ -23,7 +23,7 @@ environment variable so that your mail reader looks for
 is a massive security problem.)
 .TP 5
 2.
-.B qmail-alias
+.B qmail-local
 pays no attention to
 .BR .forward .
 It has a much better mechanism,
@@ -33,7 +33,7 @@ but even your own mailing lists.
 See below for more details.
 .TP 5
 3.
-.B qmail-alias
+.B qmail-local
 pays no attention to
 .BR /etc/aliases .
 Your system administrator
@@ -94,20 +94,9 @@ won't change
 .B postmaster@ftp.cs.berkeley.edu
 in your header to
 .BR postmaster@kohler.cs.berkeley.edu .
-The
-.B sendmail
-documentation claims that 
-.BR qmail-inject 's
-behavior is illegal under RFC 822 and RFC 1123;
-that claim is based on a questionable interpretation
-of an ambiguous phrase in RFC 822.
-Anyway, do you
-want
-to have hostnames
-changed behind your back?
 .TP 5
 7.
-.B qmail-alias
+.B qmail-local
 adds a new field,
 .BR Delivered-To ,
 before every delivery.
@@ -140,9 +129,9 @@ pestering your system administrator.
 Under
 .BR qmail ,
 you are in charge of all addresses of the form
-.B \fIyou\fBCONF-BREAK\fIanything\fR.
+.B \fIyou\fBBREAK\fIanything\fR.
 The delivery of
-.B \fIyou\fBCONF-BREAK\fIanything
+.B \fIyou\fBBREAK\fIanything
 is controlled by
 .B ~\fIyou\fB/.qmail-\fIanything\fR,
 a file in your home directory.
@@ -152,7 +141,7 @@ bug-of-the-month-club mailing list,
 you can put a list of addresses into
 .BR ~\fIyou\fB/.qmail-botmc .
 Any mail to
-.B \fIyou\fBCONF-BREAKbotmc
+.B \fIyou\fBBREAKbotmc
 will be forwarded to all of those addresses.
 Mail directly to
 .B \fIyou\fB
@@ -161,7 +150,7 @@ is controlled by
 You can even set up a catch-all,
 .BR ~\fIyou\fB/.qmail-default ,
 to handle unknown
-.B \fIyou\fBCONF-BREAK
+.B \fIyou\fBBREAK
 addresses.
 
 Your
@@ -175,7 +164,7 @@ or other programs to run.
 see
 .B dot-qmail(5)
 for more details.)
-.B qmail-alias
+.B qmail-local
 automatically
 detects forwarding loops the instant they occur,
 even if they happen indirectly through other hosts.
@@ -187,7 +176,7 @@ file is empty, it refers to
 For example, if you touch
 .BR ~\fIyou\fB/.qmail-direct ,
 mail for
-.B \fIyou\fBCONF-BREAKdirect
+.B \fIyou\fBBREAKdirect
 will act like
 .B \e\fIyou\fB
 did under

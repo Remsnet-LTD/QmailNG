@@ -36,8 +36,8 @@ void flush()
     else {
       stamp_make();
       priority = LOG_INFO;
-      if (!str_diffn(buf,"warning:",8)) priority = LOG_WARNING;
-      if (!str_diffn(buf,"alert:",6)) priority = LOG_ALERT;
+      if (str_start(buf,"warning:")) priority = LOG_WARNING;
+      if (str_start(buf,"alert:")) priority = LOG_ALERT;
       syslog(priority,"%s %s",stamp,buf);
       flagcont = 1;
     }

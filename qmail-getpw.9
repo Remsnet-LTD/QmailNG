@@ -55,6 +55,8 @@ and
 (3) the account owns its home directory.
 .B qmail-getpw
 ignores account names containing uppercase letters.
+.B qmail-getpw
+also assumes that all account names are shorter than 32 characters.
 
 .B qmail-getpw
 gives each user
@@ -62,7 +64,7 @@ control over the basic
 .I user
 address and
 all addresses of the form
-.IR user\fBCONF-BREAK\fIanything .
+.IR user\fBBREAK\fIanything .
 When
 .I local
 is
@@ -74,7 +76,7 @@ are both empty.
 When
 .I local
 is
-.IR user\fBCONF-BREAK\fIanything ,
+.IR user\fBBREAK\fIanything ,
 .I dash
 is a hyphen and
 .I ext

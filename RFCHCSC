@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                   13 August 1996
-
-
-       The Hash Convention For Mail System Status Codes (HCMSSC)
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+The Hash Convention For Mail System Status Codes (HCMSSC)
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -46,14 +35,3 @@ Status of this memo
 3. Security considerations
 
    Don't take drastic action upon seeing "(#"; it might not be HCMSSC.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   EMail:  djb@pobox.com
-
-
-Bernstein                                                       [Page 1]
-

@@ -1,7 +1,8 @@
 #ifndef TIMEOUTREAD_H
 #define TIMEOUTREAD_H
 
-extern void timeoutread_init();
+#define TIMEOUTREAD(s,fd) (((s) << 10) | (fd))
+
 extern int timeoutread();
 
 #endif

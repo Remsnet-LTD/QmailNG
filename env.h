@@ -7,7 +7,7 @@ extern int env_init();
 extern int env_put();
 extern int env_put2();
 extern int env_unset();
-extern char *env_get();
+extern /*@null@*/char *env_get();
 extern char *env_pick();
 extern void env_clear();
 extern char *env_findeq();

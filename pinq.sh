@@ -1,1 +1,1 @@
-HOME/bin/maildir2mbox && exec pine ${1+"$@"}
+QMAIL/bin/maildir2mbox && exec pine ${1+"$@"}

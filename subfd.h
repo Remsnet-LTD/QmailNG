@@ -1,11 +1,13 @@
 #ifndef SUBFD_H
 #define SUBFD_H
 
-extern struct substdio *subfdin;
-extern struct substdio *subfdinsmall;
-extern struct substdio *subfdout;
-extern struct substdio *subfdoutsmall;
-extern struct substdio *subfderr;
+#include "substdio.h"
+
+extern substdio *subfdin;
+extern substdio *subfdinsmall;
+extern substdio *subfdout;
+extern substdio *subfdoutsmall;
+extern substdio *subfderr;
 
 extern int subfd_read();
 extern int subfd_readsmall();

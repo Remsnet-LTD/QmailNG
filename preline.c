@@ -7,7 +7,7 @@
 #include "fork.h"
 #include "wait.h"
 #include "env.h"
-#include "signal.h"
+#include "sig.h"
 #include "error.h"
 
 void die(e,s) int e; char *s; { substdio_putsflush(subfderr,s); _exit(e); }
@@ -34,7 +34,7 @@ char **argv;
  int pid;
  int wstat;
 
- signal_init();
+ sig_pipeignore();
 
  if (!(ufline = env_get("UFLINE"))) die_usage();
  if (!(rpline = env_get("RPLINE"))) die_usage();
@@ -65,7 +65,7 @@ char **argv;
    case 0:
      close(pi[1]);
      if (fd_move(0,pi[0])) die_temp();
-     signal_uninit();
+     sig_pipedefault();
      execvp(*argv,argv);
      if (error_temp(errno)) die_temp();
      die_badcmd();

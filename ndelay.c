@@ -2,10 +2,8 @@
 #include <fcntl.h>
 #include "ndelay.h"
 
-int ndelay(fd)
+int ndelay_on(fd)
 int fd;
 {
- int flags;
- flags = fcntl(fd,F_GETFL,0);
- return fcntl(fd,F_SETFL,flags | O_NDELAY);
+  return fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0) | O_NDELAY);
 }

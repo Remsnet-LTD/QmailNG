@@ -2,7 +2,7 @@
 
 #include "substdio.h"
 #include "subfd.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "fmt.h"
 #include "ip.h"
 #include "lock.h"
@@ -43,7 +43,7 @@ void main()
  datetime_sec when;
  datetime_sec start;
 
- if (chdir(CONF_HOME) == -1) die_chdir();
+ if (chdir(auto_qmail) == -1) die_chdir();
  if (chdir("queue/lock") == -1) die_chdir();
 
  fdlock = open_write("tcpto");

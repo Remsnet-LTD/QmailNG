@@ -3,5 +3,5 @@
 #include "subfd.h"
 
 char subfd_outbufsmall[256];
-static struct substdio outsmall = SUBSTDIO_FDBUF(write,1,subfd_outbufsmall,256);
-struct substdio *subfdoutsmall = &outsmall;
+static substdio it = SUBSTDIO_FDBUF(write,1,subfd_outbufsmall,256);
+substdio *subfdoutsmall = &it;

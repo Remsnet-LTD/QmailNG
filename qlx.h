@@ -1,7 +1,7 @@
 #ifndef QLX_H
 #define QLX_H
 
-/* 0, 111, 100 are qmail-alias success, soft, hard */
+/* 0, 111, 100 are qmail-local success, soft, hard */
 
 #define QLX_USAGE 112
 #define QLX_BUG 101

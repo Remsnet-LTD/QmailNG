@@ -9,7 +9,7 @@ void triggerpull()
  fd = open_write("lock/trigger");
  if (fd >= 0)
   {
-   ndelay(fd);
+   ndelay_on(fd);
    write(fd,"",1); /* if it fails, bummer */
    close(fd);
   }

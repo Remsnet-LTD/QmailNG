@@ -1,8 +1,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "fd.h"
-#include "signal.h"
-#include "getline.h"
+#include "sig.h"
+#include "getln.h"
 #include "stralloc.h"
 #include "substdio.h"
 #include "subfd.h"
@@ -92,7 +92,7 @@ char *pass;
      die_fork();
    case 0:
      close(pi[1]);
-     signal_uninit();
+     sig_pipedefault();
      execvp(*childargs,childargs);
      _exit(1);
   }
@@ -196,8 +196,8 @@ char **argv;
  static stralloc cmd = {0};
  int match;
 
- signal_catchalarm(die);
- signal_init();
+ sig_alarmcatch(die);
+ sig_pipeignore();
 
  hostname = argv[1];
  if (!hostname) die_usage();
@@ -208,7 +208,7 @@ char **argv;
 
  for (;;)
   {
-   if (getline2(&ssin,&cmd,&match,'\n') == -1) die();
+   if (getln(&ssin,&cmd,&match,'\n') == -1) die();
    if (!match) die();
    if (cmd.len == 0) die();
    if (cmd.s[--cmd.len] != '\n') die();

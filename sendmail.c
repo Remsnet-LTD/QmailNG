@@ -2,7 +2,7 @@
 #include "substdio.h"
 #include "subfd.h"
 #include "alloc.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "exit.h"
 #include "env.h"
 #include "str.h"
@@ -25,7 +25,7 @@ char **argv;
  char **arg;
  int i;
 
- if (chdir(CONF_HOME) == -1)
+ if (chdir(auto_qmail) == -1)
   {
    substdio_putsflush(subfderr,"sendmail: fatal: unable to switch to qmail home directory\n");
    _exit(111);
@@ -64,13 +64,13 @@ char **argv;
  argc -= optind;
  argv += optind;
 
- if (!str_diff(optprogname,"mailq"))
+ if (str_equal(optprogname,"mailq"))
   {
    substdio_putsflush(subfderr,"sendmail: fatal: please use qmail-qread instead\n");
    _exit(100);
   }
 
- if (!str_diff(optprogname,"newaliases"))
+ if (str_equal(optprogname,"newaliases"))
   {
    substdio_putsflush(subfderr,"sendmail: fatal: please use the qmsmac newaliases instead\n");
    _exit(100);

@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                    5 August 1996
-
-
-                  Tools in the War on Mail Loops
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+Tools in the war on mail loops
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -52,12 +41,6 @@ Status of this memo
    Beware that the war on mail loops can never be won: any method of
    preventing mail loops can be subverted by other hosts. I welcome
    further development of techniques that work well in practice.
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
 
 
 2. Basics
@@ -113,12 +96,6 @@ XXX NNNN          Tools in the War on Mail Loops             August 1996
    double-bouncer. Relays, bouncers, and double-bouncers are examples of
    pre-delivery automailers.
 
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
-
-
    A pre-delivery automailer produces at most one output.
 
    The basic weapon against pre-delivery mail loops is gravity. A normal
@@ -171,13 +148,6 @@ XXX NNNN          Tools in the War on Mail Loops             August 1996
       touched by R, T is touched by R, and T accepts mail from the
       network, then T is closer to U@R than H is.
 
-
-
-Bernstein                                                       [Page 3]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
-
-
       Fact 3: If R is not an alias, R has an MX record with domain X and
       preference p, H is not touched by any of the domains in the MX
       list for R with preference <= p, T is touched by X, and T accepts
@@ -229,13 +199,6 @@ XXX NNNN          Tools in the War on Mail Loops             August 1996
    postmaster of permanent failures to deliver bounce messages. Such
    failures are generally caused by poorly configured hosts that produce
    normal messages with faulty envelope sender addresses.
-
-
-
-Bernstein                                                       [Page 4]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
-
 
    A double-bouncer refuses to operate unless the input envelope sender
    is <>. The output envelope sender from a double-bouncer is <#@[]>;
@@ -290,12 +253,6 @@ XXX NNNN          Tools in the War on Mail Loops             August 1996
    mailing list.
 
 
-
-Bernstein                                                       [Page 5]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
-
-
 4.2. Delivered-To
 
    Every post-delivery automailer adds a new Delivered-To header field
@@ -341,25 +298,6 @@ XXX NNNN          Tools in the War on Mail Loops             August 1996
    typical hop count limits.
 
 
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 6]
-
-XXX NNNN          Tools in the War on Mail Loops             August 1996
-
-
-5. Security considerations
-
-   Security issues are not discussed in this memo.
-
-
 Appendix A. Proofs of correctness for MX handling
 
    Section 3.2 states three facts about the notion of distance defined
@@ -398,16 +336,3 @@ Appendix A. Proofs of correctness for MX handling
    N, so g(T,R) <= f(X,R). Thus g(T,R) <= p. Suppose that g(H,R) <= p.
    Then f(D,R) <= p for some D with D->H, so m(D,R) <= p. But then
    (m(D,R),D) is in M(R). Contradiction. Thus g(T,R) <= p < g(H,R).
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-Bernstein                                                       [Page 7]
-

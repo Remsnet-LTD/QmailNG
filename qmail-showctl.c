@@ -2,11 +2,12 @@
 #include "subfd.h"
 #include "exit.h"
 #include "fmt.h"
+#include "str.h"
 #include "control.h"
 #include "constmap.h"
 #include "stralloc.h"
 #include "direntry.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 
 stralloc me = {0};
 int meok;
@@ -134,12 +135,12 @@ void main()
   direntry *d;
 
   substdio_puts(subfdout,"The qmail control files are stored in ");
-  substdio_puts(subfdout,CONF_HOME);
+  substdio_puts(subfdout,auto_qmail);
   substdio_puts(subfdout,"/control.\n");
 
-  if (chdir(CONF_HOME) == -1) {
+  if (chdir(auto_qmail) == -1) {
     substdio_puts(subfdout,"Oops! Unable to chdir to ");
-    substdio_puts(subfdout,CONF_HOME);
+    substdio_puts(subfdout,auto_qmail);
     substdio_puts(subfdout,".\n");
     substdio_flush(subfdout);
     _exit(111);
@@ -183,6 +184,7 @@ void main()
   do_str("plusdomain",1,"plusdomain","Plus domain name is ");
   do_int("queuelifetime","604800","Message lifetime in the queue is "," seconds");
   do_lst("rcpthosts","SMTP clients may send messages to any recipient.","SMTP clients may send messages to recipients at ",".");
+  do_lst("recipientmap","No redirections.","Redirection: ","");
   do_str("smtpgreeting",1,"smtpgreeting","SMTP greeting: 220 ");
   do_lst("smtproutes","No artificial SMTP routes.","SMTP route: ","");
   do_int("timeoutconnect","60","SMTP client connection timeout is "," seconds");
@@ -191,35 +193,36 @@ void main()
   do_lst("virtualdomains","No virtual domains.","Virtual domain: ","");
 
   while (d = readdir(dir)) {
-    if (!str_diff(d->d_name,".")) continue;
-    if (!str_diff(d->d_name,"..")) continue;
-    if (!str_diff(d->d_name,"bouncefrom")) continue;
-    if (!str_diff(d->d_name,"bouncehost")) continue;
-    if (!str_diff(d->d_name,"badmailfrom")) continue;
-    if (!str_diff(d->d_name,"bouncefrom")) continue;
-    if (!str_diff(d->d_name,"bouncehost")) continue;
-    if (!str_diff(d->d_name,"concurrencylocal")) continue;
-    if (!str_diff(d->d_name,"concurrencyremote")) continue;
-    if (!str_diff(d->d_name,"defaultdomain")) continue;
-    if (!str_diff(d->d_name,"defaulthost")) continue;
-    if (!str_diff(d->d_name,"doublebouncehost")) continue;
-    if (!str_diff(d->d_name,"doublebounceto")) continue;
-    if (!str_diff(d->d_name,"envnoathost")) continue;
-    if (!str_diff(d->d_name,"helohost")) continue;
-    if (!str_diff(d->d_name,"idhost")) continue;
-    if (!str_diff(d->d_name,"localiphost")) continue;
-    if (!str_diff(d->d_name,"locals")) continue;
-    if (!str_diff(d->d_name,"me")) continue;
-    if (!str_diff(d->d_name,"percenthack")) continue;
-    if (!str_diff(d->d_name,"plusdomain")) continue;
-    if (!str_diff(d->d_name,"queuelifetime")) continue;
-    if (!str_diff(d->d_name,"rcpthosts")) continue;
-    if (!str_diff(d->d_name,"smtpgreeting")) continue;
-    if (!str_diff(d->d_name,"smtproutes")) continue;
-    if (!str_diff(d->d_name,"timeoutconnect")) continue;
-    if (!str_diff(d->d_name,"timeoutremote")) continue;
-    if (!str_diff(d->d_name,"timeoutsmtpd")) continue;
-    if (!str_diff(d->d_name,"virtualdomains")) continue;
+    if (str_equal(d->d_name,".")) continue;
+    if (str_equal(d->d_name,"..")) continue;
+    if (str_equal(d->d_name,"bouncefrom")) continue;
+    if (str_equal(d->d_name,"bouncehost")) continue;
+    if (str_equal(d->d_name,"badmailfrom")) continue;
+    if (str_equal(d->d_name,"bouncefrom")) continue;
+    if (str_equal(d->d_name,"bouncehost")) continue;
+    if (str_equal(d->d_name,"concurrencylocal")) continue;
+    if (str_equal(d->d_name,"concurrencyremote")) continue;
+    if (str_equal(d->d_name,"defaultdomain")) continue;
+    if (str_equal(d->d_name,"defaulthost")) continue;
+    if (str_equal(d->d_name,"doublebouncehost")) continue;
+    if (str_equal(d->d_name,"doublebounceto")) continue;
+    if (str_equal(d->d_name,"envnoathost")) continue;
+    if (str_equal(d->d_name,"helohost")) continue;
+    if (str_equal(d->d_name,"idhost")) continue;
+    if (str_equal(d->d_name,"localiphost")) continue;
+    if (str_equal(d->d_name,"locals")) continue;
+    if (str_equal(d->d_name,"me")) continue;
+    if (str_equal(d->d_name,"percenthack")) continue;
+    if (str_equal(d->d_name,"plusdomain")) continue;
+    if (str_equal(d->d_name,"queuelifetime")) continue;
+    if (str_equal(d->d_name,"rcpthosts")) continue;
+    if (str_equal(d->d_name,"recipientmap")) continue;
+    if (str_equal(d->d_name,"smtpgreeting")) continue;
+    if (str_equal(d->d_name,"smtproutes")) continue;
+    if (str_equal(d->d_name,"timeoutconnect")) continue;
+    if (str_equal(d->d_name,"timeoutremote")) continue;
+    if (str_equal(d->d_name,"timeoutsmtpd")) continue;
+    if (str_equal(d->d_name,"virtualdomains")) continue;
     substdio_puts(subfdout,"\n");
     substdio_puts(subfdout,d->d_name);
     substdio_puts(subfdout,": I have no idea what this file does.\n");

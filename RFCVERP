@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                 10 November 1996
-
-
-		    Variable Envelope Return Paths
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+Variable Envelope Return Paths
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -43,21 +32,6 @@ Status of this memo
    the address in a form that is trivial for automated bounce handlers
    to parse. They require support from the local mailer, but they do not
    require support from any other hosts.
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN            Variable Envelope Return Paths         November 1996
 
 
 2. Variable envelope return paths
@@ -99,26 +73,6 @@ XXX NNNN            Variable Envelope Return Paths         November 1996
    though the idea is not new.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN            Variable Envelope Return Paths         November 1996
-
-
 3. Per-message VERPs
 
    VERPs are not restricted to distinguishing mailing list subscribers;
@@ -132,46 +86,3 @@ XXX NNNN            Variable Envelope Return Paths         November 1996
    Per-message VERPs can be combined with per-recipient VERPs. Every
    application of RFC 1891's ORCPT and ENVID can be handled with
    VERPs---easily, reliably, and right now.
-
-
-4. Security considerations
-
-   Security issues are not discussed in this memo.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 3]
-

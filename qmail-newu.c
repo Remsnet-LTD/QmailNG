@@ -1,14 +1,14 @@
 #include "stralloc.h"
 #include "subfd.h"
-#include "getline.h"
+#include "getln.h"
 #include "substdio.h"
 #include "cdbmss.h"
 #include "exit.h"
 #include "readwrite.h"
-#include "conf-home.h"
 #include "open.h"
 #include "error.h"
 #include "case.h"
+#include "auto_qmail.h"
 
 void die_temp() { _exit(111); }
 
@@ -74,7 +74,7 @@ void main()
   int numcolons;
 
   umask(033);
-  if (chdir(CONF_HOME) == -1) die_chdir();
+  if (chdir(auto_qmail) == -1) die_chdir();
 
   fd = open_read("users/assign");
   if (fd == -1) die_opena();
@@ -89,7 +89,7 @@ void main()
   if (!stralloc_copys(&wildchars,"")) die_nomem();
 
   for (;;) {
-    if (getline2(&ssin,&line,&match,'\n') != 0) die_reada();
+    if (getln(&ssin,&line,&match,'\n') != 0) die_reada();
     if (line.len && (line.s[0] == '.')) break;
     if (!match) die_format();
 

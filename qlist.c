@@ -1,9 +1,9 @@
-#include "signal.h"
+#include "sig.h"
 #include "readwrite.h"
 #include "substdio.h"
 #include "stralloc.h"
 #include "subfd.h"
-#include "getline.h"
+#include "getln.h"
 #include "alloc.h"
 #include "str.h"
 #include "env.h"
@@ -17,7 +17,7 @@
 #include "exit.h"
 #include "open.h"
 #include "lock.h"
-#include "qqtalk.h"
+#include "qmail.h"
 
 #define ADDRLIMIT 100
 
@@ -53,7 +53,7 @@ int numcommands;
 
 int fdlock;
 
-struct qqtalk qqt;
+struct qmail qqt;
 
 char *target;
 char *listathost;
@@ -83,7 +83,7 @@ void savedh_append(h) stralloc *h; {
  if (!saa_readyplus(&savedh,1)) die_nomem(); savedh.sa[savedh.len] = sauninit;
  if (!stralloc_copy(savedh.sa + savedh.len,h)) die_nomem(); ++savedh.len; }
 void savedh_print() { int i; for (i = 0;i < savedh.len;++i)
- qqtalk_put(&qqt,savedh.sa[i].s,savedh.sa[i].len); }
+ qmail_put(&qqt,savedh.sa[i].s,savedh.sa[i].len); }
 
 void finishheader()
 {
@@ -100,32 +100,32 @@ void finishheader()
    if (target[i] == '\n')
      die_badaddr();
  if (i > ADDRLIMIT) die_badaddr();
- if (!str_diff(target,"")) die_boing();
- if (!str_diff(target,"#@[]")) die_boing();
+ if (str_equal(target,"")) die_boing();
+ if (str_equal(target,"#@[]")) die_boing();
 
- if (qqtalk_open(&qqt,1) == -1) die_fork();
+ if (qmail_open(&qqt) == -1) die_fork();
 
- qqtalk_puts(&qqt,dtline);
+ qmail_puts(&qqt,dtline);
  savedh_print();
 
- qqtalk_puts(&qqt,"\n***** Text inserted by ");
- qqtalk_puts(&qqt,requestathost);
- qqtalk_puts(&qqt,"\n\
+ qmail_puts(&qqt,"\n***** Text inserted by ");
+ qmail_puts(&qqt,requestathost);
+ qmail_puts(&qqt,"\n\
 *\n\
 * Hi! This is the qlist program. I'm handling subscriptions for the\n\
 * ");
- qqtalk_puts(&qqt,listathost);
- qqtalk_puts(&qqt," mailing list.\n\
+ qmail_puts(&qqt,listathost);
+ qmail_puts(&qqt," mailing list.\n\
 *\n");
  if (moreinfo)
   {
-   qqtalk_puts(&qqt,"* ");
-   qqtalk_puts(&qqt,moreinfo);
-   qqtalk_puts(&qqt,"\n*\n");
+   qmail_puts(&qqt,"* ");
+   qmail_puts(&qqt,moreinfo);
+   qmail_puts(&qqt,"\n*\n");
   }
- qqtalk_puts(&qqt,"* My human owner is ");
- qqtalk_puts(&qqt,owner);
- qqtalk_puts(&qqt,".\n\
+ qmail_puts(&qqt,"* My human owner is ");
+ qmail_puts(&qqt,owner);
+ qmail_puts(&qqt,".\n\
 *\n\
 * To the recipient: This message was sent to me on your behalf. (Your\n\
 * address was listed in the Reply-To or From field.) For security,\n\
@@ -134,8 +134,8 @@ void finishheader()
 * Anyway, to subscribe, send me an empty message. To unsubscribe, send me\n\
 * a message with the word UNSUBSCRIBE at the beginning of a line. Remember,\n\
 * my address is ");
- qqtalk_puts(&qqt,requestathost);
- qqtalk_puts(&qqt,".\n\
+ qmail_puts(&qqt,requestathost);
+ qmail_puts(&qqt,".\n\
 *\n\
 * Now I'll look for requests inside this message...\n\
 *\n\
@@ -168,7 +168,7 @@ int flagadd;
  substdio_fdbuf(&subout,write,fdout,suboutbuf,sizeof(suboutbuf));
  for (;;)
   {
-   if (getline2(&subin,&subline,&match,'\n') == -1) goto badoutinlock;
+   if (getln(&subin,&subline,&match,'\n') == -1) goto badoutinlock;
    if (!match) break; /* goodbye partial lines */
    if (subline.len == str_len(target) + 2)
      if (!str_diffn(subline.s + 1,target,subline.len - 2))
@@ -196,45 +196,45 @@ int flagadd;
 
  lock_un(fdlock);
 
- qqtalk_puts(&qqt,"***** Text inserted by ");
- qqtalk_puts(&qqt,requestathost);
- qqtalk_puts(&qqt,"\n*\n* ");
+ qmail_puts(&qqt,"***** Text inserted by ");
+ qmail_puts(&qqt,requestathost);
+ qmail_puts(&qqt,"\n*\n* ");
  if (flagadd)
    if (flagwasthere)
     {
-     qqtalk_puts(&qqt,"Acknowledgment: ");
-     qqtalk_puts(&qqt,target);
-     qqtalk_puts(&qqt," was already a subscriber.\n");
+     qmail_puts(&qqt,"Acknowledgment: ");
+     qmail_puts(&qqt,target);
+     qmail_puts(&qqt," was already a subscriber.\n");
     }
    else
     {
-     qqtalk_puts(&qqt,"Acknowledgment: ");
-     qqtalk_puts(&qqt,target);
-     qqtalk_puts(&qqt," is now a subscriber.\n");
+     qmail_puts(&qqt,"Acknowledgment: ");
+     qmail_puts(&qqt,target);
+     qmail_puts(&qqt," is now a subscriber.\n");
     }
  else
    if (flagwasthere)
     {
-     qqtalk_puts(&qqt,"Acknowledgment: ");
-     qqtalk_puts(&qqt,target);
-     qqtalk_puts(&qqt," is no longer a subscriber.\n");
+     qmail_puts(&qqt,"Acknowledgment: ");
+     qmail_puts(&qqt,target);
+     qmail_puts(&qqt," is no longer a subscriber.\n");
     }
    else
     {
-     qqtalk_puts(&qqt,"Hmmm, I don't see ");
-     qqtalk_puts(&qqt,target);
-     qqtalk_puts(&qqt," on the subscription list.\n* I'll let my owner know.\n");
+     qmail_puts(&qqt,"Hmmm, I don't see ");
+     qmail_puts(&qqt,target);
+     qmail_puts(&qqt," on the subscription list.\n* I'll let my owner know.\n");
     }
- qqtalk_puts(&qqt,"*\n*****\n");
+ qmail_puts(&qqt,"*\n*****\n");
  return;
 
 badoutinlock: close(fdout);
 badinlock: close(fdin);
 badlock: lock_un(fdlock);
 bad:
- qqtalk_puts(&qqt,"***** Text inserted by ");
- qqtalk_puts(&qqt,requestathost);
- qqtalk_puts(&qqt,"\n*\n\
+ qmail_puts(&qqt,"***** Text inserted by ");
+ qmail_puts(&qqt,requestathost);
+ qmail_puts(&qqt,"\n*\n\
 * Oh no! Trouble making the new list. I'll let my owner know.\n\
 *\n\
 *****\n");
@@ -242,9 +242,9 @@ bad:
 
 void dobody(h) stralloc *h;
 {
- qqtalk_put(&qqt,h->s,h->len);
- if (!case_diffb(h->s,"subs",4)) subscribe(1);
- if (!case_diffb(h->s,"unsu",4)) subscribe(0);
+ qmail_put(&qqt,h->s,h->len);
+ if (case_starts(h->s,"subs")) subscribe(1);
+ if (case_starts(h->s,"unsu")) subscribe(0);
 }
 
 stralloc hfbuf = {0};
@@ -272,8 +272,8 @@ stralloc *h;
      break;
    case H_SUBJECT:
      x = h->s + hfield_skipname(h->s,h->len);
-     if (!case_diffb(x,"subs",4)) subjectaction = 1;
-     if (!case_diffb(x,"unsu",4)) subjectaction = 2;
+     if (!case_diffb(x,4,"subs")) subjectaction = 1;
+     if (!case_diffb(x,4,"unsu")) subjectaction = 2;
      break;
   }
  savedh_append(h);
@@ -283,7 +283,7 @@ void main(argc,argv)
 int argc;
 char **argv;
 {
- signal_init();
+ sig_pipeignore();
 
  if (!(listathost = argv[1])) die_usage();
  if (!(requestathost = argv[2])) die_usage();
@@ -302,32 +302,32 @@ char **argv;
  if (headerbody(subfdin,doheaderfield,finishheader,dobody) == -1) die_read();
  if (!numcommands)
   {
-   qqtalk_puts(&qqt,"***** Text inserted by ");
-   qqtalk_puts(&qqt,requestathost);
-   qqtalk_puts(&qqt,"\n*\n* ");
+   qmail_puts(&qqt,"***** Text inserted by ");
+   qmail_puts(&qqt,requestathost);
+   qmail_puts(&qqt,"\n*\n* ");
    if (subjectaction)
     {
-     qqtalk_puts(&qqt,"\
+     qmail_puts(&qqt,"\
 Hmmm, no commands? Let me check the Subject line...\n*\n*****\n");
      subscribe(subjectaction == 1);
     }
    else
     {
-     qqtalk_puts(&qqt,"\
+     qmail_puts(&qqt,"\
 I didn't see any commands. I presume this is a subscription request.\n\
 *\n*****\n");
      subscribe(1);
     }
   }
 
- qqtalk_from(&qqt,returnpath);
- qqtalk_to(&qqt,owner);
- qqtalk_to(&qqt,target);
+ qmail_from(&qqt,returnpath);
+ qmail_to(&qqt,owner);
+ qmail_to(&qqt,target);
 
- switch(qqtalk_close(&qqt))
+ switch(qmail_close(&qqt))
   {
    case 0: _exit(0);
-   case QQT_TOOLONG: die_qqperm();
+   case QMAIL_TOOLONG: die_qqperm();
    default: die_qqtemp();
   }
 }

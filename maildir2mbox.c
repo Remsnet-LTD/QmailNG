@@ -4,7 +4,7 @@
 #include "stralloc.h"
 #include "subfd.h"
 #include "substdio.h"
-#include "getline.h"
+#include "getln.h"
 #include "error.h"
 #include "open.h"
 #include "lock.h"
@@ -92,12 +92,12 @@ void main()
      strerr_die4sys(111,FATAL,"unable to read $MAILDIR/",filenames.s + pe.id,": ");
    substdio_fdbuf(&ssin,read,fd,inbuf,sizeof(inbuf));
 
-   if (getline2(&ssin,&line,&match,'\n') != 0)
+   if (getln(&ssin,&line,&match,'\n') != 0)
      strerr_die4sys(111,FATAL,"unable to read $MAILDIR/",filenames.s + pe.id,": ");
    
    if (!stralloc_copys(&ufline,"From XXX ")) die_nomem();
-   if (match && (line.len >= 14))
-     if (!str_diffn(line.s,"Return-Path: <",14))
+   if (match)
+     if (stralloc_starts(&line,"Return-Path: <"))
       {
        if (line.s[14] == '>')
 	{
@@ -133,7 +133,7 @@ void main()
          strerr_die4sys(111,FATAL,"unable to write to ",mboxtmp,": ");
        break;
       }
-     if (getline2(&ssin,&line,&match,'\n') != 0)
+     if (getln(&ssin,&line,&match,'\n') != 0)
        strerr_die4sys(111,FATAL,"unable to read $MAILDIR/",filenames.s + pe.id,": ");
     }
    if (substdio_puts(&ssout,"\n"))

@@ -1,3 +1,37 @@
+19970415 version: qmail 1.01.
+19970414 doc: tightened up qmail-upgrade.7.
+19970414 code: rewrote rewrite().
+19970414 code: implemented recipientmap. suggested by RDM.
+19970414 doc: auto-configured qmail home directory in qmail-control.5,
+         qmail-newu.8, qmail-pw2u.8, qmail-start.8, qmail-users.5.
+19970414 port: Solaris needs socket libs for gethostname. impact: can't
+         compile under Solaris. fix: use socket.lib for qmail-local.
+19970412 code: introduced stralloc_starts.
+19970412 code: introduced str_equal.
+19970412 code: introduced str_start.
+19970412 code: introduced byte_equal.
+19970412 code: made an optional aliasempty arg for qmail-start.
+19970412 code: made an aliasempty arg for qmail-lspawn.
+19970412 code: changed ALIAS_EMPTY to an arg for qmail-local.
+19970412 port: UnixWare returns >0 for SIOCGIFCONF. impact: ipme fails
+         under UnixWare. fix: check for >=0, not =0. tnx JD.
+19970412 port: DGUX does not have ranlib. impact: can't compile under
+         DGUX. fix: added dgux line to make-makelib. tnx HWM.
+19970412 code: changed maildir library to skip any filename beginning
+         with dot. tnx SP.
+19970412 doc: added FAQ entry about aliases with dots.
+19970412 doc: clarified in qmail-inject.8 that default envelope sender
+         is the same as _default_ From address.
+19970411 code: renamed qmail-makectl as qmail-config.
+19970411 code: renamed qmail-alias as qmail-local.
+19970411 code: switched from signal library to sig library.
+19970411 code: switched from qqtalk library to qmail library.
+19970411 code: switched from getline library to getln library.
+19970411 code: massive library cleanups.
+19970411 code: revamped autoconfiguration system.
+19970411 code: revamped configuration interface.
+19970411 code: eliminated qmail-home.
+19970411 code: eliminated tokenize.
 19970220 qmail 1.00.
 19970219 change: various documentation tweaks.
 19970218 change: updated THOUGHTS.
@@ -400,7 +434,7 @@
 19960810 change: qmail-makectl now copies locals to rcpthosts. should be
          a better default. suggested by TK.
 19960805 portability problem: new makefile generator put in tabs again.
-         sigh. imapct: couldn't compile under some systems. fix: same as
+         sigh. impact: couldn't compile under some systems. fix: same as
 	 before. tnx TG.
 19960804 change: added tcpserver instructions to FAQ.
 19960804 change: reorganized FAQ server instructions into a new section.

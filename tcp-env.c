@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include "signal.h"
+#include "sig.h"
 #include "stralloc.h"
 #include "str.h"
 #include "env.h"
@@ -40,7 +40,7 @@ char *argv[];
  int flagremoteinfo;
  unsigned long timeout;
 
- signal_init();
+ sig_pipeignore();
 
  flagremoteinfo = 1;
  timeout = 30;
@@ -123,7 +123,7 @@ char *argv[];
     }
   }
 
- signal_uninit();
+ sig_pipedefault();
  execvp(*argv,argv);
  die();
 }

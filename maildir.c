@@ -38,8 +38,7 @@ stralloc *tmpname;
 
  while (d = readdir(dir))
   {
-   if (!str_diff(d->d_name,".")) continue;
-   if (!str_diff(d->d_name,"..")) continue;
+   if (d->d_name[0] == '.') continue;
    if (!stralloc_copys(tmpname,"tmp/")) break;
    if (!stralloc_cats(tmpname,d->d_name)) break;
    if (!stralloc_0(tmpname)) break;
@@ -68,8 +67,7 @@ datetime_sec time;
 
  while (d = readdir(dir))
   {
-   if (!str_diff(d->d_name,".")) continue;
-   if (!str_diff(d->d_name,"..")) continue;
+   if (d->d_name[0] == '.') continue;
    pos = filenames->len;
    if (!stralloc_cats(filenames,subdir)) break;
    if (!stralloc_cats(filenames,"/")) break;

@@ -3,24 +3,23 @@
 #include "error.h"
 #include "readwrite.h"
 
-static int secs;
-static int flag;
-
-void timeoutread_init(s) int s; { secs = s; flag = 0; }
-
-int timeoutread(fd,buf,len) int fd; char *buf; int len;
+int timeoutread(fdt,buf,len) int fdt; char *buf; int len;
 {
- fd_set rfds;
- struct timeval tv;
+  fd_set rfds;
+  struct timeval tv;
+  int fd;
 
- if (flag) { errno = error_timeout; return -1; }
+  tv.tv_sec = (fdt >> 10);
+  tv.tv_usec = 0;
 
- FD_ZERO(&rfds);
- FD_SET(fd,&rfds);
- tv.tv_sec = secs; tv.tv_usec = 0;
- if (select(fd + 1,&rfds,(fd_set *) 0,(fd_set *) 0,&tv) == -1) return -1;
+  fd = (fdt & 1023);
+  FD_ZERO(&rfds);
+  FD_SET(fd,&rfds);
 
- if (FD_ISSET(fd,&rfds)) return read(fd,buf,len);
+  if (select(fd + 1,&rfds,(fd_set *) 0,(fd_set *) 0,&tv) == -1) return -1;
+  if (FD_ISSET(fd,&rfds)) return read(fd,buf,len);
 
- flag = 1; errno = error_timeout; return -1;
+  shutdown(fd,0);
+  errno = error_timeout;
+  return -1;
 }

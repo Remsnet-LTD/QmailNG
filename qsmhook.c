@@ -13,7 +13,7 @@
 #include "subfd.h"
 #include "error.h"
 #include "substdio.h"
-#include "signal.h"
+#include "sig.h"
 
 void die(e,s) int e; char *s; { substdio_putsflush(subfderr,s); _exit(e); }
 void die_usage() { die(100,"qsmhook: fatal: incorrect usage\n"); }
@@ -48,7 +48,7 @@ char **argv;
  int i;
  int flagesc;
 
- signal_init();
+ sig_pipeignore();
 
  if (!(dtline = env_get("DTLINE"))) die_usage();
  if (!(rpline = env_get("RPLINE"))) die_usage();
@@ -67,7 +67,7 @@ char **argv;
      case 's': break; /* could call quote() otherwise, i suppose... */
      case 'P': flagrpline = 1; break;
      case 'x':
-       if (!case_diffb(recip,optarg,str_len(optarg)))
+       if (case_starts(recip,optarg))
 	 recip += str_len(optarg);
        break;
      default:
@@ -115,7 +115,7 @@ char **argv;
    case 0:
      close(pi[1]);
      if (fd_move(0,pi[0]) == -1) die_temp();
-     signal_uninit();
+     sig_pipedefault();
      execvp(*argv,argv);
      if (error_temp(errno)) die_temp();
      die_badcmd();

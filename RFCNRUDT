@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                   13 August 1996
-
-
-              Notice-Requested-Upon-Delivery-To (NRUDT)
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+Notice-Requested-Upon-Delivery-To (NRUDT)
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -52,12 +41,6 @@ Status of this memo
    specified addresses, the sender be notified. Note that more than one
    address can appear in a single NRUDT header field. Multiple NRUDT
    header fields should not appear in a single message.
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN         Notice-Requested-Upon-Delivery-To           August 1996
 
 
 3. Response
@@ -104,74 +87,3 @@ XXX NNNN         Notice-Requested-Upon-Delivery-To           August 1996
       Thanks for asking.
 
    However, a success notice is never merged with a failure notice.
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 2]
-
-XXX NNNN         Notice-Requested-Upon-Delivery-To           August 1996
-
-
-4. Security considerations
-
-   Security issues are not discussed in this memo.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bernstein                                                       [Page 3]
-

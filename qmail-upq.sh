@@ -1,4 +1,4 @@
-cd HOME
+cd QMAIL
 cd queue
 for dir in mess info local remote
 do
@@ -7,7 +7,7 @@ do
     while read path
     do
       id=`basename "$path"`
-      sub=`expr "$id" % CONF-SPLIT`
+      sub=`expr "$id" % SPLIT`
       mv "$path" "$sub"/"$id"
     done
   )

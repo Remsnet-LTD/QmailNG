@@ -1,5 +1,5 @@
 #include "fmt.h"
-#include "qqtalk.h"
+#include "qmail.h"
 #include "now.h"
 #include "datetime.h"
 #include "date822fmt.h"
@@ -22,13 +22,13 @@ static int issafe(ch) char ch;
 }
 
 void safeput(qqt,s)
-struct qqtalk *qqt;
+struct qmail *qqt;
 char *s;
 {
   char ch;
   while (ch = *s++) {
     if (!issafe(ch)) ch = '?';
-    qqtalk_put(qqt,&ch,1);
+    qmail_put(qqt,&ch,1);
   }
 }
 
@@ -38,7 +38,7 @@ static char buf[DATE822FMT];
 /* "  by silverton.berkeley.edu with SMTP; 26 Sep 1995 04:46:54 -0000\n" */
 
 void received(qqt,protocol,local,remoteip,remotehost,remoteinfo,helo)
-struct qqtalk *qqt;
+struct qmail *qqt;
 char *protocol;
 char *local;
 char *remoteip;
@@ -48,24 +48,24 @@ char *helo;
 {
   struct datetime dt;
 
-  qqtalk_puts(qqt,"Received: from ");
+  qmail_puts(qqt,"Received: from ");
   safeput(qqt,remotehost);
   if (helo) {
-    qqtalk_puts(qqt," (HELO ");
+    qmail_puts(qqt," (HELO ");
     safeput(qqt,helo);
-    qqtalk_puts(qqt,")");
+    qmail_puts(qqt,")");
   }
-  qqtalk_puts(qqt," (");
+  qmail_puts(qqt," (");
   if (remoteinfo) {
     safeput(qqt,remoteinfo);
-    qqtalk_puts(qqt,"@");
+    qmail_puts(qqt,"@");
   }
   safeput(qqt,remoteip);
-  qqtalk_puts(qqt,")\n  by ");
+  qmail_puts(qqt,")\n  by ");
   safeput(qqt,local);
-  qqtalk_puts(qqt," with ");
-  qqtalk_puts(qqt,protocol);
-  qqtalk_puts(qqt,"; ");
+  qmail_puts(qqt," with ");
+  qmail_puts(qqt,protocol);
+  qmail_puts(qqt,"; ");
   datetime_tai(&dt,now());
-  qqtalk_put(qqt,buf,date822fmt(buf,&dt));
+  qmail_put(qqt,buf,date822fmt(buf,&dt));
 }

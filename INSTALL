@@ -5,20 +5,17 @@ much more secure and reliable than sendmail, but that's not saying much.
 
 Things you have to decide before starting:
 
-* The qmail home directory, normally /var/qmail. This directory must be
-a local directory, not shared among machines; it is where qmail queues
-all mail messages. (To change this directory, edit conf-home.h now.)
+* The qmail home directory, normally /var/qmail. To change this
+directory, edit conf-qmail now.
 
-* The names of the qmail users and the qmail groups: normally alias,
-qmaild, qmaill, qmailp, qmailq, qmailr, qmails, qmail, and nofiles. The
-qmail system is heavily partitioned for security; it does almost nothing
-as root. (To change any of these names, edit conf-user.h now.)
+* The names of the qmail users and the qmail groups. To change these
+names, edit conf-users and conf-groups now.
 
 
 Installation steps that won't interfere with sendmail:
 
  1. Create the qmail home directory:
-       # mkdir /var/qmail; chmod 755 /var/qmail
+       # mkdir /var/qmail
  2. Read INSTALL.ids. You must set up the qmail group and the qmail
     users before compiling the programs.
  3. Compile the programs:
@@ -27,10 +24,10 @@ Installation steps that won't interfere with sendmail:
        # make man
  5. Create the qmail directory tree:
        # make setup
- 6. Run qmail-check to make sure it doesn't print any warnings:
+ 6. Run instcheck to make sure it doesn't print any warnings:
        # make check
  7. Read INSTALL.ctl and FAQ. Minimal survival command:
-       # ./qmail-makectl
+       # ./qmail-config
  8. Read INSTALL.alias. Minimal survival command:
        # (cd ~alias; touch .qmail-postmaster .qmail-mailer-daemon .qmail-root)
        # chmod 644 ~alias/.qmail*
@@ -42,7 +39,9 @@ Installation steps that won't interfere with sendmail:
 Pre-upgrade tests:
 
 11. Enable deliveries of messages injected into qmail:
-       # env - PATH="/var/qmail/bin:$PATH" qmail-start splogger qmail &
+       # env - PATH="/var/qmail/bin:$PATH" \
+       qmail-start ./Mailbox splogger qmail &
+    Make sure to include the ./ in ./Mailbox.
 12. Look for a
             qmail: running
     line in syslog. qmail-send always prints either ``cannot start'' or

@@ -1,6 +1,6 @@
 #include "readwrite.h"
 #include "open.h"
-#include "getline.h"
+#include "getln.h"
 #include "stralloc.h"
 #include "substdio.h"
 #include "error.h"
@@ -62,7 +62,7 @@ char *fn;
  
  substdio_fdbuf(&ss,read,fd,inbuf,sizeof(inbuf));
 
- if (getline2(&ss,sa,&match,'\n') == -1) { close(fd); return -1; }
+ if (getln(&ss,sa,&match,'\n') == -1) { close(fd); return -1; }
 
  striptrailingwhitespace(sa);
  close(fd);
@@ -115,7 +115,7 @@ int flagme;
 
  for (;;)
   {
-   if (getline2(&ss,&line,&match,'\n') == -1) break;
+   if (getln(&ss,&line,&match,'\n') == -1) break;
    if (!match && !line.len) { close(fd); return 1; }
    striptrailingwhitespace(&line);
    if (!stralloc_0(&line)) break;

@@ -2,15 +2,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "signal.h"
-#include "getline.h"
+#include "sig.h"
+#include "getln.h"
 #include "stralloc.h"
 #include "substdio.h"
 #include "subfd.h"
 #include "scan.h"
 #include "case.h"
 #include "error.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "control.h"
 #include "dns.h"
 #include "alloc.h"
@@ -143,7 +143,7 @@ substdio *ss;
  if (!stralloc_copys(&smtptext,"")) return 421;
  do
   {
-   if (getline2(ss,&smtpline,&match,'\n') != 0) return 421;
+   if (getln(ss,&smtpline,&match,'\n') != 0) return 421;
    if (!match) return 421;
    if ((smtpline.len >= 2) && (smtpline.s[smtpline.len - 2] == '\r'))
     {
@@ -194,7 +194,7 @@ substdio *ssfrom;
 
  for (;;)
   {
-   if (getline2(ssfrom,&dataline,&match,'\n') != 0) temp_read();
+   if (getln(ssfrom,&dataline,&match,'\n') != 0) temp_read();
    if (!match && !dataline.len) break;
    if (!match) perm_partialline();
    --dataline.len;
@@ -218,10 +218,8 @@ int fd;
  int flaganyrecipok;
  int i;
 
- timeoutread_init(timeout);
- timeoutwrite_init(timeout);
- substdio_fdbuf(&ssto,timeoutwrite,fd,smtptobuf,sizeof(smtptobuf));
- substdio_fdbuf(&ssfrom,timeoutread,fd,smtpfrombuf,sizeof(smtpfrombuf));
+ substdio_fdbuf(&ssto,timeoutwrite,TIMEOUTWRITE(timeout,fd),smtptobuf,sizeof(smtptobuf));
+ substdio_fdbuf(&ssfrom,timeoutread,TIMEOUTREAD(timeout,fd),smtpfrombuf,sizeof(smtpfrombuf));
 
  if (smtpcode(&ssfrom) != 220)
   {
@@ -386,9 +384,9 @@ char **argv;
  int flagalias;
  char *relayhost;
 
- signal_init();
+ sig_pipeignore();
  if (argc < 4) perm_usage();
- if (chdir(CONF_HOME) == -1) temp_chdir();
+ if (chdir(auto_qmail) == -1) temp_chdir();
  getcontrols();
 
 

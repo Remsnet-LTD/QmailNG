@@ -20,6 +20,7 @@
 4.3. How do I use majordomo with qmail?
 4.4. How do I use procmail with qmail?
 4.5. How do I use elm's filter with qmail?
+4.6. How do I create aliases with dots?
 
 5. Setting up servers
 5.1. How do I run qmail-smtpd under tcpserver?
@@ -229,12 +230,20 @@ into ~/.qmail. You'll have to use a full path for filter unless filter
 is in the system's startup PATH.
 
 
+4.6. How do I create aliases with dots? I tried setting up
+~alias/.qmail-P.D.Q.Bach, but it doesn't do anything.
+
+Answer: Use .qmail-p:d:q:bach. Dots are converted to colons, and
+uppercase is converted to lowercase.
+
+
 
 5. Setting up servers
 
 
-5.1. How do I run qmail-smtpd under tcpserver? I'd like better logging
-and load control than I get with inetd.
+5.1. How do I run qmail-smtpd under tcpserver? inetd is barfing at high
+loads, cutting off service for ten-minute stretches. I'd also like
+better connection logging.
 
 Answer: First, install the tcpserver program, part of the ucspi-tcp
 package (http://pobox.com/~djb/ucspi-tcp.html). Second, remove the smtp
@@ -525,13 +534,13 @@ number into control/concurrencyremote. Restart qmail-send as in question
 descriptors limit to at least double the concurrency plus 5; otherwise
 you'll get lots of unnecessary deferrals whenever a big burst of mail
 shows up. Note that qmail also imposes a compile-time concurrency limit,
-120 by default; this is SPAWN_NUMD in conf-unusual.h.
+120 by default; this is set in conf-spawn.
 
 
 8.2. How do I keep a copy of all incoming and outgoing mail messages?
 
-Answer: Set QUEUE_EXTRA to "Tlog\0" and QUEUE_EXTRALEN to 5 in
-conf-unusual.h. Recompile qmail. Put ./msg-log into ~alias/.qmail-log.
+Answer: Set QUEUE_EXTRA to "Tlog\0" and QUEUE_EXTRALEN to 5 in extra.h.
+Recompile qmail. Put ./msg-log into ~alias/.qmail-log.
 
 You can also use QUEUE_EXTRA to, e.g., record the Message-ID of every
 message: run

@@ -6,7 +6,9 @@
 #include "error.h"
 #include "tcpto.h"
 
-void initialize()
+void initialize(argc,argv)
+int argc;
+char **argv;
 {
  tcpto_clean();
 }

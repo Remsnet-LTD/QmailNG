@@ -3,5 +3,5 @@
 #include "subfd.h"
 
 char subfd_errbuf[256];
-static struct substdio err = SUBSTDIO_FDBUF(write,2,subfd_errbuf,256);
-struct substdio *subfderr = &err;
+static substdio it = SUBSTDIO_FDBUF(write,2,subfd_errbuf,256);
+substdio *subfderr = &it;

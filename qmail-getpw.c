@@ -5,14 +5,16 @@
 #include "substdio.h"
 #include "subfd.h"
 #include "error.h"
-#include "qlx.h"
 #include "exit.h"
 #include "byte.h"
 #include "str.h"
 #include "case.h"
 #include "fmt.h"
-#include "conf-user.h"
-#include "conf-unusual.h"
+#include "auto_usera.h"
+#include "auto_break.h"
+#include "qlx.h"
+
+#define GETPW_USERLEN 32
 
 char *local;
 struct passwd *pw;
@@ -27,7 +29,7 @@ int userext()
   extension = local + str_len(local);
   for (;;) {
     if (extension - local < sizeof(username))
-      if (!*extension || (*extension == USEREXT_BREAK)) {
+      if (!*extension || (*extension == *auto_break)) {
 	byte_copy(username,extension - local,local);
 	username[extension - local] = 0;
 	case_lowers(username);
@@ -61,7 +63,7 @@ char **argv;
   if (!userext()) {
     extension = local;
     dash = "-";
-    pw = getpwnam(CONF_USERA);
+    pw = getpwnam(auto_usera);
   }
 
   if (!pw) _exit(QLX_NOALIAS);

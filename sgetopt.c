@@ -1,7 +1,8 @@
 /* sgetopt.c, sgetopt.h: (yet another) improved getopt clone, outer layer
-Daniel J. Bernstein, djb@silverton.berkeley.edu.
+D. J. Bernstein, djb@pobox.com.
 Depends on subgetopt.h, substdio.h, subfd.h.
 No system requirements.
+19970208: Cleanups.
 931201: Baseline.
 No known patent problems.
 
@@ -29,29 +30,25 @@ int argc;
 char **argv;
 char *opts;
 {
- int c;
- char *s;
+  int c;
+  char *s;
 
- if (!optprogname)
-  {
-   optprogname = *argv;
-   if (!optprogname) /* oh boy */
-     optprogname = "";
-   for (s = optprogname;*s;++s)
-     if (*s == '/')
-       optprogname = s + 1;
+  if (!optprogname) {
+    optprogname = *argv;
+    if (!optprogname) optprogname = "";
+    for (s = optprogname;*s;++s) if (*s == '/') optprogname = s + 1;
   }
- c = subgetopt(argc,argv,opts);
- if (opterr)
-   if (c == '?')
-    {
-     char chp[2]; chp[0] = optproblem; chp[1] = '\n';
-     substdio_putsflush(subfderr,optprogname);
-     if (argv[optind] && (optind < argc))
-       substdio_putsflush(subfderr,": illegal option -- ");
-     else
-       substdio_putsflush(subfderr,": option requires an argument -- ");
-     substdio_putflush(subfderr,chp,2);
+  c = subgetopt(argc,argv,opts);
+  if (opterr)
+    if (c == '?') {
+      char chp[2]; chp[0] = optproblem; chp[1] = '\n';
+      substdio_puts(subfderr,optprogname);
+      if (argv[optind] && (optind < argc))
+        substdio_puts(subfderr,": illegal option -- ");
+      else
+        substdio_puts(subfderr,": option requires an argument -- ");
+      substdio_put(subfderr,chp,2);
+      substdio_flush(subfderr);
     }
- return c;
+  return c;
 }

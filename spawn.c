@@ -1,8 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "signal.h"
+#include "sig.h"
 #include "wait.h"
-#include "getline.h"
 #include "substdio.h"
 #include "byte.h"
 #include "str.h"
@@ -12,9 +11,9 @@
 #include "coe.h"
 #include "open.h"
 #include "error.h"
-#include "conf-home.h"
-#include "auto-uids.h"
-#include "conf-unusual.h"
+#include "auto_qmail.h"
+#include "auto_uids.h"
+#include "auto_spawn.h"
 
 extern int truncreport;
 extern int spawn();
@@ -32,8 +31,7 @@ struct delivery
  }
 ;
 
-#define NUMD SPAWN_NUMD
-struct delivery d[NUMD];
+struct delivery *d;
 
 void sigchld()
 {
@@ -41,7 +39,7 @@ void sigchld()
  int pid;
  int i;
  while ((pid = wait_nohang(&wstat)) > 0)
-   for (i = 0;i < NUMD;++i) if (d[i].used)
+   for (i = 0;i < auto_spawn;++i) if (d[i].used)
      if (d[i].pid == pid)
       {
        close(d[i].fdout); d[i].fdout = -1;
@@ -89,7 +87,7 @@ void docmd()
 
  if (flagabort) { err("Zqmail-spawn out of memory. (#4.3.0)\n"); return; }
  if (delnum < 0) { err("ZInternal error: delnum negative. (#4.3.5)\n"); return; }
- if (delnum >= NUMD) { err("ZInternal error: delnum too big. (#4.3.5)\n"); return; }
+ if (delnum >= auto_spawn) { err("ZInternal error: delnum too big. (#4.3.5)\n"); return; }
  if (d[delnum].used) { err("ZInternal error: delnum in use. (#4.3.5)\n"); return; }
  for (i = 0;i < messid.len;++i)
    if (messid.s[i])
@@ -112,7 +110,7 @@ void docmd()
   { close(fdmess); err("Zqmail-spawn unable to fstat message. (#4.3.0)\n"); return; }
  if ((st.st_mode & S_IFMT) != S_IFREG)
   { close(fdmess); err("ZSorry, message has wrong type. (#4.3.5)\n"); return; }
- if (st.st_uid != UID_QUEUE) /* aaack! qmailq has to be trusted! */
+ if (st.st_uid != auto_uidq) /* aaack! qmailq has to be trusted! */
   /* your security is already toast at this point. damage control... */
   { close(fdmess); err("ZSorry, message has wrong owner. (#4.3.5)\n"); return; }
 
@@ -177,7 +175,9 @@ void getcmd()
 
 char inbuf[128];
 
-void main()
+void main(argc,argv)
+int argc;
+char **argv;
 {
  char ch;
  int i;
@@ -185,47 +185,50 @@ void main()
  fd_set rfds;
  int nfds;
 
- if (chdir(CONF_HOME) == -1) _exit(111);
+ if (chdir(auto_qmail) == -1) _exit(111);
  if (chdir("queue/mess") == -1) _exit(111);
  if (!stralloc_copys(&messid,"")) _exit(111);
  if (!stralloc_copys(&sender,"")) _exit(111);
  if (!stralloc_copys(&recip,"")) _exit(111);
 
+ d = (struct delivery *) alloc((auto_spawn + 10) * sizeof(struct delivery));
+ if (!d) _exit(111);
+
  substdio_fdbuf(&ssout,okwrite,1,outbuf,sizeof(outbuf));
 
- signal_init();
- signal_catchchild(sigchld);
+ sig_pipeignore();
+ sig_childcatch(sigchld);
 
- initialize();
+ initialize(argc,argv);
 
- ch = NUMD; substdio_putflush(&ssout,&ch,1);
+ ch = auto_spawn; substdio_putflush(&ssout,&ch,1);
 
- for (i = 0;i < NUMD;++i) { d[i].used = 0; d[i].output.s = 0; }
+ for (i = 0;i < auto_spawn;++i) { d[i].used = 0; d[i].output.s = 0; }
 
  for (;;)
   {
    if (!flagreading)
     {
-     for (i = 0;i < NUMD;++i) if (d[i].used) break;
-     if (i >= NUMD) _exit(0);
+     for (i = 0;i < auto_spawn;++i) if (d[i].used) break;
+     if (i >= auto_spawn) _exit(0);
     }
-   signal_blocknone();
+   sig_childunblock();
 
    FD_ZERO(&rfds);
    if (flagreading) FD_SET(0,&rfds);
    nfds = 1;
-   for (i = 0;i < NUMD;++i) if (d[i].used)
+   for (i = 0;i < auto_spawn;++i) if (d[i].used)
     { FD_SET(d[i].fdin,&rfds); if (d[i].fdin >= nfds) nfds = d[i].fdin + 1; }
 
    r = select(nfds,&rfds,(fd_set *) 0,(fd_set *) 0,(struct timeval *) 0);
-   signal_blockchild();
+   sig_childblock();
 
    if (r != -1)
     {
      if (flagreading)
        if (FD_ISSET(0,&rfds))
 	 getcmd();
-     for (i = 0;i < NUMD;++i) if (d[i].used)
+     for (i = 0;i < auto_spawn;++i) if (d[i].used)
        if (FD_ISSET(d[i].fdin,&rfds))
 	{
 	 r = read(d[i].fdin,inbuf,128);

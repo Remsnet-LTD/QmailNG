@@ -4,19 +4,24 @@
 #include "substdio.h"
 #include "stralloc.h"
 #include "scan.h"
-#include "qlx.h"
 #include "exit.h"
 #include "fork.h"
 #include "error.h"
 #include "cdb.h"
 #include "case.h"
 #include "slurpclose.h"
-#include "conf-home.h"
-#include "auto-uids.h"
+#include "auto_qmail.h"
+#include "auto_uids.h"
+#include "qlx.h"
 
-void initialize()
+char *aliasempty;
+
+void initialize(argc,argv)
+int argc;
+char **argv;
 {
- ;
+  aliasempty = argv[1];
+  if (!aliasempty) _exit(100);
 }
 
 int truncreport = 3000;
@@ -29,7 +34,7 @@ int len;
 {
  int i;
  if (wait_crashed(wstat))
-  { substdio_puts(ss,"Zqmail-alias crashed.\n"); return; }
+  { substdio_puts(ss,"Zqmail-local crashed.\n"); return; }
  switch(wait_exitcode(wstat))
   {
    case QLX_CDB:
@@ -45,11 +50,11 @@ int len;
    case QLX_USAGE:
      substdio_puts(ss,"ZInternal qmail-lspawn bug.\n"); return;
    case QLX_NFS:
-     substdio_puts(ss,"ZNFS failure in qmail-alias.\n"); return;
+     substdio_puts(ss,"ZNFS failure in qmail-local.\n"); return;
    case QLX_EXECHARD:
-     substdio_puts(ss,"DUnable to run qmail-alias.\n"); return;
+     substdio_puts(ss,"DUnable to run qmail-local.\n"); return;
    case QLX_EXECSOFT:
-     substdio_puts(ss,"ZUnable to run qmail-alias.\n"); return;
+     substdio_puts(ss,"ZUnable to run qmail-local.\n"); return;
    case QLX_EXECPW:
      substdio_puts(ss,"ZUnable to run qmail-getpw.\n"); return;
    case 111: case 71: case 74: case 75:
@@ -142,8 +147,8 @@ char *local;
    case -1:
      _exit(QLX_SYS);
    case 0:
-     if (prot_gid(GID_NOFILES) == -1) _exit(QLX_USAGE);
-     if (prot_uid(UID_PW) == -1) _exit(QLX_USAGE);
+     if (prot_gid(auto_gidn) == -1) _exit(QLX_USAGE);
+     if (prot_uid(auto_uidp) == -1) _exit(QLX_USAGE);
      close(pi[0]);
      if (fd_move(1,pi[1]) == -1) _exit(QLX_SYS);
      execv(*args,args);
@@ -168,7 +173,7 @@ char *s; char *r; int at;
 
  if (!(f = fork()))
   {
-   char *(args[10]);
+   char *(args[11]);
    unsigned long u;
    int n;
    int uid;
@@ -179,14 +184,14 @@ char *s; char *r; int at;
    r[at] = 0;
    if (!r[0]) _exit(0); /* <> */
 
-   if (chdir(CONF_HOME) == -1) _exit(QLX_USAGE);
+   if (chdir(auto_qmail) == -1) _exit(QLX_USAGE);
 
    nughde_get(r);
 
    x = nughde.s;
    xlen = nughde.len;
 
-   args[0] = "bin/qmail-alias";
+   args[0] = "bin/qmail-local";
    args[1] = "--";
    args[2] = x;
    n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
@@ -211,7 +216,8 @@ char *s; char *r; int at;
 
    args[7] = r + at + 1;
    args[8] = s;
-   args[9] = 0;
+   args[9] = aliasempty;
+   args[10] = 0;
 
    if (fd_move(0,fdmess) == -1) _exit(QLX_SYS);
    if (fd_move(1,fdout) == -1) _exit(QLX_SYS);

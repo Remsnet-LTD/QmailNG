@@ -6,12 +6,12 @@ in
 .BR .qmail\fIext :
 .B |\fIcommand
 .SH DESCRIPTION
-.B qmail-alias
+.B qmail-local
 will, upon your request,
 feed each incoming mail message through a program of your choice.
 
 When a mail message arrives,
-.B qmail-alias
+.B qmail-local
 runs
 .B sh -c \fIcommand
 in your home directory.
@@ -21,7 +21,7 @@ standard input.
 
 .B WARNING:
 The mail message does not begin with
-.BR qmail-alias 's
+.BR qmail-local 's
 usual
 .B Return-Path
 and
@@ -29,7 +29,7 @@ and
 lines.
 
 Note that
-.B qmail-alias
+.B qmail-local
 uses the same file descriptor for every delivery
 in your
 .B .qmail
@@ -43,7 +43,7 @@ exit codes are interpreted as follows:
 0 means that the delivery was successful;
 99 means that the delivery was successful,
 but that
-.B qmail-alias
+.B qmail-local
 should ignore all further delivery instructions;
 100 means that the delivery failed permanently (hard error);
 111 means that the delivery failed but should be tried again
@@ -54,7 +54,7 @@ but
 .I command
 should avoid relying on this.
 
-.B qmail-alias
+.B qmail-local
 supplies several useful environment variables to
 .IR command .
 .B SENDER
@@ -108,7 +108,7 @@ including newlines.
 is the UUCP-style
 .B From_
 line that
-.B qmail-alias
+.B qmail-local
 adds to
 .IR mbox -format
 files.
@@ -120,4 +120,4 @@ They are under the control of a possibly malicious remote user.
 .SH "SEE ALSO"
 dot-qmail(5),
 envelopes(5),
-qmail-alias(8)
+qmail-local(8)

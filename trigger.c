@@ -1,7 +1,7 @@
 #include "select.h"
 #include "open.h"
 #include "trigger.h"
-#include "auto-hasnpbg1.h"
+#include "hasnpbg1.h"
 
 static int fd = -1;
 #ifdef HASNAMEDPIPEBUG1

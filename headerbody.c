@@ -1,7 +1,6 @@
 #include "stralloc.h"
 #include "substdio.h"
-#include "getline.h"
-#include "byte.h"
+#include "getln.h"
 #include "hfield.h"
 #include "headerbody.h"
 
@@ -11,7 +10,7 @@ stralloc *sa;
 int *match;
 {
  if (!*match) return 0;
- if (getline2(ss,sa,match,'\n') == -1) return -1;
+ if (getln(ss,sa,match,'\n') == -1) return -1;
  if (*match) return 1;
  if (!sa->len) return 0;
  if (!stralloc_append(sa,"\n")) return -1;
@@ -58,7 +57,7 @@ void (*dobl)();
      dobl(&nextline);
      break;
     }
-   if ((nextline.len >= 5) && !byte_diff(nextline.s,5,"From "))
+   if (stralloc_starts(&nextline,"From "))
     {
      if (!stralloc_copys(&line,"MBOX-Line: ")) return -1;
      if (!stralloc_cat(&line,&nextline)) return -1;

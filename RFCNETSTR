@@ -1,17 +1,6 @@
-
-Network Working Group                                       D. Bernstein
-XXXXXXXXXXXXXXXXXXXX: NNNN                                            IR
-Category: Informational                                     25 July 1996
-
-
-                               Netstrings
-
-
-Status of this memo
-
-   This memo provides information for the Internet community. This memo
-   does not specify an Internet standard of any kind. Distribution of
-   this memo is unlimited.
+Netstrings
+D. J. Bernstein, djb@pobox.com
+19970201
 
 
 1. Introduction
@@ -51,14 +40,6 @@ Status of this memo
    <30> for 0, <31> for 1, and so on up through <39> for 9. Extra zeros
    at the front of [len] are prohibited: [len] begins with <30> exactly
    when [string] is empty.
-
-
-
-
-Bernstein                                                       [Page 1]
-
-XXX NNNN                       Netstrings                      July 1996
-
 
    For example, the string "hello world!" is encoded as <31 32 3a 68
    65 6c 6c 6f 20 77 6f 72 6c 64 21 2c>, i.e., "12:hello world!,". The
@@ -105,14 +86,3 @@ XXX NNNN                       Netstrings                      July 1996
    In contrast, as the above sample code shows, it is very easy to
    handle netstrings without risking buffer overflow. Thus widespread
    use of netstrings may improve network security.
-
-
-Author's address
-
-   D. J. Bernstein
-
-   Email:  djb@pobox.com
-
-
-Bernstein                                                       [Page 2]
-

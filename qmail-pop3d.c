@@ -1,8 +1,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "direntry.h"
-#include "signal.h"
-#include "getline.h"
+#include "sig.h"
+#include "getln.h"
 #include "stralloc.h"
 #include "substdio.h"
 #include "alloc.h"
@@ -95,7 +95,7 @@ unsigned long limit;
 
  for (;;)
   {
-   if (getline2(ssfrom,&dataline,&match,'\n') != 0) die();
+   if (getln(ssfrom,&dataline,&match,'\n') != 0) die();
    if (!match && !dataline.len) break;
    if (match) --dataline.len; /* no way to pass this info over POP */
    if (limit) if (!inheaders) if (!--limit) break;
@@ -130,8 +130,8 @@ void getlist()
   {
    while (d = readdir(dir))
     {
-     if (!str_diff(d->d_name,".")) continue;
-     if (!str_diff(d->d_name,"..")) continue;
+     if (str_equal(d->d_name,".")) continue;
+     if (str_equal(d->d_name,"..")) continue;
      if (!stralloc_copys(&newname,"tmp/")) die_nomem();
      if (!stralloc_cats(&newname,d->d_name)) die_nomem();
      if (!stralloc_0(&newname)) die_nomem();
@@ -148,8 +148,8 @@ void getlist()
   {
    while (d = readdir(dir))
     {
-     if (!str_diff(d->d_name,".")) continue;
-     if (!str_diff(d->d_name,"..")) continue;
+     if (str_equal(d->d_name,".")) continue;
+     if (str_equal(d->d_name,"..")) continue;
      pos = filenames.len;
      if (!stralloc_cats(&filenames,"new/")) die_nomem();
      if (!stralloc_cats(&filenames,d->d_name)) die_nomem();
@@ -169,8 +169,8 @@ void getlist()
   {
    while (d = readdir(dir))
     {
-     if (!str_diff(d->d_name,".")) continue;
-     if (!str_diff(d->d_name,"..")) continue;
+     if (str_equal(d->d_name,".")) continue;
+     if (str_equal(d->d_name,"..")) continue;
      pos = filenames.len;
      if (!stralloc_cats(&filenames,"cur/")) die_nomem();
      if (!stralloc_cats(&filenames,d->d_name)) die_nomem();
@@ -374,8 +374,8 @@ char **argv;
  static stralloc cmd = {0};
  int match;
 
- signal_catchalarm(die);
- signal_init();
+ sig_alarmcatch(die);
+ sig_pipeignore();
 
  if (!argv[1]) die_nomaildir();
  if (chdir(argv[1]) == -1) die_nomaildir();
@@ -386,7 +386,7 @@ char **argv;
 
  for (;;)
   {
-   if (getline2(&ssin,&cmd,&match,'\n') == -1) die();
+   if (getln(&ssin,&cmd,&match,'\n') == -1) die();
    if (!match) die();
    if (cmd.len == 0) die();
    if (cmd.s[--cmd.len] != '\n') die();

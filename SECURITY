@@ -19,10 +19,10 @@ track of whether a local user was ``responsible'' for an address. This
 has proven to be an unmitigated disaster.
 
 In qmail, programs and files are not addresses. The local delivery
-agent, qmail-alias, can run programs or write to files as directed by
+agent, qmail-local, can run programs or write to files as directed by
 ~user/.qmail, but it's always running as that user. (The notion of
 ``user'' is configurable, but root is never a user. To prevent silly
-mistakes, qmail-alias makes sure that neither ~user nor ~user/.qmail is
+mistakes, qmail-local makes sure that neither ~user nor ~user/.qmail is
 group-writable or world-writable.)
 
 Security impact: .qmail, like .cshrc and .exrc and various other files,

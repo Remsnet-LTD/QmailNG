@@ -32,7 +32,7 @@ int len;
   {
    if (h == cm->hash[pos])
      if (len == cm->inputlen[pos])
-       if (!case_diffb(cm->input[pos],s,len))
+       if (!case_diffb(cm->input[pos],len,s))
 	 return cm->input[pos] + cm->inputlen[pos] + 1;
    pos = cm->next[pos];
   }

@@ -83,7 +83,7 @@ Default: 10.
 If 0, local deliveries will be put on hold.
 .I concurrencylocal
 is limited at compile time to
-CONF-NUMD.
+SPAWN.
 .TP 5
 .I concurrencyremote
 Maximum number of simultaneous remote delivery attempts.
@@ -91,7 +91,7 @@ Default: 20.
 If 0, remote deliveries will be put on hold.
 .I concurrencyremote
 is limited at compile time to
-CONF-NUMD.
+SPAWN.
 .TP 5
 .I doublebouncehost
 Double-bounce host.
@@ -164,7 +164,7 @@ so the percent hack may be applied repeatedly.
 handles
 .I percenthack
 before
-.IR locals .
+.IR recipientmap .
 .TP 5
 .I queuelifetime
 Number of seconds
@@ -175,6 +175,28 @@ After this time expires,
 will try the message once more,
 but it will treat any temporary delivery failures as
 permanent failures.
+.TP 5
+.I recipientmap
+List of redirections, one per line.
+Each redirection has the form
+.IR recipient\fB:\fIrewritten ,
+without any extra spaces.
+When
+.B qmail-send
+sees the address
+.IR recipient ,
+it replaces it with
+.IR rewritten .
+Both
+.I recipient
+and
+.I rewritten
+must include domain names.
+.B qmail-send
+handles
+.I recipientmap
+before
+.IR locals .
 .TP 5
 .I virtualdomains
 List of virtual domains, one per line.
@@ -193,7 +215,7 @@ and treats it as local.
 For example, if
 
 .EX
-     nowhere.mil:joeCONF-BREAKfoo
+     nowhere.mil:joeBREAKfoo
 .EE
 
 is in
@@ -202,15 +224,15 @@ and a message arrives for
 .BR info@nowhere.mil ,
 .B qmail-send
 will rewrite the recipient address as
-.B joeCONF-BREAKfoo-info@nowhere.mil
+.B joeBREAKfoo-info@nowhere.mil
 and deliver the message locally.
 .I virtualdomains
 may contain wildcards:
 
 .EX
-     .fax:uucpCONF-BREAKfax
-     :aliasCONF-BREAKcatchall
-     .nowhere.mil:joeCONF-BREAKfoo-host
+     .fax:uucpBREAKfax
+     :aliasBREAKcatchall
+     .nowhere.mil:joeBREAKfoo-host
 .EE
 
 .I virtualdomains

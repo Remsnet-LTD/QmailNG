@@ -1,7 +1,8 @@
 #ifndef TIMEOUTWRITE_H
 #define TIMEOUTWRITE_H
 
-extern void timeoutwrite_init();
+#define TIMEOUTWRITE(s,fd) (((s) << 10) | (fd))
+
 extern int timeoutwrite();
 
 #endif

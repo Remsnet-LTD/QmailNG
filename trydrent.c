@@ -3,6 +3,6 @@
 
 void foo()
 {
- DIR *dir;
- struct dirent *d;
+  DIR *dir;
+  struct dirent *d;
 }

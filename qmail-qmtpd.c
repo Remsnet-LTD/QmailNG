@@ -1,13 +1,13 @@
 #include "stralloc.h"
 #include "substdio.h"
 #include "subfd.h"
-#include "qqtalk.h"
+#include "qmail.h"
 #include "now.h"
 #include "str.h"
 #include "fmt.h"
 #include "env.h"
-#include "signal.h"
-#include "conf-home.h"
+#include "sig.h"
+#include "auto_qmail.h"
 #include "now.h"
 #include "datetime.h"
 #include "date822fmt.h"
@@ -16,7 +16,7 @@
 #include "constmap.h"
 #include "received.h"
 
-struct qqtalk qqt;
+struct qmail qqt;
 
 void dropped() { _exit(0); }
 void badproto() { _exit(100); }
@@ -87,11 +87,11 @@ main()
  unsigned long qp;
  char *result;
 
- signal_init();
- signal_catchalarm(sigalrm);
+ sig_pipeignore();
+ sig_alarmcatch(sigalrm);
  alarm(3600);
 
- if (chdir(CONF_HOME) == -1) resources();
+ if (chdir(auto_qmail) == -1) resources();
 
  if (control_init() == -1) resources();
  flagrcpthosts = control_readfile(&rcpthosts,"control/rcpthosts",0);
@@ -118,8 +118,8 @@ main()
    len = getlen();
    if (len == 0) badproto();
 
-   if (qqtalk_open(&qqt,0) == -1) resources();
-   qp = qqtalk_qp(&qqt);
+   if (qmail_open(&qqt) == -1) resources();
+   qp = qmail_qp(&qqt);
 
    if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
    --len;
@@ -142,16 +142,16 @@ main()
          if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
          --len;
          if (ch == 10) break;
-         qqtalk_put(&qqt,"\015",1);
+         qmail_put(&qqt,"\015",1);
         }
-       qqtalk_put(&qqt,&ch,1);
+       qmail_put(&qqt,&ch,1);
       }
    else
      while (len > 0) /* XXX: could speed this up, obviously */
       {
        if (substdio_get(subfdinsmall,&ch,1) < 1) dropped();
        --len;
-       qqtalk_put(&qqt,&ch,1);
+       qmail_put(&qqt,&ch,1);
       }
    getcomma();
 
@@ -175,8 +175,8 @@ main()
     }
    getcomma();
 
-   qqtalk_from(&qqt,buf);
-   if (!flagsenderok) qqtalk_fail(&qqt);
+   qmail_from(&qqt,buf);
+   if (!flagsenderok) qmail_fail(&qqt);
 
    biglen = getlen();
    while (biglen > 0)
@@ -215,26 +215,26 @@ main()
 	 if (!addrallowed(buf,len)) failure.s[failure.len - 1] = 'D';
 
        if (!failure.s[failure.len - 1])
-	 qqtalk_to(&qqt,buf);
+	 qmail_to(&qqt,buf);
       }
      getcomma();
      biglen -= (len + 1);
     }
    getcomma();
 
-   switch(qqtalk_close(&qqt))
+   switch(qmail_close(&qqt))
     {
      case 0: result = 0; break;
-     case QQT_WAITPID: result = "Zqq waitpid surprise (#4.3.0)"; break;
-     case QQT_CRASHED: result = "Zqq crashed (#4.3.0)"; break;
-     case QQT_USAGE: result = "Zqq usage surprise (#4.3.0)"; break;
-     case QQT_SYS: result = "Zqq system error (#4.3.0)"; break;
-     case QQT_READ: result = "Zqq read error (#4.3.0)"; break;
-     case QQT_WRITE: result = "Zqq write error or disk full (#4.3.0)"; break;
-     case QQT_NOMEM: result = "Zqq out of memory (#4.3.0)"; break;
-     case QQT_EXECSOFT: result = "Zcould not exec qq (#4.3.0)"; break;
-     case QQT_TIMEOUT: result = "Zqq timeout (#4.3.0)"; break;
-     case QQT_TOOLONG: result = "Dqq toolong surprise (#5.1.3)"; break;
+     case QMAIL_WAITPID: result = "Zqq waitpid surprise (#4.3.0)"; break;
+     case QMAIL_CRASHED: result = "Zqq crashed (#4.3.0)"; break;
+     case QMAIL_USAGE: result = "Zqq usage surprise (#4.3.0)"; break;
+     case QMAIL_SYS: result = "Zqq system error (#4.3.0)"; break;
+     case QMAIL_READ: result = "Zqq read error (#4.3.0)"; break;
+     case QMAIL_WRITE: result = "Zqq write error or disk full (#4.3.0)"; break;
+     case QMAIL_NOMEM: result = "Zqq out of memory (#4.3.0)"; break;
+     case QMAIL_EXECSOFT: result = "Zcould not exec qq (#4.3.0)"; break;
+     case QMAIL_TIMEOUT: result = "Zqq timeout (#4.3.0)"; break;
+     case QMAIL_TOOLONG: result = "Dqq toolong surprise (#5.1.3)"; break;
      default: result = "Zqq internal bug (#4.3.0)"; break;
     }
 

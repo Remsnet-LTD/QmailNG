@@ -47,7 +47,7 @@ int tcpto(ip) struct ip_address *ip;
  record = tcpto_buf;
  for (i = 0;i < n;++i)
   {
-   if (!byte_diff(ip->d,4,record))
+   if (byte_equal(ip->d,4,record))
     {
      flagwasthere = 1;
      if (record[4] >= 2)
@@ -87,7 +87,7 @@ void tcpto_err(ip,flagerr) struct ip_address *ip; int flagerr;
  record = tcpto_buf;
  for (i = 0;i < n;++i)
   {
-   if (!byte_diff(ip->d,4,record))
+   if (byte_equal(ip->d,4,record))
     {
      if (!flagerr)
        record[4] = 0;

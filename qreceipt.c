@@ -1,9 +1,9 @@
-#include "signal.h"
+#include "sig.h"
 #include "env.h"
 #include "substdio.h"
 #include "stralloc.h"
 #include "subfd.h"
-#include "getline.h"
+#include "getln.h"
 #include "alloc.h"
 #include "str.h"
 #include "hfield.h"
@@ -15,7 +15,7 @@
 #include "exit.h"
 #include "open.h"
 #include "quote.h"
-#include "qqtalk.h"
+#include "qmail.h"
 
 void die_noreceipt() { _exit(0); }
 void die() { _exit(100); }
@@ -54,45 +54,45 @@ int rwnotice(addr) token822_alloc *addr; { token822_reverse(addr);
      flagreceipt = 1;
  token822_reverse(addr); return 1; }
 
-struct qqtalk qqt;
+struct qmail qqt;
 
 stralloc quoted = {0};
 
 void finishheader()
 {
  if (!flagreceipt) die_noreceipt();
- if (!str_diff(returnpath,"")) die_noreceipt();
- if (!str_diff(returnpath,"#@[]")) die_noreceipt();
+ if (str_equal(returnpath,"")) die_noreceipt();
+ if (str_equal(returnpath,"#@[]")) die_noreceipt();
 
  if (!quote2(&quoted,returnpath)) die_nomem();
 
- if (qqtalk_open(&qqt,1) == -1) die_fork();
+ if (qmail_open(&qqt) == -1) die_fork();
 
- qqtalk_puts(&qqt,"From: DELIVERY NOTICE SYSTEM <");
- qqtalk_put(&qqt,quoted.s,quoted.len);
- qqtalk_puts(&qqt,">\n");
- qqtalk_puts(&qqt,"To: <");
- qqtalk_put(&qqt,quoted.s,quoted.len);
- qqtalk_puts(&qqt,">\n");
- qqtalk_puts(&qqt,"Subject: success notice\n\
+ qmail_puts(&qqt,"From: DELIVERY NOTICE SYSTEM <");
+ qmail_put(&qqt,quoted.s,quoted.len);
+ qmail_puts(&qqt,">\n");
+ qmail_puts(&qqt,"To: <");
+ qmail_put(&qqt,quoted.s,quoted.len);
+ qmail_puts(&qqt,">\n");
+ qmail_puts(&qqt,"Subject: success notice\n\
 \n\
 Hi! This is the qreceipt program. Your message was delivered to the\n\
 following address: ");
- qqtalk_puts(&qqt,target);
- qqtalk_puts(&qqt,". Thanks for asking.\n");
+ qmail_puts(&qqt,target);
+ qmail_puts(&qqt,". Thanks for asking.\n");
  if (messageid.s)
   {
-   qqtalk_puts(&qqt,"Your ");
-   qqtalk_put(&qqt,messageid.s,messageid.len);
+   qmail_puts(&qqt,"Your ");
+   qmail_put(&qqt,messageid.s,messageid.len);
   }
 
- qqtalk_from(&qqt,"");
- qqtalk_to(&qqt,returnpath);
+ qmail_from(&qqt,"");
+ qmail_to(&qqt,returnpath);
 
- switch(qqtalk_close(&qqt))
+ switch(qmail_close(&qqt))
   {
    case 0: break;
-   case QQT_TOOLONG: die_qqperm();
+   case QMAIL_TOOLONG: die_qqperm();
    default: die_qqtemp();
   }
 }
@@ -123,7 +123,7 @@ void main(argc,argv)
 int argc;
 char **argv;
 {
- signal_init();
+ sig_pipeignore();
  if (!(target = argv[1])) die_usage();
  if (!(returnpath = env_get("SENDER"))) die_usage();
  if (headerbody(subfdin,doheaderfield,finishheader,dobody) == -1) die_read();

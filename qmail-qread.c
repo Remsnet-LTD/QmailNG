@@ -5,10 +5,10 @@
 #include "subfd.h"
 #include "fmt.h"
 #include "str.h"
-#include "getline.h"
+#include "getln.h"
 #include "fmtqfn.h"
 #include "readsubdir.h"
-#include "conf-home.h"
+#include "auto_qmail.h"
 #include "open.h"
 #include "datetime.h"
 #include "date822fmt.h"
@@ -114,7 +114,7 @@ void main()
  substdio ss;
  int x;
 
- if (chdir(CONF_HOME) == -1) die_chdir();
+ if (chdir(auto_qmail) == -1) die_chdir();
  if (chdir("queue") == -1) die_chdir();
  readsubdir_init(&rs,"info",die_opendir);
 
@@ -134,7 +134,7 @@ void main()
      fd = open_read(fninfo);
      if (fd == -1) { err(id); continue; }
      substdio_fdbuf(&ss,read,fd,inbuf,sizeof(inbuf));
-     if (getline2(&ss,&sender,&match,0) == -1) die_nomem();
+     if (getln(&ss,&sender,&match,0) == -1) die_nomem();
      if (fstat(fd,&st) == -1) { close(fd); err(id); continue; }
      close(fd);
      qtime = st.st_mtime;
@@ -153,7 +153,7 @@ void main()
         {
          for (;;)
 	  {
-	   if (getline2(&ss,&line,&match,0) == -1) die_nomem();
+	   if (getln(&ss,&line,&match,0) == -1) die_nomem();
 	   if (!match) break;
 	   switch(line.s[0])
 	    {
