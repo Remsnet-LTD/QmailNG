@@ -1,3 +1,12 @@
+netqmail 1.04
+20031024
+No copyright claimed for changes from qmail 1.03 to netqmail 1.04
+Russell Nelson, nelson@qmail.org
+NOTE: netqmail 1.04 is a community-assembled distribution of qmail from
+the official qmail-1.03.tar.gz and patches approved by the community.
+D. J. Bernstein did not participate in, nor has he been asked to
+approve of this distribution.
+
 qmail 1.03
 19980615
 Copyright 1998
