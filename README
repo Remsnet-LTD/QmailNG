@@ -1,3 +1,14 @@
+netqmail 1.05
+20040121
+James Craig Burley claims copyright on the qmail-isoc patch. For
+more details, see the COPYRIGHTS file shipped with the netqmail-1.05
+distribution.
+
+James' patch has been combined with the original netqmail-1.04 patch
+and the result incorporated into a unified netqmail-1.05 patch.
+Apart from James' copyrights, no other copyright is claimed by the
+distributors of netqmail for changes from qmail 1.03 to netqmail 1.05.
+
 netqmail 1.04
 20031024
 No copyright claimed for changes from qmail 1.03 to netqmail 1.04
