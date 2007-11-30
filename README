@@ -1,3 +1,25 @@
+netqmail 1.06
+20071130
+
+With this distribution, we thank Daniel Bernstein for his dedication
+of qmail to the public domain.  We have taken advantage of this event
+to remove the need to apply a patch.  We will distribute a Netqmail 1.07
+shortly which includes enhancements.
+
+Netqmail 1.06 is produced by this motley krewe:
+
+Russ Nelson <nelson@qmail.org>
+Charles Cazabon <charlesc-software-netqmail@pyropus.ca>
+Dave Sill <de5@sws5.ornl.gov>
+Peter Samuel <Peter.Samuel@gormand.com.au>
+Henning Brauer <henning@bsws.de>
+Andrew Richards <ar-nq@acrconsulting.co.uk>
+Richard Lyons <rick-netqmail@frob.com.au>
+John Levine <netqmail@johnlevine.com>
+Scott Gifford <sgifford@suspectclass.com>
+Kyle Wheeler <kyle-netqmail@memoryhole.net>
+Wayne Marshall
+
 netqmail 1.05
 20040121
 James Craig Burley claims copyright on the qmail-isoc patch. For
