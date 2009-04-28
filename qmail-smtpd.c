@@ -25,6 +25,7 @@
 #include "commands.h"
 #include "spf.h"
 #include "errbits.h"
+#include "verifyrcpt.h"
 
 #define enew()	{ eout("qmail-smtpd: pid "); epid(); eout3(" from ",remoteip,": "); }
 /* Or if you prefer shorter log messages (deduce IP from tcpserver PID entry), */
@@ -39,6 +40,8 @@ char *remotehost;
 char *remoteinfo;
 char *local;
 char *relayclient;
+char *verify;
+int verifydefer=0;
 
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
@@ -151,6 +154,31 @@ void err_databytes()
   enew(); eout("Exceeded DATABYTES limit\n"); eflush();
   out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n");
 }
+void die_qvsetup()
+{
+  enew(); eout3("setup failure (",error_str(errno),")\n"); eflush();
+  out("451 qv setup failure (#4.3.0)\r\n"); flush(); _exit(1);
+}
+void die_qvtimeout()
+{
+  enew(); eout("Timeout (no response from verification server)\n"); eflush();
+  out("451 qv temporary failure (#4.3.0)\r\n"); flush(); _exit(1);
+}
+void die_qvmiscfail()
+{
+  enew(); eout3("temporary failure (",error_str(errno),")\n"); eflush();
+  out("451 qv temporary failure (#4.3.0)\r\n"); flush(); _exit(1);
+}
+void err_nosuchuser550()
+{
+  enew(); eout("Unverified mailbox at RCPT time\n"); eflush();
+  out("550 sorry, no mailbox here by that name. (#5.1.1)\r\n");
+}
+void err_nosuchuser554()
+{
+  enew(); eout("Unverified mailbox(es) at DATA time\n"); eflush();
+  out("554 sorry, invalid mailbox name(s). (#5.1.1)\r\n");
+}
 
 
 stralloc greeting = {0};
@@ -235,6 +263,18 @@ void setup()
   if (!remotehost) remotehost = "unknown";
   remoteinfo = env_get("TCPREMOTEINFO");
   relayclient = env_get("RELAYCLIENT");
+  verify =  env_get("VERIFY");
+  if (verify)
+  {
+    if (*verify == '\0') /* Disable verification if VERIFY="" */
+    {
+      verify = 0;
+      /* Warning message since previous version of qmail-verify used VERIFY="" to enable verification */
+      enew(); eout("Note recipient verification explicitly disabled.\n"); eflush();
+    }
+    else
+      if ((*verify == 'D') || (*verify == 'd')) verifydefer=1;
+  }
   dohelo(remotehost);
   enew(); eout("New session\n"); eflush();
 }
@@ -339,6 +379,7 @@ void smtp_ehlo(arg) char *arg;
 }
 void smtp_rset()
 {
+  flagdenyany = 0;
   seenmail = 0;
   enew(); eout("Session RSET\n"); eflush();
   out("250 flushed\r\n");
@@ -424,7 +465,14 @@ void smtp_rcpt(arg) char *arg; {
     if (!stralloc_0(&addr)) die_nomem();
   }
   else
+  {
     if (!addrallowed()) { err_nogateway(); return; }
+    if (verify && verifyrcpt(find_digit_colon_eos(verify),&addr,verifydefer,die_qvtimeout,die_qvmiscfail))
+    {
+      err_nosuchuser550();
+      return;
+    }
+  }
   if (!stralloc_cats(&rcptto,"T")) die_nomem();
   if (!stralloc_cats(&rcptto,addr.s)) die_nomem();
   if (!stralloc_0(&rcptto)) die_nomem();
@@ -564,9 +612,10 @@ void smtp_data() {
   int hops;
   unsigned long qp;
   char *qqx;
- 
+
   if (!seenmail) { err_wantmail(); return; }
   if (!rcptto.len) { err_wantrcpt(); return; }
+  if (verifydefer && flagdenyany) { err_nosuchuser554(); return; }
   seenmail = 0;
   if (databytes) bytestooverflow = databytes + 1;
   messagebytes = 0;

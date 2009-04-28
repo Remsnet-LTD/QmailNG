@@ -259,8 +259,14 @@ qmail-qmqpd
 qmail-qmtpd.o
 rcpthosts.o
 qmail-qmtpd
+verifyrcpt.o
+sockbits.o
+udpbits.o
+scan_misc.o
 qmail-smtpd.o
 qmail-smtpd
+qmail-verify.o
+qmail-verify
 sendmail.o
 sendmail
 tcp-env.o
@@ -362,6 +368,7 @@ qmail-qmqpc.0
 qmail-qmqpd.0
 qmail-qmtpd.0
 qmail-smtpd.0
+qmail-verify.0
 tcp-env.0
 qmail-newmrh.8
 qmail-newmrh.0

@@ -832,7 +832,7 @@ dnsptr dnsip dnsmxip dnsfq dnstxt hostname ipmeprint qreceipt qsmhook qbiff \
 forward preline condredirect bouncesaying except maildirmake \
 maildir2mbox maildirwatch qail elq pinq idedit install-big install \
 instcheck home home+df proc proc+df binm1 binm1+df binm2 binm2+df \
-binm3 binm3+df spfquery
+binm3 binm3+df spfquery qmail-verify
 
 load: \
 make-load warn-auto.sh systype
@@ -959,7 +959,7 @@ preline.0 condredirect.0 bouncesaying.0 except.0 maildirmake.0 \
 maildir2mbox.0 maildirwatch.0 qmail.0 qmail-limits.0 qmail-log.0 \
 qmail-control.0 qmail-header.0 qmail-users.0 dot-qmail.0 \
 qmail-command.0 tcp-environ.0 maildir.0 mbox.0 addresses.0 \
-envelopes.0 forgeries.0
+envelopes.0 forgeries.0 qmail-verify.0
 
 mbox.0: \
 mbox.5
@@ -1557,15 +1557,19 @@ auto_split.h spf.h
 
 qmail-smtpd: \
 load qmail-smtpd.o rcpthosts.o commands.o timeoutread.o \
+sockbits.o udpbits.o verifyrcpt.o \
 timeoutwrite.o ip.o ipme.o ipalloc.o strsalloc.o control.o constmap.o \
 received.o date822fmt.o now.o qmail.o spf.o dns.o cdb.a fd.a wait.a \
+scan_misc.o \
 datetime.a getln.a open.a sig.a case.a env.a stralloc.a errbits.o \
 alloc.a substdio.a \
 error.a str.a fs.a auto_qmail.o socket.lib dns.lib
 	./load qmail-smtpd rcpthosts.o commands.o timeoutread.o \
+	sockbits.o udpbits.o verifyrcpt.o \
 	timeoutwrite.o ip.o ipme.o ipalloc.o strsalloc.o control.o \
 	constmap.o received.o date822fmt.o now.o qmail.o spf.o dns.o cdb.a \
-	fd.a wait.a datetime.a getln.a open.a sig.a case.a env.a stralloc.a \
+	fd.a wait.a scan_misc.o \
+	datetime.a getln.a open.a sig.a case.a env.a stralloc.a \
 	errbits.o \
 	alloc.a substdio.a error.a fs.a auto_qmail.o \
 	str.a `cat socket.lib` `cat dns.lib`
@@ -1579,6 +1583,7 @@ compile qmail-smtpd.c sig.h readwrite.h stralloc.h gen_alloc.h \
 substdio.h alloc.h auto_qmail.h control.h received.h constmap.h \
 error.h ipme.h ip.h ipalloc.h strsalloc.h ip.h gen_alloc.h ip.h qmail.h \
 substdio.h str.h fmt.h scan.h byte.h case.h env.h now.h datetime.h \
+sockbits.h udpbits.h qmail-verify.h \
 exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h
 	./compile qmail-smtpd.c
 
@@ -1653,6 +1658,31 @@ qmail-users.9 conf-break conf-spawn
 	| sed s}SPAWN}"`head -1 conf-spawn`"}g \
 	> qmail-users.5
 
+qmail-verify.o: \
+qmail-verify.h compile qmail-verify.c auto_break.h auto_usera.h auto_qmail.h byte.h case.h cdb.h \
+constmap.h error.h fmt.h ip.h open.h str.h stralloc.h uint32.h errbits.h
+	./compile qmail-verify.c
+
+qmail-verify: \
+load qmail-verify.o timeoutread.o \
+timeoutwrite.o control.o ip.o constmap.o \
+cdb.a fd.a wait.a getln.a \
+open.a sig.a case.a env.a stralloc.a \
+auto_usera.o auto_break.o auto_qmail.o errbits.o \
+alloc.a substdio.a error.a str.a fs.a \
+socket.lib
+	./load qmail-verify timeoutread.o \
+	timeoutwrite.o control.o ip.o constmap.o \
+	cdb.a fd.a wait.a \
+	getln.a open.a sig.a case.a env.a stralloc.a \
+	auto_usera.o auto_break.o auto_qmail.o errbits.o \
+	alloc.a substdio.a error.a str.a fs.a `cat \
+	socket.lib`
+
+qmail-verify.0: \
+qmail-verify.8
+	nroff -man qmail-verify.8 > qmail-verify.0
+
 qmail.0: \
 qmail.7
 	nroff -man qmail.7 > qmail.0
@@ -1726,6 +1756,10 @@ scan_8long.o: \
 compile scan_8long.c scan.h
 	./compile scan_8long.c
 
+scan_misc.o: \
+compile scan_misc.c scan.h
+	./compile scan_misc.c
+
 scan_ulong.o: \
 compile scan_ulong.c scan.h
 	./compile scan_ulong.c
@@ -1797,6 +1831,7 @@ qmail-lspawn.8 qmail-newmrh.9 qmail-newu.9 qmail-pop3d.8 \
 qmail-popup.8 qmail-pw2u.9 qmail-qmqpc.8 qmail-qmqpd.8 qmail-qmtpd.8 \
 qmail-qread.8 qmail-qstat.8 qmail-queue.8 qmail-remote.8 \
 qmail-rspawn.8 qmail-send.9 qmail-showctl.8 qmail-smtpd.8 \
+qmail-verify.8 \
 qmail-start.9 qmail-tcpok.8 qmail-tcpto.8 qmail-users.9 qmail.7 \
 qreceipt.1 splogger.8 tcp-env.1 config.sh config-fast.sh \
 qmail-clean.c qmail-getpw.c qmail-inject.c qmail-local.c \
@@ -1909,6 +1944,10 @@ slurpclose.o: \
 compile slurpclose.c stralloc.h gen_alloc.h readwrite.h slurpclose.h \
 error.h
 	./compile slurpclose.c
+
+sockbits.o: \
+compile sockbits.c sockbits.h stralloc.h gen_alloc.h
+	./compile sockbits.c
 
 socket.lib: \
 trylsock.c compile load
@@ -2174,12 +2213,25 @@ triggerpull.o: \
 compile triggerpull.c ndelay.h open.h triggerpull.h
 	./compile triggerpull.c
 
+udpbits.o: \
+compile udpbits.c udpbits.h ip.h
+	./compile udpbits.c
+
 uint32.h: \
 tryulong32.c compile load uint32.h1 uint32.h2
 	( ( ./compile tryulong32.c && ./load tryulong32 && \
 	./tryulong32 ) >/dev/null 2>&1 \
 	&& cat uint32.h2 || cat uint32.h1 ) > uint32.h
 	rm -f tryulong32.o tryulong32
+
+verifyrcpt.o: \
+compile verifyrcpt.c verifyrcpt.h sig.h readwrite.h stralloc.h gen_alloc.h \
+substdio.h alloc.h auto_qmail.h control.h received.h constmap.h \
+error.h ipme.h ip.h ipalloc.h ip.h gen_alloc.h ip.h qmail.h \
+substdio.h str.h fmt.h scan.h byte.h case.h env.h now.h datetime.h \
+exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h \
+sockbits.h udpbits.h qmail-verify.h
+	./compile verifyrcpt.c
 
 wait.a: \
 makelib wait_pid.o wait_nohang.o
