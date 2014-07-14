@@ -616,6 +616,7 @@ char *to; stralloc *replytext;
 
  close(pi[0]);
  write(pi[1],replytext->s,replytext->len);
+ close(pi[1]);
  wait_pid(&wstat,child);
  if(wait_crashed(wstat))
     temp_childcrashed();
@@ -809,8 +810,8 @@ char **argv;
 
    if ( s = env_get("QMAILDOTMODE") ) {
       case_lowers(s);
-      if ( !str_diff("envonly", s) ) {
-         if (!flagdoit) sayit("envonly ",s,0);
+      if ( !str_diff("ldaponly", s) ) {
+         if (!flagdoit) sayit("ldaponly ",s,0);
          qmode = 1;
       } else if ( !str_diff("dotonly", s) ) {
          if (!flagdoit) sayit("dotonly ",s,0);

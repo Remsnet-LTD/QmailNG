@@ -1,4 +1,14 @@
-Betacode 19980906 by Andre Oppermann <opi@nrg4u.com>,
+
+Note: This is an interims release, just to give you an glimpse what is
+      comming the next days!
+      The work ongoing on basically all files.
+      Here is everything documented to make it work but more specific
+      parts are sometimes missing.
+      Future plans and feature discussions are not yet included.
+      I was more or less sick the last two and a half months but I'm
+      more or less back at work now.
+
+Betacode 19981025 by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
 (c) 1998 Internet Business Solutions Ltd.
 
@@ -9,10 +19,11 @@ These patches are under the BSD license.
 
 TODO:
 
+done - Implement working checkpassowrd with plaintext/cryt passwords
  - Implement crypto checkpassword (SHA, MD5, DES)
- - Implement some ~control/ldap* files
- - Pass list of requested attributes to ldap_search_ext_s
- - Lot of code clean up's
+done - Implement some more ~control/ldap* files
+done - Pass list of requested attributes to ldap_search_ext_s
+ - Lot of code clean up's (debugging code needs to be debugged :)
  - Debugging and testing, testing, testing
 
 
@@ -29,10 +40,16 @@ INSTALL:
    Don't ask me if you have compile|install problems with Directory SDK or
    OpenLDAP!
 
+   QLDAP needs the Mozilla Libs because it uses ldap_search_ext_s
+   which supports LDAPv3. Very little tweaking is needed to replace
+   it with ldap_search_s.
+
 4. Apply the qmail-ldap patches to a clean qmail-1.03 source tree
 
 5. Compile and install the stuff (it's the same as in standard qmail
    install)
+
+5.1 "make checkpassword" in the qmail directory and install checkpassword
 
 6. Create the LDAP user database and start the LDAP server
 
@@ -56,7 +73,7 @@ CONFIG FILES:
  Example: o=Internet Pipeline, c=CH
  Note: Referrals are ignored
 
-~control/ldapuser
+~control/ldaplogin
 
  Username for the LDAP server connection
  Default: NULL
@@ -85,32 +102,33 @@ CONFIG FILES:
 ~control/ldapdefaultdotmode
 
  The default interpretion of .qmail files
- Default: disabled
- Example: 0
+ Default: ldaponly
+ Example: both
+ Values: both, dotonly, ldaponly, none
  Note: Works only for deliveries based on LDAP lookups
 
-(~control/ldapmessagestore)
+~control/ldapmessagestore
 
  The default prepend path for mailMessageStore without trailing /
  Default: NULL
  Example: /maildisk/
  Note: Used in virtual users environments
 
-(~control/ldapuser)
+~control/ldapuser
 
  The default username used in virtual users environments
  Default: NULL
  Example: popusers
  Note: Must be an existing username
 
-(~control/ldapuid)
+~control/ldapuid
 
  The default UID used in virtual users environments
  Default: NULL
  Example: 1010
  Note: Must match the username
 
-(~control/ldapgid)
+~control/ldapgid
 
  The default GID used in virtual users environments
  Default: NULL
@@ -161,7 +179,7 @@ mailQuota
  Example: 1000
  Note: In KBytes, overides ldapdefaultquota
 
-forwardingAddress
+mailForwardingAddress
 
  Addresses to forward all incoming messages
  Example: jdoe@new.place
@@ -220,7 +238,7 @@ EXAMPLE SLAPD.CONF FILE:
 
 include         /usr/local/etc/ldap/slapd.at.conf
 include         /usr/local/etc/ldap/slapd.oc.conf
-schemacheck     off
+schemacheck     on
 #referral       ldap://ldap.itd.umich.edu
 
 #######################################################################
@@ -234,3 +252,25 @@ rootdn          "cn=root, o=Internet Pipeline, c=CH"
 rootpw          secret
 index           mail,mailAlternateAddress,uid
 index           default none
+
+
+ADD THIS SCHEMA TO SLAPD.OC.CONF
+
+objectclass qmailUser
+        requires
+                objectclass,
+                mail,
+                mailMessageStore,
+                uid,
+                userPassword
+        allows
+                mailAlternateAddress,
+                qmailUser,
+                qmailUID,
+                qmailGID,
+                mailQuota,
+                mailForwardingAddress,
+                deliveryProgramPath,
+                deliveryMode,
+                mailReplyText,
+                qmailDotMode

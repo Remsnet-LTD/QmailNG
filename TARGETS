@@ -395,3 +395,6 @@ forgeries.0
 man
 setup
 check
+check.o
+checkpassword
+checkpassword.o
