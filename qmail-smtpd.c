@@ -185,6 +185,7 @@ char *remotehost;
 char *remoteinfo;
 char *local;
 char *relayclient;
+char *relayok;
 char *denymail;
 int  spamflag = 0;
 
@@ -202,6 +203,9 @@ stralloc liphost = {0};
 int bmfok = 0;
 stralloc bmf = {0};
 struct constmap mapbmf;
+int rmfok = 0;
+stralloc rmf = {0};
+struct constmap maprmf;
 int tarpitcount = 0;
 int tarpitdelay = 5;
 
@@ -237,6 +241,11 @@ void setup()
   if (bmfok == -1) die_control();
   if (bmfok)
     if (!constmap_init(&mapbmf,bmf.s,bmf.len,0)) die_nomem();
+
+  rmfok = control_readfile(&rmf,"control/relaymailfrom",0);
+  if (rmfok == -1) die_control();
+  if (rmfok)
+    if (!constmap_init(&maprmf,rmf.s,rmf.len,0)) die_nomem();
 
   brtok = control_readfile(&brt,"control/badrcptto",0);
   if (brtok == -1) die_control();
@@ -276,7 +285,7 @@ void setup()
   if (!local) local = "unknown";
   logstring(2,local);
 
-  relayclient = env_get("RELAYCLIENT");
+  relayok = relayclient = env_get("RELAYCLIENT");
   if (relayclient) { logstring(2,", relayclient set"); }
   denymail = env_get("DENYMAIL");
   logflush(2);
@@ -384,6 +393,23 @@ int bmfcheck()
     if (constmap(&mapbmf,addr.s + j,addr.len - j - 1)) return 1;
     if (constmap(&mapbmf,addr.s, j + 1)) return 1;
   }
+  return 0;
+}
+
+int seenmail = 0;
+int flagbarf; /* defined if seenmail */
+stralloc mailfrom = {0};
+stralloc rcptto = {0};
+int rcptcount;
+
+int rmfcheck()
+{
+  int j;
+  if (!rmfok) return 0;
+  if (constmap(&maprmf,addr.s,addr.len - 1)) return 1;
+  j = byte_rchr(addr.s,addr.len,'@');
+  if (j < addr.len)
+    if (constmap(&maprmf,addr.s + j,addr.len - j - 1)) return 1;
   return 0;
 }
 
@@ -589,6 +615,15 @@ void smtp_mail(arg) char *arg;
       return;
     }
   } /* denymail */
+
+  /* Allow relaying based on envelope sender address */
+  if (!relayok) if (rmfcheck())
+  {
+    relayclient = "";
+    logline(2,"relaying allowed for envelope sender");
+  }
+  else relayclient = 0;
+
   seenmail = 1;
   if (!stralloc_copys(&rcptto,"")) die_nomem();
   if (!stralloc_copys(&mailfrom,addr.s)) die_nomem();

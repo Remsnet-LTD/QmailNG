@@ -22,7 +22,4 @@ void debug(int level, char *fmt, ...);
 void init_debug(int fd, unsigned int maxlevel);
 /* reads the DEBUGLEVEL env var and sets the corresponding debuglevel */
 
-char* qldap_err_str(int errno);
-/* returns a string that corresponds to the qldap_errno */
-
 #endif
