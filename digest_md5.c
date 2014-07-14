@@ -35,6 +35,7 @@ documentation and/or software.
 #include <sys/file.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include "compatibility.h"
 #include "digest_md5.h"
 #include "base64.h"
 
@@ -62,13 +63,15 @@ typedef unsigned char *POINTER;
 
 static void MD5Transform __P ((u_int32_t [4], const unsigned char [64]));
 
-#if BYTE_ORDER == LITTLE_ENDIAN
+#ifdef __LITTLE_ENDIAN__
+#warning __LITTLE_ENDIAN__
 #define Encode memcpy
 #define Decode memcpy
-#else /* BIG_ENDIAN */
+#else  /* __BIG_ENDIAN__ */
+#warning __BIG_ENDIAN__
 static void Encode __P((void *, const void *, size_t));
 static void Decode __P((void *, const void *, size_t));
-#endif /* LITTLE_ENDIAN */
+#endif /* __LITTLE_ENDIAN__ */
 
 static unsigned char PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -111,7 +114,7 @@ Rotation is separate from addition to prevent recomputation.
  (a) += (b); \
   }
 
-#if BYTE_ORDER != LITTLE_ENDIAN
+#ifdef __BIG_ENDIAN__
 /* Encodes input (u_int32_t) into output (unsigned char). Assumes len is
   a multiple of 4.
  */
@@ -148,7 +151,7 @@ size_t len;
     output[i] = ((u_int32_t)input[j]) | (((u_int32_t)input[j+1]) << 8) |
     (((u_int32_t)input[j+2]) << 16) | (((u_int32_t)input[j+3]) << 24);
 }
-#endif /* !LITTLE_ENDIAN */
+#endif /* __BIG_ENDIAN__ */
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context.
  */
@@ -410,4 +413,59 @@ MD5DataBase64 (data, len, buf, buflen)
     MD5Final(buffer,&ctx);
     b64_ntop(buffer,sizeof(buffer),buf,buflen);
     return(buf);
+}
+
+/* Netscape MTA MD5 as found in Netscape MailServer < 2.02 and Software.com's
+   Post.Office */
+
+static char * ns_mta_hextab = "0123456789abcdef";
+
+void
+ns_mta_hexify(char *buffer, char *str, int len)
+{
+  char *pch = str;
+  char ch;
+  int i;
+
+  for(i = 0;i < len; i ++) {
+    ch = pch[i];
+    buffer[2*i] = ns_mta_hextab[(ch>>4)&15];
+    buffer[2*i+1] = ns_mta_hextab[ch&15];
+  }
+
+  return;
+}
+
+char *
+ns_mta_hash_alg(char *buffer, char *salt, char *passwd)
+{
+  MD5_CTX context;
+  char saltstr[2048];
+  unsigned char digest[16];
+
+  sprintf(saltstr,"%s%c%s%c%s",salt,89,passwd,247,salt);
+
+  MD5Init(&context);
+  MD5Update(&context,(unsigned char *)saltstr,strlen(saltstr));
+  MD5Final(digest,&context);
+  ns_mta_hexify(buffer,(char*)digest,16);
+  buffer[32] = '\0';
+  return(buffer);
+}
+
+int
+ns_mta_md5_cmp_pw(char * clear, char *mangled)
+{
+  char mta_hash[33];
+  char mta_salt[33];
+  char buffer[65];
+  int  gaga;
+
+  strncpy(mta_hash,mangled,32);
+  strncpy(mta_salt,&mangled[32],32);
+
+  mta_hash[32] = mta_salt[32] = 0;
+  gaga = strcmp(mta_hash,ns_mta_hash_alg(buffer,mta_salt,clear));
+
+  return(gaga);
 }

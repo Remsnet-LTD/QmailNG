@@ -14,8 +14,8 @@
 #include "auto_uids.h"
 #include "qlx.h"
 
-#define QLDAP           /* enable LDAP for qmail */
-// #define QLDAPDEBUG     /* We should set this with the -D option of gcc */
+/* #define QLDAP        */ /* enable LDAP for qmail, done by the Makefile  */
+/* #define QLDAPDEBUG   */ /* We should set this with the -D option of gcc */
 
 #ifdef QLDAP /* Includes needed to make LDAP work */
 
@@ -28,6 +28,12 @@
 #include "auto_uids.h"
 #include "fmt.h"
 #include "check.h"
+#include <pwd.h>
+#include <sys/types.h>
+
+#ifndef NULL
+ #define NULL 0
+#endif
 
 #endif /* end -- Includes needed to make LDAP work */
 
@@ -49,6 +55,8 @@ stralloc    qldap_user = {0};
 stralloc    qldap_password = {0};
 stralloc    qldap_defdotmode = {0};
 stralloc    qldap_defaultquota = {0};
+stralloc    qldap_quotawarning = {0};
+stralloc    qldap_automaildirmake = {0};
 
 stralloc    qldap_messagestore = {0};
 stralloc    qldap_username = {0};
@@ -57,6 +65,26 @@ stralloc    qldap_gid = {0};
 
 int         qldap_localdelivery = 1;
 /* init done */
+
+/* char replacement */
+unsigned int replace(s, len, f, r)
+char *s;
+register unsigned int len;
+char f;
+char r;
+{
+   register char *t;
+   register int count = 0;
+
+   t=s;
+   for(;;) {
+      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
+      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
+      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
+      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
+   }
+}
+
 
 /* read the various LDAP control files */
 void get_qldap_controls()
@@ -91,6 +119,20 @@ void get_qldap_controls()
    if (control_rldef(&qldap_username,"../../control/ldapusername",0,"") != 1);
    if (control_rldef(&qldap_uid,"../../control/ldapuid",0,"") != 1);
    if (control_rldef(&qldap_gid,"../../control/ldapgid",0,"") != 1);
+   if (control_readfile(&qldap_quotawarning,"../../control/quotawarning",0) == 1 ) {
+      replace(qldap_quotawarning.s, qldap_quotawarning.len, '\0', '\n');
+      if (!stralloc_0(&qldap_quotawarning)) _exit(QLX_NOMEM);
+      if ( !env_put2("QMAILQUOTAWARNING", qldap_quotawarning.s )) _exit(QLX_NOMEM);
+   } else {
+      if ( !env_unset("QMAILQUOTAWARNING") ) _exit(QLX_NOMEM);
+   }
+
+   if (control_readfile(&qldap_automaildirmake,"../../control/automaildirmake",0) == 1 ) {
+      if (!stralloc_0(&qldap_automaildirmake)) _exit(QLX_NOMEM);
+      if ( !env_put2("QLDAPAUTOMAILDIRMAKE", qldap_automaildirmake.s )) _exit(QLX_NOMEM);
+   } else {
+      if ( !env_unset("QLDAPAUTOMAILDIRMAKE") ) _exit(QLX_NOMEM);
+   }
 
 /* reading of the various LDAP control files done */
 
@@ -233,7 +275,7 @@ int len;
       return;
 
       case 204:
-         substdio_puts(ss, "DInternal in ldap_search_ext_s.\n");
+         substdio_puts(ss, "DInternal error in ldap_search_ext_s.\n");
       return;
 
 
@@ -389,7 +431,7 @@ int qldap_get( stralloc *mail )
 #endif
 
    /* do the search for the email address */
-   if ( (rc = ldap_search_ext_s(ld,qldap_basedn.s,LDAP_SCOPE_SUBTREE,filter.s,attrs,0,NULL,NULL,NULL,1,&res)) != LDAP_SUCCESS ) {
+   if ( (rc = ldap_search_s(ld,qldap_basedn.s,LDAP_SCOPE_SUBTREE,filter.s,attrs,0,&res)) != LDAP_SUCCESS ) {
 #ifdef QLDAPDEBUG
       printf("ldap_search_ext_s: %s\n", ldap_err2string(rc));
 #endif
@@ -403,7 +445,11 @@ int qldap_get( stralloc *mail )
    msg = ldap_first_entry(ld,res);
 
    /* get the dn and free it (we dont need it, to prevent memory leaks) */
+#ifdef LDAP_OPT_PROTOCOL_VERSION /* (only with Mozilla LDAP SDK) */
    if ( (dn = ldap_get_dn(ld,msg)) != NULL ) ldap_memfree(dn);
+#else
+   if ( (dn = ldap_get_dn(ld,msg)) != NULL ) free(dn);
+#endif
 
    /* go through the attributes and set the proper args for qmail-local  *
     * this can probably done with some sort of loop, but hey, how cares? */
@@ -420,7 +466,7 @@ int qldap_get( stralloc *mail )
       /* ...or set the default one (or break) */
       if (!qldap_username.len) return 40;
       if (!chck_userb(qldap_username.s,qldap_username.len)) return 41;
-      if (!stralloc_copyb(&nughde, qldap_username)) _exit(QLX_NOMEM);
+      if (!stralloc_copy(&nughde, &qldap_username)) _exit(QLX_NOMEM);
    }
    ldap_value_free(vals);
 
@@ -436,7 +482,7 @@ int qldap_get( stralloc *mail )
    } else {
       if (!qldap_uid.len) return 42;
       if (100 > chck_idb(qldap_uid.s,qldap_uid.len) ) return 43;
-      if (!stralloc_catb(&nughde, qldap_uid)) _exit(QLX_NOMEM);
+      if (!stralloc_cat(&nughde, &qldap_uid)) _exit(QLX_NOMEM);
    }
    ldap_value_free(vals);
 
@@ -452,7 +498,7 @@ int qldap_get( stralloc *mail )
    } else {
       if (!qldap_gid.len) return 44;
       if ( 100 > chck_idb(qldap_gid.s,qldap_gid.len) ) return 45;
-      if (!stralloc_catb(&nughde, qldap_gid)) _exit(QLX_NOMEM);
+      if (!stralloc_cat(&nughde, &qldap_gid)) _exit(QLX_NOMEM);
    }
    ldap_value_free(vals);
 
@@ -468,7 +514,7 @@ int qldap_get( stralloc *mail )
          if (qldap_messagestore.s[qldap_messagestore.len -1] != '/') return 47;
          if (!stralloc_cats(&qldap_messagestore, vals[0])) _exit(QLX_NOMEM);
          if (!chck_pathb(qldap_messagestore.s,qldap_messagestore.len) ) return 24;
-         if (!stralloc_catb(&nughde, qldap_messagestore)) _exit(QLX_NOMEM);
+         if (!stralloc_cat(&nughde, &qldap_messagestore)) _exit(QLX_NOMEM);
       } else {
          if (!chck_paths(vals[0]) ) return 23;
          if (!stralloc_cats(&nughde, vals[0])) _exit(QLX_NOMEM);
@@ -732,21 +778,25 @@ char *s; char *r; int at;
 
 #ifdef QLDAP /* the alias-user handling for LDAP only mode - part 2 */
          } else {
+            struct passwd *pw;
             char num[FMT_ULONG];
 
-            if (!stralloc_copys(&nughde,auto_usera)) _exit(QLX_NOMEM);
+            pw = getpwnam(auto_usera);
+            if (!pw) _exit(QLX_NOALIAS);
+
+            if (!stralloc_copys(&nughde, pw->pw_name)) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
-            if (!stralloc_copys(&nughde,num,fmt_ulong(num, (long) auto_uida ))) _exit(QLX_NOMEM);
+            if (!stralloc_copys(&nughde,num,fmt_ulong(num, (long) pw->pw_uid))) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
-            if (!stralloc_copyb(&nughde,num,fmt_ulong(num, (long) auto_gidn ))) _exit(QLX_NOMEM);
+            if (!stralloc_copyb(&nughde,num,fmt_ulong(num, (long) pw->pw_gid))) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
-            if (!stralloc_copys(&nughde,"/home/")) _exit(QLX_NOMEM);
-            if (!stralloc_copys(&nughde,auto_usera)) _exit(QLX_NOMEM);
+            if (!stralloc_copys(&nughde, pw->pw_dir)) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
             if (!stralloc_copys(&nughde,"-")) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
             if (!stralloc_copys(&nughde,r)) _exit(QLX_NOMEM);
             if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+            free(pw);
          }
       break;
 

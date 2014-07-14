@@ -56,7 +56,8 @@ stralloc bouncehost = {0};
 stralloc doublebounceto = {0};
 stralloc doublebouncehost = {0};
 
-#define QLDAP /* this patch comes with the LDAP patches */
+/* #define QLDAP */ /* this patch comes with the LDAP patches
+                     * and is set by the Makefile */
 #ifdef QLDAP
 stralloc custombouncetext = {0};
 
@@ -738,8 +739,11 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
 ");
 
 #ifdef QLDAP
-   qmail_put(&qqt,custombouncetext.s,custombouncetext.len);
-   qmail_puts(&qqt,"\n\n");
+   if (custombouncetext.len)
+   {
+     qmail_put(&qqt,custombouncetext.s,custombouncetext.len-1);
+     qmail_puts(&qqt,"\n\n");
+   }
 #endif
 
    fd = open_read(fn2.s);

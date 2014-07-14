@@ -405,3 +405,9 @@ checkpassword
 checkpassword.o
 digest
 digest.o
+endian
+endian.o
+qmail-reply
+qmail-reply.o
+qmail-quotawarn
+qmail-quotawarn.o

@@ -24,6 +24,7 @@
 #include "timeoutwrite.h"
 #include "commands.h"
 #include "spf.h"
+#include "dns.h"
 
 #define MAXHOPS 100
 unsigned int databytes = 0;
@@ -52,7 +53,7 @@ void die_ipme() { out("421 unable to figure out my IP addresses (#4.3.0)\r\n"); 
 void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n"); flush(); _exit(1); }
 
 void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
-void err_bmf() { out("553 sorry, your envelope sender is in my badmailfrom list (#5.7.1)\r\n"); }
+void err_bmf() { out("553 syntax error, please forward to your postmaster (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
 void err_unimpl() { out("502 unimplemented (#5.5.1)\r\n"); }
 void err_syntax() { out("555 syntax error (#5.5.4)\r\n"); }
@@ -61,12 +62,18 @@ void err_wantrcpt() { out("503 RCPT first (#5.5.1)\r\n"); }
 void err_noop() { out("250 ok\r\n"); }
 void err_vrfy() { out("252 send some mail, i'll try my best\r\n"); }
 void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
+void err_dns() { out("451 DNS temporary failure (#4.3.0)\r\n"); }
+void err_spam() { out("553 sorry, mail from your location is not accepted here (#5.7.1)\r\n"); }
+void err_badrcptto() { out("553 sorry, mail to that recipient is not accepted on this system (#5.7.1)\r\n"); }
 
 
 stralloc greeting = {0};
 stralloc spflocal = {0};
 stralloc spfguess = {0};
 stralloc spfexp = {0};
+int brtok = 0;
+stralloc brt = {0};
+struct constmap mapbadrcptto;
 
 void smtp_greet(code) char *code;
 {
@@ -76,6 +83,7 @@ void smtp_greet(code) char *code;
 void smtp_help()
 {
   out("214 netqmail home page: http://qmail.org/netqmail\r\n");
+  out("214 qmail-ldap patch home page: http://www.nrg4u.com\r\n");
 }
 void smtp_quit()
 {
@@ -87,6 +95,8 @@ char *remotehost;
 char *remoteinfo;
 char *local;
 char *relayclient;
+int spamflag = 0;
+char *denymail;
 
 stralloc helohost = {0};
 char *fakehelo; /* pointer into helohost, or 0 */
@@ -102,6 +112,8 @@ stralloc liphost = {0};
 int bmfok = 0;
 stralloc bmf = {0};
 struct constmap mapbmf;
+int tarpitcount = 0;
+int tarpitdelay = 5;
 
 void setup()
 {
@@ -116,12 +128,26 @@ void setup()
   if (control_readint(&timeout,"control/timeoutsmtpd") == -1) die_control();
   if (timeout <= 0) timeout = 1;
 
+  if (control_readint(&tarpitcount,"control/tarpitcount") == -1) die_control();
+  if (tarpitcount < 0) tarpitcount = 0;
+  x = env_get("TARPITCOUNT");
+  if (x) { scan_ulong(x,&u); tarpitcount = u; };
+  if (control_readint(&tarpitdelay,"control/tarpitdelay") == -1) die_control();
+  if (tarpitdelay < 0) tarpitdelay = 0;
+  x = env_get("TARPITDELAY");
+  if (x) { scan_ulong(x,&u); tarpitdelay = u; };
+
   if (rcpthosts_init() == -1) die_control();
 
   bmfok = control_readfile(&bmf,"control/badmailfrom",0);
   if (bmfok == -1) die_control();
   if (bmfok)
     if (!constmap_init(&mapbmf,bmf.s,bmf.len,0)) die_nomem();
+
+  brtok = control_readfile(&brt,"control/badrcptto",0);
+  if (brtok == -1) die_control();
+  if (brtok)
+    if (!constmap_init(&mapbadrcptto,brt.s,brt.len,0)) die_nomem();
  
   if (control_readint(&databytes,"control/databytes") == -1) die_control();
   x = env_get("DATABYTES");
@@ -150,6 +176,7 @@ void setup()
   if (!remotehost) remotehost = "unknown";
   remoteinfo = env_get("TCPREMOTEINFO");
   relayclient = env_get("RELAYCLIENT");
+  denymail = env_get("DENYMAIL");
   dohelo(remotehost);
 }
 
@@ -216,6 +243,38 @@ char *arg;
   return 1;
 }
 
+#define log_brt(s,r)
+#define log_bmf(s,r)
+#define log_deny(m,f,t)
+#define log_helo()
+
+int badmxcheck(dom) char *dom;
+{
+  ipalloc checkip = {0};
+  int ret=0;
+  stralloc checkhost = {0};
+
+  if (!*dom) return (DNS_HARD);
+  if (!stralloc_copys(&checkhost,dom)) return (DNS_SOFT);
+
+  switch (dns_mxip(&checkip,&checkhost,1))
+  {
+    case DNS_MEM:
+    case DNS_SOFT:
+         ret=DNS_SOFT;
+         break;
+
+    case DNS_HARD:
+         ret=DNS_HARD;
+         break;
+    case 1:
+         if (checkip.len <= 0) ret=DNS_HARD;
+         break;
+  }
+
+  return (ret);
+}
+
 int bmfcheck()
 {
   int j;
@@ -223,13 +282,28 @@ int bmfcheck()
   if (constmap(&mapbmf,addr.s,addr.len - 1)) return 1;
   j = byte_rchr(addr.s,addr.len,'@');
   if (j < addr.len)
+  {
     if (constmap(&mapbmf,addr.s + j,addr.len - j - 1)) return 1;
+    if (constmap(&mapbmf,addr.s, j + 1)) return 1;
+  }
   return 0;
 }
 
+int seenmail = 0;
+int flagbarf; /* defined if seenmail */
+stralloc mailfrom = {0};
+stralloc rcptto = {0};
+int rcptcount;
+
+
 int addrallowed()
 {
-  int r;
+  int r,j;
+  j = byte_rchr(addr.s,addr.len,'@');
+ if (brtok)
+    if (constmap(&mapbadrcptto, addr.s, addr.len - 1) ||
+        constmap(&mapbadrcptto, addr.s + j, addr.len - j - 1))
+       {log_brt(mailfrom.s,addr.s); return 2;}
   r = rcpthosts(addr.s,str_len(addr.s));
   if (r == -1) die_control();
   return r;
@@ -300,10 +374,87 @@ void smtp_mail(arg) char *arg;
    }
   else
    env_unset("SPFRESULT");
+int i,j; char *why;
+  if (!addrparse(arg)) { err_syntax(); return; }
+  flagbarf = bmfcheck();
+ if (flagbarf) { log_bmf(addr.s,""); err_bmf(); return; }
+/************
+   DENYMAIL is set for this session from this client,
+             so heavy checking of mailfrom
+   SPAM     -> refuse all mail
+   NOBOUNCE -> refuse null mailfrom
+   DNSCHECK -> validate Mailfrom domain
+************/
+
+ if (denymail)
+ {
+    why = denymail;
+
+    if (!str_diff("SPAM", denymail)) {
+       flagbarf=1;
+       spamflag=1;
+    }
+    else
+      if (!addr.s[0] || !str_diff("#@[]", addr.s)) /*mjr*/
+     /* if (!addr.s[0]) */
+      {
+         if (!str_diff("NOBOUNCE", denymail))
+            flagbarf=1;
+      }
+      else
+      {
+        /*why = "Invalid.Mailfrom";*/
+        why = "MAIL FROM: syntax";
+        if ((i=byte_rchr(addr.s,addr.len,'@')) >= addr.len)
+           flagbarf=1;       /* no '@' in from */
+        else
+        {
+          /* money!@domain.TLD */
+          if (addr.s[i-1] == '!')
+             flagbarf=1;
+
+          /* check syntax, visual */
+          if ((j = byte_rchr(addr.s+i, addr.len-i, '.')) >= addr.len-i)
+             flagbarf=1;  /* curious no '.' in domain.TLD */
+
+          j = addr.len-(i+1+j+1);
+          if (j < 2 || j > 3)
+             flagbarf=1;  /* root domain, not a country (2), nor TLD (3)*/
+
+         if (!flagbarf)
+          if (!str_diff("DNSCHECK", denymail))
+          {
+           /* check syntax, via DNS */
+             why = "MAIL FROM: DNS";
+             switch (badmxcheck(&addr.s[i+1]))
+             {
+               case 0:                 break; /*valid*/
+               case DNS_SOFT:  flagbarf=2; /*fail tmp*/
+                                why = "(temporary) MAIL FROM: DNS";
+                                break;
+               case DNS_HARD:  flagbarf=1;
+                                       break;
+             }
+          }
+        }
+      }
+    if (flagbarf)
+    {
+      log_deny(why, addr.s, "");
+      if (2==flagbarf)
+         err_dns();
+      else if (1==spamflag)
+        err_spam();
+      else
+         err_bmf();
+      return;
+    }
+ }/* denymail */
   seenmail = 1;
   if (!stralloc_copys(&rcptto,"")) die_nomem();
   if (!stralloc_copys(&mailfrom,addr.s)) die_nomem();
   if (!stralloc_0(&mailfrom)) die_nomem();
+  rcptcount = 0;
   out("250 ok\r\n");
 }
 
@@ -336,11 +487,19 @@ void smtp_rcpt(arg) char *arg; {
     if (!stralloc_cats(&addr,relayclient)) die_nomem();
     if (!stralloc_0(&addr)) die_nomem();
   }
-  else
-    if (!addrallowed()) { err_nogateway(); return; }
+  else {
+    if (addrallowed()==2) { err_badrcptto(); return; }
+    if (!addrallowed())
+    {
+       err_nogateway();
+//       log_ngw (mailfrom.s, addr.s);
+       return;
+    }
+  }
   if (!stralloc_cats(&rcptto,"T")) die_nomem();
   if (!stralloc_cats(&rcptto,addr.s)) die_nomem();
   if (!stralloc_0(&rcptto)) die_nomem();
+  if (tarpitcount && ++rcptcount >= tarpitcount) while (sleep(tarpitdelay));
   out("250 ok\r\n");
 }
 
@@ -479,6 +638,7 @@ void smtp_data() {
  
   received(&qqt,"SMTP",local,remoteip,remotehost,remoteinfo,fakehelo);
   spfreceived();
+  if (fakehelo) log_helo();
   blast(&hops);
   hops = (hops >= MAXHOPS);
   if (hops) qmail_fail(&qqt);
