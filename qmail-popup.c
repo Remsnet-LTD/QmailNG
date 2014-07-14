@@ -70,7 +70,8 @@ void die_badauth() { err("authorization failed"); }
  * 4 = account disabled
  * 5 = mailhost is unreachable
  * 6 = mailbox is corrupted
- * 7 = unable to start pop daemon
+ * 7 = unable to start subprogram
+ * 8 = out of memory
  */
 
 void die_1() { err("error in server configuration"); die(); }
@@ -80,7 +81,8 @@ void die_3() { err("authorization failed"); die(); }
 void die_4() { err("account disabled"); die(); }
 void die_5() { err("mailhost is unreachable"); die(); }
 void die_6() { err("mailbox is corrupted"); die(); }
-void die_7() { err("unable to start pop daemon"); die(); }
+void die_7() { err("unable to start subprogram"); die(); }
+void die_unknown() { err("temporary error"); die(); }
 
 void err_syntax() { err("syntax error"); }
 void err_wantuser() { err("USER first"); }
@@ -108,7 +110,9 @@ char *pass;
   int wstat;
   int pi[2];
  
+#ifndef DEBUG
   if (fd_copy(2,1) == -1) die_pipe();
+#endif
   close(3);
   if (pipe(pi) == -1) die_pipe();
   if (pi[0] != 3) die_pipe();
@@ -136,6 +140,7 @@ char *pass;
   if (wait_pid(&wstat,child) == -1) die();
   if (wait_crashed(wstat)) die_childcrashed();
   switch (wait_exitcode(wstat)) {
+    case 0: die();
     case 1: die_1();
     case 2: die_2();
     case 25: die_25();
@@ -144,7 +149,8 @@ char *pass;
     case 5: die_5();
     case 6: die_6();
     case 7: die_7();
-    default: die_badauth();
+    case 8: die_nomem();
+    default: die_unknown();
   }
   die();
 }

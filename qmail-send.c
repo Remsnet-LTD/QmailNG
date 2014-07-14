@@ -56,9 +56,6 @@ stralloc bouncehost = {0};
 stralloc doublebounceto = {0};
 stralloc doublebouncehost = {0};
 
-/* #define QLDAP */ /* this patch comes with the LDAP patches
-                     * and is set by the Makefile */
-#ifdef QLDAP
 stralloc custombouncetext = {0};
 
 /* char replacement */
@@ -75,8 +72,6 @@ unsigned int replace(char *s, register unsigned int len, char f, char r)
       if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
    }
 }
-#endif
-
 
 char strnum2[FMT_ULONG];
 char strnum3[FMT_ULONG];
@@ -283,6 +278,8 @@ char *recip;
  if (comm_buf[c].s && comm_buf[c].len) return;
  while (!stralloc_copys(&comm_buf[c],"")) nomem();
  ch = delnum;
+ while (!stralloc_append(&comm_buf[c],&ch)) nomem();
+ ch = delnum >> 8;
  while (!stralloc_append(&comm_buf[c],&ch)) nomem();
  fnmake_split(id);
  while (!stralloc_cats(&comm_buf[c],fn.s)) nomem();
@@ -738,13 +735,11 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
 \n\
 ");
 
-#ifdef QLDAP
    if (custombouncetext.len)
    {
      qmail_put(&qqt,custombouncetext.s,custombouncetext.len-1);
      qmail_puts(&qqt,"\n\n");
    }
-#endif
 
    fd = open_read(fn2.s);
    if (fd == -1)
@@ -936,41 +931,42 @@ int c;
      dline[c].len = REPORTMAX;
      /* qmail-lspawn and qmail-rspawn are responsible for keeping it short */
      /* but from a security point of view, we don't trust rspawn */
-   if (!ch && (dline[c].len > 1))
+   if (!ch && (dline[c].len > 2))
     {
      delnum = (unsigned int) (unsigned char) dline[c].s[0];
+     delnum += (unsigned int) ((unsigned int) dline[c].s[1]) << 8;
      if ((delnum < 0) || (delnum >= concurrency[c]) || !d[c][delnum].used)
        wlog1("warning: internal error: delivery report out of range\n");
      else
       {
        strnum3[fmt_ulong(strnum3,d[c][delnum].delid)] = 0;
-       if (dline[c].s[1] == 'Z')
+       if (dline[c].s[2] == 'Z')
 	 if (jo[d[c][delnum].j].flagdying)
 	  {
-	   dline[c].s[1] = 'D';
+	   dline[c].s[2] = 'D';
 	   --dline[c].len;
 	   while (!stralloc_cats(&dline[c],"I'm not going to try again; this message has been in the queue too long.\n")) nomem();
 	   while (!stralloc_0(&dline[c])) nomem();
 	  }
-       switch(dline[c].s[1])
+       switch(dline[c].s[2])
 	{
 	 case 'K':
 	   wlog3("delivery ",strnum3,": success: ");
-	   logsafe(dline[c].s + 2);
+	   logsafe(dline[c].s + 3);
 	   wlog1("\n");
 	   markdone(c,jo[d[c][delnum].j].id,d[c][delnum].mpos);
 	   --jo[d[c][delnum].j].numtodo;
 	   break;
 	 case 'Z':
 	   wlog3("delivery ",strnum3,": deferral: ");
-	   logsafe(dline[c].s + 2);
+	   logsafe(dline[c].s + 3);
 	   wlog1("\n");
 	   break;
 	 case 'D':
 	   wlog3("delivery ",strnum3,": failure: ");
-	   logsafe(dline[c].s + 2);
+	   logsafe(dline[c].s + 3);
 	   wlog1("\n");
-	   addbounce(jo[d[c][delnum].j].id,d[c][delnum].recip.s,dline[c].s + 2);
+	   addbounce(jo[d[c][delnum].j].id,d[c][delnum].recip.s,dline[c].s + 3);
 	   markdone(c,jo[d[c][delnum].j].id,d[c][delnum].mpos);
 	   --jo[d[c][delnum].j].numtodo;
 	   break;
@@ -1483,11 +1479,9 @@ int getcontrols() { if (control_init() == -1) return 0;
  if (!stralloc_cats(&doublebounceto,"@")) return 0;
  if (!stralloc_cat(&doublebounceto,&doublebouncehost)) return 0;
  if (!stralloc_0(&doublebounceto)) return 0;
-#ifdef QLDAP
  if (control_readfile(&custombouncetext,"control/custombouncetext",0) == -1) return 0;
  replace(custombouncetext.s, custombouncetext.len, '\0', '\n');
  if (! stralloc_0(&custombouncetext) ) return 0;
-#endif
  if (control_readfile(&locals,"control/locals",1) != 1) return 0;
  if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
  switch(control_readfile(&percenthack,"control/percenthack",0))
@@ -1579,7 +1573,7 @@ void main()
  numjobs = 0;
  for (c = 0;c < CHANNELS;++c)
   {
-   char ch;
+   char ch, ch1;
    int u;
    int r;
    do
@@ -1587,7 +1581,13 @@ void main()
    while ((r == -1) && (errno == error_intr));
    if (r < 1)
     { wlog1("alert: cannot start: hath the daemon spawn no fire?\n"); _exit(111); }
+   do
+     r = read(chanfdin[c],&ch1,1);
+   while ((r == -1) && (errno == error_intr));
+   if (r < 1)
+    { log1("alert: cannot start: hath the daemon spawn no fire?\n"); _exit(111); }
    u = (unsigned int) (unsigned char) ch;
+   u += (unsigned int) ((unsigned char) ch1) << 8;
    if (concurrency[c] > u) concurrency[c] = u;
    numjobs += concurrency[c];
   }
