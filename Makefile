@@ -136,6 +136,10 @@ auto_usera.o: \
 compile auto_usera.c
 	./compile auto_usera.c
 
+base64.o: \
+compile base64.c base64.h
+	./compile base64.c
+
 binm1: \
 binm1.sh conf-qmail
 	cat binm1.sh \
@@ -296,11 +300,13 @@ compile check.c check.h str.h str_len.c
 	./compile check.c
 
 checkpassword: \
-load checkpassword.o check.o control.o sig.a strerr.a getln.a \
-wait.a fs.a open.a stralloc.a \
-alloc.a substdio.a error.a str.a
-	./load checkpassword check.o control.o getln.a fs.a open.a stralloc.a \
-	alloc.a substdio.a error.a str.a -L/usr/lib -lldap -llber -lcrypt
+load checkpassword.o check.o control.o case.a sig.a strerr.a getln.a \
+wait.a fs.a open.a stralloc.a auto_qmail.o alloc.a substdio.a error.a env.a str.a \
+base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o
+	./load checkpassword check.o control.o case.a getln.a fs.a open.a \
+	stralloc.a alloc.a substdio.a error.a env.a str.a auto_qmail.o \
+	base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
+        -L/usr/lib -lldap -llber -lcrypt
 
 checkpassword.o: \
 compile checkpassword.c
@@ -408,6 +414,32 @@ compile datetime.c datetime.h
 datetime_un.o: \
 compile datetime_un.c datetime.h
 	./compile datetime_un.c
+
+digest: \
+load digest.o digest_md4.o digest_md5.o digest_rmd160.o \
+digest_sha1.o base64.o
+	./load digest digest_md4.o digest_md5.o digest_rmd160.o \
+	digest_sha1.o base64.o
+
+digest.o: \
+compile digest.c
+	./compile digest.c
+
+digest_md4.o: \
+compile digest_md4.c digest_md4.h
+	./compile digest_md4.c
+
+digest_md5.o: \
+compile digest_md5.c digest_md5.h
+	./compile digest_md5.c
+
+digest_rmd160.o: \
+compile digest_rmd160.c digest_rmd160.h
+	./compile digest_rmd160.c
+
+digest_sha1.o: \
+compile digest_sha1.c digest_sha1.h
+	./compile digest_sha1.c
 
 direntry.h: \
 compile trydrent.c direntry.h1 direntry.h2
@@ -841,9 +873,9 @@ qmail-pop3d qmail-popup qmail-qmqpc qmail-qmqpd qmail-qmtpd \
 qmail-smtpd sendmail tcp-env qmail-newmrh config config-fast dnscname \
 dnsptr dnsip dnsmxip dnsfq dnstxt hostname ipmeprint qreceipt qsmhook qbiff \
 forward preline condredirect bouncesaying except maildirmake \
-maildir2mbox maildirwatch qail elq pinq idedit install-big install \
-instcheck home home+df proc proc+df binm1 binm1+df binm2 binm2+df \
-binm3 binm3+df spfquery
+maildir2mbox maildirwatch qail elq pinq idedit checkpassword \
+install-big install instcheck home home+df proc proc+df binm1 \
+binm1+df binm2 binm2+df binm3 binm3+df spfquery
 
 load: \
 make-load warn-auto.sh systype
@@ -1209,12 +1241,12 @@ qmail-local: \
 load qmail-local.o qmail.o quote.o now.o gfrom.o myctime.o \
 slurpclose.o case.a getln.a getopt.a sig.a open.a seek.a lock.a fd.a \
 wait.a env.a stralloc.a alloc.a strerr.a substdio.a error.a str.a \
-fs.a datetime.a auto_qmail.o auto_patrn.o socket.lib
+fs.a datetime.a auto_qmail.o auto_patrn.o control.o socket.lib
 	./load qmail-local qmail.o quote.o now.o gfrom.o myctime.o \
 	slurpclose.o case.a getln.a getopt.a sig.a open.a seek.a \
 	lock.a fd.a wait.a env.a stralloc.a alloc.a strerr.a \
 	substdio.a error.a str.a fs.a datetime.a auto_qmail.o \
-	auto_patrn.o  `cat socket.lib`
+	auto_patrn.o control.o `cat socket.lib`
 
 qmail-local.0: \
 qmail-local.8

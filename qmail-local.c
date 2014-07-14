@@ -33,6 +33,7 @@
 
 #ifdef QLDAP /* includes for LDAP mode */
 #include <dirent.h>
+#include <stdlib.h>
 #include "qlx.h"
 #endif
 
@@ -161,7 +162,7 @@ unsigned long int maildirsize (char *dir)
    unsigned long int temp = 0;
 
    if ( (dirp = opendir(dir)) == NULL)
-     strerr_die1x(111,"Unable to quota open maildir. (#4.2.1)");
+     strerr_die1x(111,"Unable to quota maildir. (#4.2.1)");
    while ((dp = readdir(dirp)) != NULL) {
      if (!stralloc_copys(&file,dir)) temp_nomem();
      if (!stralloc_cats(&file,dp->d_name)) temp_nomem();
@@ -670,7 +671,6 @@ char **argv;
  stralloc program = {0};
  stralloc replytext = {0};
 #endif
-
 
  umask(077);
  sig_pipeignore();

@@ -1,14 +1,4 @@
-
-Note: This is an interims release, just to give you an glimpse what is
-      comming the next days!
-      The work ongoing on basically all files.
-      Here is everything documented to make it work but more specific
-      parts are sometimes missing.
-      Future plans and feature discussions are not yet included.
-      I was more or less sick the last two and a half months but I'm
-      more or less back at work now.
-
-Betacode 19981025 by Andre Oppermann <opi@nrg4u.com>,
+Betacode 19981114 by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
 (c) 1998 Internet Business Solutions Ltd.
 
@@ -19,13 +9,25 @@ These patches are under the BSD license.
 
 TODO:
 
-done - Implement working checkpassowrd with plaintext/cryt passwords
- - Implement crypto checkpassword (SHA, MD5, DES)
-done - Implement some more ~control/ldap* files
-done - Pass list of requested attributes to ldap_search_ext_s
- - Lot of code clean up's (debugging code needs to be debugged :)
- - Debugging and testing, testing, testing
+done    - Implement working checkpassword with plaintext/cryt passwords
+done    - Implement crypto checkpassword (SHA, MD5, MD4, RMD160, crypt())
+done    - Build a complete debug facilities into checkpassword
+done    - Tool for generating crypto passwords
+done    - Implement some more ~control/ldap* files
+done    - Pass list of requested attributes to ldap_search_ext_s
+ongoing - Lot of code clean up's (debugging code needs to be debugged :)
+ongoing - Make qmail-lspawn debug messages work (again)
+ongoing - Debugging and testing, testing, testing
+ongoing - The big qmail-ldap picture
 
+
+NEWS:
+
+ checkpassword compiled with QLDAPDEBUG now does complete LDAP debugging.
+  Usage: ./checkpassword POPLogin POPPassword
+
+ digest computes MD4, MD5, RMD160 and SHA1 passwords (compatible to Netscape)
+  Usage: ./digest POPPassword
 
 INSTALL:
 
@@ -50,6 +52,11 @@ INSTALL:
    install)
 
 5.1 "make checkpassword" in the qmail directory and install checkpassword
+
+5.2 Enable QLDAPDEBUG in checkpassword and compile it again, this is for
+    debugging your LDAP setup
+
+5.3 "make digest" in the qmail directory
 
 6. Create the LDAP user database and start the LDAP server
 
@@ -134,6 +141,22 @@ CONFIG FILES:
  Default: NULL
  Example: 1010
  Note: Must match the username
+
+~control/custombouncetext
+
+ Additional custom text in bounce messages, eg. for providing contact
+ information of your ISP or messages in your language
+ Default: NULL
+ Example: You can contact us at (555) 555 5555
+ Note: Multiline
+
+~control/quotawarning
+
+ Custom text in quota waring message, eg. for providing contact information
+ of your ISP
+ Default: NULL
+ Example: You can contact us at (555) 555 5555
+ Note: Multiline
 
 
 LDAP PARAMETER FIELDS:

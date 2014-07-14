@@ -350,6 +350,10 @@ int qldap_get( stralloc *mail )
 
    stralloc       filter = {0};
 
+   /* lower case the receipient email address before     *
+    * we do the check for illegal chars                  */
+   case_lowerb(mail->s, mail->len);
+
    /* check the mailaddress for illegal characters       *
     * only [a-z][0-9][.-_]@[a-z][0-9][.-] are allowed    *
     * because all other stuff would kill the LDAP search */
@@ -537,7 +541,7 @@ int qldap_get( stralloc *mail )
    ldap_value_free(vals);
 
    /* get the deliverymode of the mailbox: reply, echo, forwardonly */
-   if ( (vals = ldap_get_values(ld,msg,"mailMode")) != NULL ) {
+   if ( (vals = ldap_get_values(ld,msg,"deliveryMode")) != NULL ) {
       case_lowers(vals[0]);
       if ( !str_diff("reply", vals[0]) ) {
          if ( !env_put2("QMAILMODE", "reply") ) _exit(QLX_NOMEM);
