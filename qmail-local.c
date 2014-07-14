@@ -107,7 +107,45 @@ char *dir;
  substdio ssout;
 
  sig_alarmcatch(sigalrm);
- if (chdir(dir) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+ if (chdir(dir) == -1) {
+#ifdef AUTOMAILDIRMAKE
+   if (errno == error_noent) {
+     umask(077);
+     if (mkdir(dir,0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+     if (chdir(dir) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+     if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+     if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+     if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+   } else
+#endif
+   if (error_temp(errno)) _exit(1); _exit(2); }
+#ifdef AUTOMAILDIRMAKE
+ else {
+     umask(077);
+     if (stat("new", &st) == -1) {
+       if (errno == error_noent) {
+         if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+       } else {
+         _exit(5);
+       }
+     } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+     if (stat("cur", &st) == -1) {
+       if (errno == error_noent) {
+        if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+       } else {
+         _exit(5);
+       }
+     } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+     if (stat("tmp", &st) == -1) {
+       if (errno == error_noent) {
+        if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
+       } else {
+         _exit(5);
+       }
+     } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+ }
+#endif
+
  pid = getpid();
  host[0] = 0;
  gethostname(host,sizeof(host));
@@ -205,7 +243,10 @@ char *dir;
    unsigned long int temp = 0;
 
    if ( (dirp = opendir(dir)) == 0 )
-     strerr_die3x(111,"Unable to quota: can not opend specified maildir: ",dir,". (LDAP-ERR #2.4.2)");
+     if ( errno != error_noent )
+       strerr_die5x(111,"Unable to quota: can not open ",dir,": ",error_str(errno),". (LDAP-ERR #2.4.2)");
+     else
+       return 0;
    while ((dp = readdir(dirp)) != 0) {
      if (!stralloc_copys(&file,dir)) temp_nomem();
      if (!stralloc_cats(&file,dp->d_name)) temp_nomem();
@@ -281,6 +322,9 @@ char *fn;
    case 2: strerr_die1x(111,"Unable to chdir to maildir. (#4.2.1)");
    case 3: strerr_die1x(111,"Timeout on maildir delivery. (#4.3.0)");
    case 4: strerr_die1x(111,"Unable to read message. (#4.3.0)");
+#ifdef AUTOMAILDIRMAKE
+   case 5: strerr_die1x(111,"Unable to make maildir. (LDAP-ERR #2.4.4)");
+#endif
    default: strerr_die1x(111,"Temporary error on maildir delivery. (#4.3.0)");
   }
 }
@@ -594,8 +638,8 @@ int len;
 unsigned int replace(s, len, f, r)
 char *s;
 register unsigned int len;
-char f;
-char r;
+register char f;
+register char r;
 {
    register char *t;
    register int count = 0;
@@ -681,27 +725,42 @@ char **argv;
  if (*argv) usage();
 
  if (homedir[0] != '/') usage();
- if (chdir(homedir) == -1 && env_get("QLDAPAUTOMAILDIRMAKE") )
- {
-   if (errno == error_noent) {
-     umask(077);
-     if (mkdir(homedir,0700) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
-     if (chdir(homedir) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
-     if (mkdir("tmp",0700) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
-     if (mkdir("new",0700) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
-     if (mkdir("cur",0700) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
-     if (chdir(homedir) == -1)
-       strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
+ if (chdir(homedir) == -1) {
+#ifdef AUTOHOMEDIRMAKE
+   if (! (s = env_get("QLDAPAUTOHOMEDIRMAKE")) ) {
+     strerr_die5x(111,"Unable to switch to ",homedir,": ",error_str(errno),". (#4.3.0)");
    } else {
-     strerr_die5x(111,"Error while creating homedir ",homedir,": ",error_str(errno),". (#4.3.0)");
+     if (errno == error_noent) {
+       /* do the auto homedir creation */
+       int child;
+       char *(dirargs[4]);
+       int wstat;
+
+       switch(child = fork()) {
+       case -1:
+         temp_fork();
+       case 0:
+         dirargs[0] = s; dirargs[1] = homedir;
+         dirargs[2] = aliasempty; dirargs[3] = 0;
+         execv(*dirargs,dirargs);
+         strerr_die5x(111,"Unable to run ",s,": ",error_str(errno),". (LDAP-ERR #2.3.0)");
+       }
+
+       wait_pid(&wstat,child);
+       if (wait_crashed(wstat))
+          temp_childcrashed();
+       switch(wait_exitcode(wstat)) {
+       case 0: break;
+       default:
+         strerr_die3x(111,s,": exited non zero",". (LDAP-ERR #2.3.0)");
+       }
+     } else {
+       strerr_die5x(111,"Unable to switch to ",homedir,": ",error_str(errno),". (#4.3.0)");
+     }
    }
- } else {
+#else
    strerr_die5x(111,"Unable to switch to ",homedir,": ",error_str(errno),". (#4.3.0)");
+#endif
  }
  checkhome();
 
@@ -878,38 +937,38 @@ char **argv;
             if ( !str_diff("forwardonly", s) ) {
                if (!flagdoit) sayit("forwardonly ",s,0);
                flagforwardonly = 1;
-	         } else if ( !str_diff("reply", s) ) {
-	            if( *sender ) {
-	               ++count_forward;
-	               if ( s = env_get("QMAILREPLYTEXT") ) {
-	                  if ( flagdoit ) {
-	                     mailprogram("qmail-reply");
-	                  } else {
-	                     sayit("reply to ",sender,str_len(sender));
-	                     sayit("replytext ",s,str_len(s));
-	                  }
-	               } else {
-	                  strerr_warn("AARRG: Reply mode is on but QMAILREPLYTEXT is not set (ignored). (LDAP-ERR #2.0.3)");
-	               }
-	            }
-	         } else if ( !str_diff("echo", s) ) {
-	            if (*sender) {
-	               ++count_forward;
-	               recips_env = (char **) alloc(2 * sizeof(char *));
-	               recips_env[0] = sender;
-	               recips_env[1] = 0;
-	               if (flagdoit) {
-	                  mailforward(recips_env);
-	               } else sayit("echo to ",sender,str_len(sender));
-	            }
-	            count_print();
-	            _exit(0);
-	         } else if ( !str_diff("nombox", s) ) {
-	            if (!flagdoit) sayit("no mbox delivery ",s,0);
-	            mboxdelivery = 0;
-	         }
-	         n = byte_chr(s,slen,0); if (n++ == slen) break; s += n; slen -= n;
-	      }
+	    } else if ( !str_diff("reply", s) ) {
+	       if( *sender ) {
+	          ++count_forward;
+	          if ( s = env_get("QMAILREPLYTEXT") ) {
+	             if ( flagdoit ) {
+	                mailprogram("qmail-reply");
+	             } else {
+	                sayit("reply to ",sender,str_len(sender));
+	                sayit("replytext ",s,str_len(s));
+	             }
+	          } else {
+	             strerr_warn("AARRG: Reply mode is on but QMAILREPLYTEXT is not set (ignored). (LDAP-ERR #2.0.3)");
+	          }
+	       }
+	    } else if ( !str_diff("echo", s) ) {
+	       if (*sender) {
+	          ++count_forward;
+	          recips_env = (char **) alloc(2 * sizeof(char *));
+	          recips_env[0] = sender;
+	          recips_env[1] = 0;
+	          if (flagdoit) {
+	             mailforward(recips_env);
+	          } else sayit("echo to ",sender,str_len(sender));
+	       }
+	       count_print();
+	       _exit(0);
+	    } else if ( !str_diff("nombox", s) ) {
+	       if (!flagdoit) sayit("no mbox delivery ",s,0);
+	       mboxdelivery = 0;
+	    }
+	    n = byte_chr(s,slen,0); if (n++ == slen) break; s += n; slen -= n;
+	 }
       }
 
       if ( s = env_get("QMAILFORWARDS") ) {
