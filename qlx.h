@@ -15,4 +15,5 @@
 #define QLX_EXECPW 121
 #define QLX_EXECHARD 126
 
+#define QLX_USAGE1 199
 #endif

@@ -291,6 +291,21 @@ check: \
 it man
 	./instcheck
 
+check.o: \
+compile check.c check.h str.h str_len.c
+	./compile check.c
+
+checkpassword: \
+load checkpassword.o check.o control.o sig.a strerr.a getln.a \
+wait.a fs.a open.a stralloc.a \
+alloc.a substdio.a error.a str.a
+	./load checkpassword check.o control.o getln.a fs.a open.a stralloc.a \
+	alloc.a substdio.a error.a str.a -L/usr/lib -lldap -llber -lcrypt
+
+checkpassword.o: \
+compile checkpassword.c
+	./compile checkpassword.c
+
 chkshsgr: \
 load chkshsgr.o
 	./load chkshsgr 
@@ -1218,13 +1233,15 @@ qmail-log.5
 	nroff -man qmail-log.5 > qmail-log.0
 
 qmail-lspawn: \
-load qmail-lspawn.o spawn.o prot.o slurpclose.o coe.o sig.a wait.a \
-case.a cdb.a fd.a open.a stralloc.a alloc.a substdio.a error.a str.a \
-fs.a auto_qmail.o auto_uids.o auto_spawn.o
-	./load qmail-lspawn spawn.o prot.o slurpclose.o coe.o \
-	sig.a wait.a case.a cdb.a fd.a open.a stralloc.a alloc.a \
-	substdio.a error.a str.a fs.a auto_qmail.o auto_uids.o \
-	auto_spawn.o 
+load qmail-lspawn.o spawn.o prot.o slurpclose.o coe.o control.o check.o \
+sig.a strerr.a getln.a wait.a case.a cdb.a fd.a open.a stralloc.a \
+alloc.a substdio.a error.a str.a fs.a auto_qmail.o auto_uids.o \
+auto_spawn.o auto_usera.o
+	./load qmail-lspawn spawn.o prot.o slurpclose.o coe.o control.o \
+	check.o sig.a strerr.a getln.a wait.a case.a cdb.a fd.a open.a \
+	env.a stralloc.a alloc.a substdio.a error.a str.a fs.a \
+	auto_qmail.o auto_uids.o auto_usera.o \
+	auto_spawn.o -L/usr/lib -lldap -llber
 
 qmail-lspawn.0: \
 qmail-lspawn.8
@@ -1233,7 +1250,8 @@ qmail-lspawn.8
 qmail-lspawn.o: \
 compile qmail-lspawn.c fd.h wait.h prot.h substdio.h stralloc.h \
 gen_alloc.h scan.h exit.h fork.h error.h cdb.h uint32.h case.h \
-slurpclose.h auto_qmail.h auto_uids.h qlx.h
+slurpclose.h auto_qmail.h auto_uids.h qlx.h check.c check.h str.h \
+getln.c getln2.c
 	./compile qmail-lspawn.c
 
 qmail-newmrh: \
