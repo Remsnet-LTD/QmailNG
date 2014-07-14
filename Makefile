@@ -1,7 +1,10 @@
 # Edit this few lines to configure your ldap stuff and checkpassword
 
 # to enable qmail-ldap uncomment the next line
-LDAPON=-DQLDAP
+LDAPON=-DQLDAP -DLDAP_ESCAPE_BUG
+# -DLDAP_ESCAPE_BUG should be added as long as the ldap servers have
+# problems with the escapeing of LDAP filters
+# -DQLDAP_CLUSTER for enabling cluster support
 
 # Perhaps you have different ldap libraries, change them here
 LDAPLIBS=-L/usr/local/lib -lldap -llber
@@ -26,9 +29,6 @@ MNW=-DMAKE_NETSCAPE_WORK
 # uncomment the next line
 #QLDAPBIND=-DQLDAP_BIND
 
-# comment out the next line if you don't need local passwd lookups
-PWOPTS=-DLOOK_UP_PASSWD
-
 # To use shadow passwords under Linux, uncomment the next two lines.
 #SHADOWLIBS=-lshadow
 #SHADOWOPTS=-DPW_SHADOW
@@ -46,8 +46,7 @@ PWOPTS=-DLOOK_UP_PASSWD
 #        ERROR_LEVEL   1 : error (no panic nessary)
 #LSPAWN_LOG=-DQLSPAWN_LOG -DLOG_LEVEL=2
 
-# Just for me, make a backup befor compiling
-#DOBACKUP=backup # allways do a backup
+# Just for me, make a backup before compiling
 BACKUPPATH=/backup/qmail-backup/qmail-ldap.`date "+%Y%m%d-%H%M"`.tar
 # STOP editing HERE !!!
 
@@ -55,9 +54,9 @@ BACKUPPATH=/backup/qmail-backup/qmail-ldap.`date "+%Y%m%d-%H%M"`.tar
 
 SHELL=/bin/sh
 
-default: $(DOBACKUP) it
+default: it qldap
 
-qldap: $(DOBACKUP) qmail-quotawarn qmail-reply checkpassword digest
+qldap: qmail-quotawarn qmail-reply checkpassword digest
 
 addresses.0: \
 addresses.5
@@ -347,7 +346,7 @@ uint32.h substdio.h
 	./compile cdbmss.c
 
 check: \
-it man
+it man qldap
 	./instcheck
 
 check.o: \
@@ -357,16 +356,19 @@ compile check.c check.h str.h str_len.c
 checkpassword: \
 load checkpassword.o check.o control.o case.a getln.a wait.a \
 fs.a open.a stralloc.a alloc.a substdio.a error.a env.a auto_qmail.o \
-str.a base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o
-	./load checkpassword check.o control.o case.a getln.a fs.a open.a \
-	stralloc.a alloc.a substdio.a error.a env.a str.a wait.a auto_qmail.o \
+str.a base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
+dns.o timeoutconn.o ndelay.a ipalloc.o dns.lib socket.lib
+	./load checkpassword check.o control.o auto_qmail.o \
 	base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
-	$(LDAPLIBS) -lcrypt $(SHADOWLIBS)
+	dns.o timeoutconn.o ipalloc.o ip.o ndelay.a env.a wait.a open.a \
+	case.a getln.a stralloc.a alloc.a substdio.a error.a str.a fs.a \
+	$(LDAPLIBS) -lcrypt $(SHADOWLIBS) `cat dns.lib` `cat socket.lib`
 
 checkpassword.o: \
 compile checkpassword.c stralloc.h env.h control.h auto_usera.h auto_uids.h \
 auto_qmail.h fmt.h check.h qlx.h compatibility.h digest_md4.h digest_md5.h \
-digest_rmd160.h digest_sha1.h
+digest_rmd160.h digest_sha1.h byte.h dns.h readwrite.h qmail-ldap.h case.h \
+str.h select.h ipalloc.h timeoutconn.h
 	./compile $(LDAPON) $(SHADOWOPTS) $(PWOPTS) $(HDIRMAKE) $(QLDAPBIND) \
 	$(DEBUG) $(LDAPINCLUDES) checkpassword.c
 
@@ -836,7 +838,7 @@ compile hfield.c hfield.h
 
 hier.o: \
 compile hier.c auto_qmail.h auto_split.h auto_uids.h fmt.h fifo.h
-	./compile hier.c
+	./compile $(LDAPON) $(DEBUG) hier.c
 
 home: \
 home.sh conf-qmail
@@ -888,7 +890,7 @@ auto_uids.o strerr.a substdio.a open.a error.a str.a fs.a
 install-big.o: \
 compile install-big.c auto_qmail.h auto_split.h auto_uids.h fmt.h \
 fifo.h
-	./compile install-big.c
+	./compile $(LDAPON) $(DEBUG) install-big.c
 
 install.o: \
 compile install.c substdio.h strerr.h error.h open.h readwrite.h \
@@ -1321,8 +1323,8 @@ qmail-local.8
 qmail-local.o: \
 compile qmail-local.c readwrite.h sig.h env.h byte.h exit.h fork.h \
 open.h wait.h lock.h seek.h substdio.h getln.h strerr.h subfd.h \
-substdio.h sgetopt.h subgetopt.h alloc.h error.h stralloc.h \
-gen_alloc.h fmt.h str.h now.h datetime.h case.h quote.h qmail.h \
+substdio.h sgetopt.h subgetopt.h alloc.h error.h stralloc.h case.h \
+gen_alloc.h fmt.h str.h now.h datetime.h qmail-ldap.h quote.h qmail.h \
 substdio.h slurpclose.h myctime.h gfrom.h auto_patrn.h auto_qmail.h
 	./compile $(LDAPON) $(MDIRMAKE) $(HDIRMAKE) qmail-local.c
 
@@ -1349,7 +1351,7 @@ qmail-lspawn.o: \
 compile qmail-lspawn.c fd.h wait.h prot.h substdio.h stralloc.h \
 gen_alloc.h scan.h exit.h fork.h error.h cdb.h uint32.h case.h \
 slurpclose.h auto_qmail.h auto_uids.h qlx.h check.c check.h str.h \
-getln.c getln2.c
+getln.c getln2.c qmail-ldap.h
 	./compile $(LDAPON) $(LSPAWN_LOG) $(HDIRMAKE) \
 	$(LDAPINCLUDES) qmail-lspawn.c
 
@@ -1475,7 +1477,7 @@ getln.a substdio.a stralloc.a alloc.a error.a str.a fs.a socket.lib
 	./load qmail-qmqpc slurpclose.o timeoutread.o \
 	timeoutwrite.o timeoutconn.o ip.o control.o auto_qmail.o \
 	sig.a ndelay.a open.a getln.a substdio.a stralloc.a alloc.a \
-	error.a str.a fs.a  `cat socket.lib`
+	error.a str.a fs.a dns.o ipalloc.o `cat dns.lib` `cat socket.lib`
 
 qmail-qmqpc.0: \
 qmail-qmqpc.8
@@ -1485,7 +1487,7 @@ qmail-qmqpc.o: \
 compile qmail-qmqpc.c substdio.h getln.h readwrite.h exit.h \
 stralloc.h gen_alloc.h slurpclose.h error.h sig.h ip.h timeoutconn.h \
 timeoutread.h timeoutwrite.h auto_qmail.h control.h fmt.h
-	./compile qmail-qmqpc.c
+	./compile $(LDAPON) qmail-qmqpc.c
 
 qmail-qmqpd: \
 load qmail-qmqpd.o received.o now.o date822fmt.o qmail.o auto_qmail.o \
@@ -1586,8 +1588,9 @@ env.a stralloc.a alloc.a strerr.a substdio.a error.a str.a fs.a
 qmail-quotawarn.o: \
 compile qmail-quotawarn.c readwrite.h sig.h byte.h case.h datetime.h \
 env.h error.h exit.h newfield.h open.h seek.h str.h strerr.h stralloc.h \
-substdio.h wait.h
+substdio.h wait.h qmail-ldap.h
 	./compile $(LDAPON) qmail-quotawarn.c
+
 qmail-remote: \
 load qmail-remote.o control.o constmap.o timeoutread.o timeoutwrite.o \
 timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o strsalloc.o ipme.o quote.o \
@@ -1621,7 +1624,7 @@ wait.a stralloc.a alloc.a strerr.a substdio.a error.a str.a auto_qmail.o
 qmail-reply.o: \
 compile qmail-reply.c case.h env.h error.h exit.h getln.h qlx.h \
 readwrite.h seek.h sig.h str.h strerr.h stralloc.h substdio.h \
-wait.h auto_qmail.h
+wait.h auto_qmail.h qmail-ldap.h
 	./compile $(LDAPON) qmail-reply.c
 
 qmail-rspawn: \
@@ -1907,7 +1910,7 @@ substdio.h alloc.h auto_qmail.h exit.h env.h str.h
 	./compile sendmail.c
 
 setup: \
-it man
+it man qldap
 	./install
 
 sgetopt.o: \
@@ -2401,5 +2404,5 @@ tryshsgr.c ipme.h ipme.c trysalen.c maildir.5 maildir.h maildir.c \
 tcp-environ.5 constmap.h constmap.c QLDAPINSTALL base64.c base64.h check.c \
 check.h checkpassword.c compatibility.h digest.c digest_md4.c digest_md4.h \
 digest_md5.c digest_md5.h digest_rmd160.c digest_rmd160.h digest_sha1.c \
-digest_sha1.h endian.c qmail-reply.c qmail-quotawarn.c ANTISPAM
+digest_sha1.h endian.c qmail-reply.c qmail-quotawarn.c ANTISPAM qmail-ldap.h
 	tar cf $(BACKUPPATH) .

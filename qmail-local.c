@@ -107,55 +107,38 @@ char *dir;
    /* this one handles the case where the aliasempty is not "./" */
    if (errno == error_noent) {
      umask(077);
-     if (mkdir(dir,0700) == -1) { if (error_temp(errno)) _exit(9); _exit(9); }
-     if (chdir(dir) == -1) { if (error_temp(errno)) _exit(9); _exit(9); }
-     if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(9); _exit(9); }
-     if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(9); _exit(9); }
-     if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(9); _exit(9); }
+     if (mkdir(dir,0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     if (chdir(dir) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
    } else
 #endif
-   if (error_temp(errno)) _exit(9); else _exit(9);
+   if (error_temp(errno)) _exit(1); else _exit(2);
  }
+
+/* this one handles the case where the aliasempty is "./" */
 #ifdef AUTOMAILDIRMAKE
- /* this one handles the case where the aliasempty is "./" */
- if (stat("tmp", &st) == -1) {
-   if (errno == error_noent) {
-     umask(077);
-     if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(10); _exit(10); }
-     if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(10); _exit(10); }
-     if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(10); _exit(10); }
-   } else
-   if (error_temp(errno)) _exit(10); else _exit(10);
- }
-
- if (chdir(dir) == -1) { if (error_temp(errno)) _exit(10); else _exit(10); }
-
-#endif
-
-/* XXX this looks weird and doesn't fit */
-#ifdef AUTOMAILDIRMAKE_PARANOIA_XXX /* disabled */
+ if ( !str_diff(dir, "./") ) {
    umask(077);
    if (stat("new", &st) == -1) {
      if (errno == error_noent) {
-       if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
-     } else {
-       _exit(5);
-     }
-   } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+       if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     } else if (error_temp(errno)) _exit(5); _exit(6);
+   } else if (! S_ISDIR(st.st_mode) ) _exit(7);
+
    if (stat("cur", &st) == -1) {
      if (errno == error_noent) {
-      if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
-     } else {
-       _exit(5);
-     }
-   } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+      if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     } else if (error_temp(errno)) _exit(5); _exit(6);
+   } else if (! S_ISDIR(st.st_mode) ) _exit(7);
+
    if (stat("tmp", &st) == -1) {
      if (errno == error_noent) {
-      if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(1); _exit(2); }
-     } else {
-       _exit(5);
-     }
-   } else if (! S_ISDIR(st.st_mode) ) _exit(5);
+      if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
+     } else if (error_temp(errno)) _exit(5); _exit(6);
+   } else if (! S_ISDIR(st.st_mode) ) _exit(7);
+ }
 #endif
 
  pid = getpid();
@@ -335,9 +318,9 @@ char *fn;
    case 3: strerr_die1x(111,"Timeout on maildir delivery. (#4.3.0)");
    case 4: strerr_die1x(111,"Unable to read message. (#4.3.0)");
 #ifdef AUTOMAILDIRMAKE
-   case 5: strerr_die1x(111,"Unable to make maildirs. (LDAP-ERR #2.4.4)");
-   case 9: strerr_die1x(111,"Boom with normal aliasempty (LDAP-ERR #2.4.4)");
-   case 10: strerr_die1x(111,"Boom with ./ aliasempty (LDAP-ERR #2.4.4)");
+   case 5: strerr_die1x(111,"Temporary error on maildir creation. (LDAP-ERR #2.5.1)");
+   case 6: strerr_die3x(111,"Unable to create maildir '", fn, "' (LDAP-ERR #2.5.2)");
+   case 7: strerr_die3x(111,"The maildir '", fn, "' seems to be corrupted. (LDAP-ERR #2.5.3)");
 #endif
    default: strerr_die1x(111,"Temporary error on maildir delivery. (#4.3.0)");
   }
@@ -742,7 +725,7 @@ char **argv;
          dirargs[0] = s; dirargs[1] = homedir;
          dirargs[2] = aliasempty; dirargs[3] = 0;
          execv(*dirargs,dirargs);
-         strerr_die5x(111,"Error while running automatic dirmaker:",s,": ",error_str(errno),". (LDAP-ERR #2.3.0)");
+         strerr_die5x(111,"Error while running automatic dirmaker:",s,": ",error_str(errno),". (LDAP-ERR #2.2.1)");
        }
 
        wait_pid(&wstat,child);
@@ -751,17 +734,14 @@ char **argv;
        switch(wait_exitcode(wstat)) {
        case 0: break;
        default:
-         strerr_die3x(111,s,": exited non zero",". (LDAP-ERR #2.3.0)");
+         strerr_die3x(111,s,": exited non zero",". (LDAP-ERR #2.2.2)");
        }
        if (chdir(homedir) == -1)
-          strerr_die5x(111,"Unable to switch to ",homedir," even after running dirmaker: ",error_str(errno),". (LDAP-ERR #2.3.0)");
+          strerr_die5x(111,"Unable to switch to ",homedir," even after running dirmaker: ",error_str(errno),". (LDAP-ERR #2.2.3)");
      } else {
-       strerr_die5x(111,"Unable to switch to ",homedir,", it does exist but is not accessable: ",error_str(errno),". (LDAP-ERR #2.3.0)");
+       strerr_die5x(111,"Unable to switch to ",homedir,", it does exist but is not accessable: ",error_str(errno),". (LDAP-ERR #2.2.4)");
      }
    }
-
- if (chdir(homedir) == -1)
-   strerr_die5x(111,"Even after automatic dirmaking I'm unable to switch to ",homedir,": ",error_str(errno),". (LDAP-ERR #2.3.0)");
 #else
    strerr_die5x(111,"Unable to switch to ",homedir,": ",error_str(errno),". (#4.3.0)");
 #endif
@@ -888,6 +868,7 @@ char **argv;
       } else if ( !str_diff(DOTMODE_BOTH, s) ) {
          if (!flagdoit) sayit("DOTMODE_BOTH ",s,0);
          qmode = DO_BOTH;
+         ldapprogdelivery = 1;
       } else if ( !str_diff(DOTMODE_NONE, s) ){
          ++count_file;
          if (!stralloc_copys(&foo,aliasempty)) temp_nomem();
