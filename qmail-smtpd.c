@@ -55,11 +55,11 @@ int loglevel = 0;
 
 void logpid(level) int level;
 {
-  char buf[FMT_ULONG];
+  char pidstring[FMT_ULONG];
   if (level > loglevel) return;
   substdio_puts(subfderr,"qmail-smtpd ");
-  buf[fmt_ulong(buf,(unsigned long) getpid())] = 0;
-  substdio_puts(subfderr,buf);
+  pidstring[fmt_ulong(pidstring,(unsigned long) getpid())] = 0;
+  substdio_puts(subfderr,pidstring);
   substdio_puts(subfderr,": ");
 }
 
@@ -139,8 +139,8 @@ char *remotehost;
 char *remoteinfo;
 char *local;
 char *relayclient;
-int spamflag = 0;
 char *denymail;
+int  spamflag = 0;
 
 stralloc helohost = {0};
 char *fakehelo; /* pointer into helohost, or 0 */
@@ -461,14 +461,16 @@ void smtp_mail(arg) char *arg;
     if (!str_diff("SPAM", denymail)) {
        flagbarf=1;
        spamflag=1;
+       why = "refused to accept SPAM";
     }
     else
       if (!addr.s[0] || !str_diff("#@[]", addr.s)) /*mjr*/
       /* if (!addr.s[0]) */
       {
-         if (!str_diff("NOBOUNCE", denymail))
+         if (!str_diff("NOBOUNCE", denymail)) {
             why = "refused to accept RFC821 bounce from remote";
             flagbarf=1;
+         }
       }
       else
       {
@@ -605,6 +607,7 @@ substdio ssin = SUBSTDIO_FDBUF(saferead,0,ssinbuf,sizeof ssinbuf);
 
 struct qmail qqt;
 unsigned int bytestooverflow = 0;
+unsigned int bytesreceived = 0;
 
 void put(ch)
 char *ch;
@@ -613,6 +616,7 @@ char *ch;
     if (!--bytestooverflow)
       qmail_fail(&qqt);
   qmail_put(&qqt,ch,1);
+  ++bytesreceived;
 }
 
 void blast(hops)
@@ -729,6 +733,7 @@ void smtp_data() {
   received(&qqt,"SMTP",local,remoteip,remotehost,remoteinfo,fakehelo,mailfrom.s,&rcptto.s[1]);
   spfreceived();
   blast(&hops);
+  logpid(2); logstring(2,""); logstring(2,"bytes received"); logflush(2);
   hops = (hops >= MAXHOPS);
   if (hops) { logline(2,"hop count exceeded"); qmail_fail(&qqt); }
   qmail_from(&qqt,mailfrom.s);
@@ -737,6 +742,7 @@ void smtp_data() {
   qqx = qmail_close(&qqt);
   if (!*qqx) { acceptmessage(qp); return; }
   if (hops) { out("554 too many hops, this message is looping (#5.4.6)\r\n"); return; }
+  logpid(3); logstring(3,"data bytes received ="); logline(3,"unknown"); logflush(3);
   if (databytes) if (!bytestooverflow)
   {
     err_size();

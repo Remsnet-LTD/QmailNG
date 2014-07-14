@@ -24,8 +24,6 @@
 /* #define MAKE_NETSCAPE_WORK       */
 /* make the Netscape download progress bar work with qmail-pop3d */
 
-#define MAKE_NETSCAPE_WORK /* make the Netscape download progress bar work with qmail-pop3d */
-
 void die() { _exit(0); }
 
 int saferead(fd,buf,len) int fd; char *buf; int len;
@@ -162,12 +160,17 @@ void pop3_stat()
 {
   int i;
   unsigned long total;
+  unsigned int count;
  
   total = 0;
-  for (i = 0;i < numm;++i) if (!m[i].flagdeleted) total += m[i].size;
-  putstr("+OK ");
-  put(strnum,fmt_uint(strnum,numm));
-  putstr(" ");
+  count = 0;
+  for (i = 0;i < numm;++i) if (!m[i].flagdeleted) {
+    total += m[i].size;
+    count += 1;
+  }
+  puts("+OK ");
+  put(strnum,fmt_uint(strnum,count));
+  puts(" ");
   put(strnum,fmt_ulong(strnum,total));
   putstr("\r\n");
   flush();
