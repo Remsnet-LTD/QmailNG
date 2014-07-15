@@ -88,6 +88,7 @@ stralloc title = {0};
 int log_mail = 0;
 int log_rcpt = 0;
 unsigned long pw_expire = 0;
+char rcptcheck_err[1024];
 
 #ifdef TLS
 unsigned int force_tls = 0;
@@ -222,7 +223,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.07 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.08 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -591,9 +592,11 @@ int mfcheck()
   unsigned int random;
   int j;
 
+  if (str_equal(addr.s,"#@[]")) return 0;
   if (!mfchk) return 0;
   random = now() + (getpid() << 16);
   j = byte_rchr(addr.s,addr.len,'@') + 1;
+  if (addr.len == 1) return 0;
   if (j < addr.len) {
     stralloc_copys(&sa, addr.s + j);
     dns_init(0);
@@ -606,8 +609,8 @@ int mfcheck()
     if(mfchk>2) strerr_warn5(title.s,"MFCHECK pass [",remoteip,"] ",sa.s,0);
     return 0;
   }
-  if(mfchk>2) strerr_warn5(title.s,"MFCHECK bypassed [",remoteip,"] ",addr.s,0);
-  return 0;
+  if(mfchk>1) strerr_warn5(title.s,"MFCHECK invalid [",remoteip,"] ",addr.s,0);
+  return DNS_HARD;
 }
 
 void vrtlog(l,a,b)
@@ -739,25 +742,64 @@ int addrvalid()
 {
   int pid;
   int wstat;
+  int pierr[2] ;
+  substdio ss;
+  char ssbuf[sizeof(rcptcheck_err)];
+  int len = 0 ;
+  char ch;
 
   if (!rcptcheck[0]) return 1;
+  if (pipe(pierr) == -1) die_rcpt2();
 
   switch(pid = fork()) {
-    case -1: die_fork();
+    case -1:
+      close(pierr[0]);
+      close(pierr[1]);
+      die_fork();
     case 0:
       if (!env_put2("SENDER",mailfrom.s)) die_nomem();
       if (!env_put2("RECIPIENT",addr.s)) die_nomem();
       if (!env_put2("HELO",helohost.s)) die_nomem();
+      if (!env_put2("USE_FD4","1")) die_nomem();
       close(1);
       dup2(2,1);
+      close(pierr[0]);
+      if (fd_move(4,pierr[1]) == -1) die_rcpt2();
       execv(*rcptcheck,rcptcheck);
       _exit(120);
   }
+
+  close(pierr[1]);
   if (wait_pid(&wstat,pid) == -1) die_rcpt2();
   if (wait_crashed(wstat)) die_rcpt2();
+
+  substdio_fdbuf(&ss,read,pierr[0],ssbuf,sizeof(ssbuf));
+  while ( substdio_bget(&ss,&ch,1) && len < (sizeof(ssbuf)-3) )
+    rcptcheck_err[len++] = ch;
+  close(pierr[0]);
+
+  while (len&&((rcptcheck_err[len-1]=='\n')||(rcptcheck_err[len-1]=='\r')))
+    len -- ;
+  if (len) {
+    rcptcheck_err[len] = '\0';
+    strerr_warn3(title.s,"RCPTCHECK error: ",rcptcheck_err,0);
+    rcptcheck_err[len++] = '\r';
+    rcptcheck_err[len++] = '\n';
+  }
+  rcptcheck_err[len] = '\0';
+
   switch(wait_exitcode(wstat)) {
-    case 100: return 0;
-    case 111: die_rcpt();
+    case 100:
+      if (!len) {
+        len = str_copy(rcptcheck_err,"553 no mailbox here by that name");
+        rcptcheck_err[len] = '\0' ;
+      }
+    case 111:
+      if (!len) {
+        len = str_copy(rcptcheck_err,"450 unable to verify recipient");
+        rcptcheck_err[len] = '\0' ;
+      }
+      return 0;
     case 120: die_rcpt2();
   }
   return 1;
@@ -1019,7 +1061,13 @@ void smtp_rcpt(arg) char *arg; {
     return;
   }
 
-  if (!addrvalid()) { err_badrcpt(); return; }
+  if (!addrvalid()) {
+    if (rcptcheck_err[0])
+      out (rcptcheck_err);
+    else
+      err_badrcpt();
+    return;
+  }
 
   if (!stralloc_cats(&rcptto,"T")) die_nomem();
   if (!stralloc_cats(&rcptto,addr.s)) die_nomem();
@@ -1328,7 +1376,8 @@ void smtp_tls(arg) char *arg;
   essl=1;
 
   if(!(ssl=SSL_new(ctx))) die_read();
-  SSL_set_fd(ssl,0);
+  SSL_set_rfd(ssl,0);
+  SSL_set_wfd(ssl,1);
   if(SSL_accept(ssl)<=0) die_read();
   substdio_fdbuf(&ssout,SSL_write,ssl,ssoutbuf,sizeof(ssoutbuf));
 
