@@ -366,6 +366,12 @@ void setup()
 
   if(env_get("LOGREGEX")) logregex = 1;
 
+  auth_cdb_file = env_get("AUTH_CDB");
+  if(auth_cdb_file) {
+    if ( ! access(auth_cdb_file,R_OK) ) { useauth_cdb = 1; }
+    else die_auth_cdb() ;
+  }
+
   if (useauth_cdb) {
     auth_cdb_fd = open_read(auth_cdb_file);
     if(-1 == auth_cdb_fd) die_control();
@@ -1596,6 +1602,9 @@ char **argv;
 #endif
   sig_pipeignore();
   if (chdir(auto_qmail) == -1) die_control();
+
+  setup();
+
 #ifdef TLS
   if(access(servercert,R_OK)) { deny_tls = 1; }
   x = env_get("DENY_TLS");
@@ -1617,12 +1626,6 @@ char **argv;
   x = env_get("REQUIRE_AUTH");
   if(x) { scan_ulong(x,&u); if (u>0) require_auth = 1; }
 
-  auth_cdb_file = env_get("AUTH_CDB");
-  if(auth_cdb_file) {
-    if ( ! access(auth_cdb_file,R_OK) ) { useauth_cdb = 1; }
-    else die_auth_cdb() ;
-  }
-
   if ( useauth_cl || useauth_cdb ) { useauth = 1 ; }
 
   if (require_auth && (!useauth)) die_cannot_auth() ;
@@ -1634,7 +1637,6 @@ char **argv;
     if(useauth_cdb && usecram) die_cannot_cram() ;
   }
 
-  setup();
   if (ipme_init() != 1) die_ipme();
   if (greetdelay||drop_pre_greet) {
     x = timeoutread(greetdelay?greetdelay:1,0,ssinbuf,sizeof ssinbuf);

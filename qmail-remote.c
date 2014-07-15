@@ -704,7 +704,9 @@ char **argv;
 
 
   addrmangle(&sender,argv[2],&flagalias,0);
- 
+  stralloc_0(&sender);
+  sender.len --;
+
   if (!saa_readyplus(&reciplist,0)) temp_nomem();
   if (ipme_init() != 1) temp_oserr();
  
@@ -752,7 +754,10 @@ char **argv;
  
     smtpfd = socket(AF_INET,SOCK_STREAM,0);
     if (smtpfd == -1) temp_oserr();
- 
+
+    bind_by_sender ( smtpfd , sender.s , 1 ) ;
+    bind_by_remoteip ( smtpfd , &ip.ix[i].ip , 0 ) ;
+
     if (timeoutconn(smtpfd,&ip.ix[i].ip,(unsigned int) port,timeoutconnect) == 0) {
       tcpto_err(&ip.ix[i].ip,0);
       partner = ip.ix[i].ip;
