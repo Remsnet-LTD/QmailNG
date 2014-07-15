@@ -1,12 +1,12 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001,2002 Internet Business Solutions Ltd.
+(c) 1998,1999,2000,2001,2002,2003 Internet Business Solutions AG
 
 This LDAP patches for qmail come with NO WARRANTY.
 
-These patches are under the BSD license.
+These patches are under the BSD license. See LICENSE.
 
-RELEASE: $Date: 2003/07/31 14:29:41 $ ($Revision: 1.107 $)
+RELEASE: $Date: 2003/09/02 20:05:13 $ ($Revision: 1.114 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,98 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ WARNING: This release is NOT fully backwards compatible! We have made
+ certain changes for clarity and cleanup.
+
+ qmail-ldaplookup has been rewritten. Not all functionality of the old tool
+ has been integrated yet. It is now possible to use search filters and to
+ show multiple entries.
+
+ Removed some qmail-smtpd control files (tarpitcount/delay, maxrcptcount,
+ rblonlyheader). The only and right way to set them is environment variables
+ with tcpserver.
+
+ Changed deliveryMode significantly. Before the setting of a forwarding
+ would have disabled local delivery. This is no longer the case. Each of
+ the modes has to be explicitly disabled (local, forward, program) or
+ enabled (reply). There are no longer contradicting modes which makes it
+ much more logical.
+ This change probably has a great impact on many administrative frontends!
+
+ Quota definitions are new format only. ~control/ldapdefaultquota and mailQuota
+ serve no meaning anymore. Also the string quota format (10000S,100C) is no
+ longer supported. Use ~control/defaultquota[size|count] and mailQuotaSize
+ and mailQuotaCount instead.
+
+ New tool qmail-secretary. This is the swiss army knife for mail group and
+ mailing list handling. It is used by the upcoming qmail-group tool but has
+ a compatibility modus for ezmlm (you may guess why ...).
+
+ New tool qmail-forward. This tool forwards a mail via qmail-qmqpc in a
+ much nicer way than qmail-lspawn befor. Some more or less ugly hacks could
+ be removed.
+
+ qmail-reply recent sender support finished. The code is still disabled
+ via NOTYET defines until I verified it.
+
+ The mailheader magic of qmail-reply is now also supported by qmail-ldaplookup
+ and qmail-secretary.
+
+ Fixed some problems with text control files, mainly quotawarning and
+ custombouncetext. Trailing white spaces and empty lines are no longer
+ cleared.
+
+ Rewrite of the homedirmake and maildirmake feature. Finaly auth_imap will
+ create the maildir for courier.
+
+ The environments passed between qmail-lspawn and qmail-local are now ':'
+ seperated and escaped. Nota bene the old csv stile definition of some
+ attributes mainly deliveryMode is still supported (the ',' are replaced
+ by ':' automagically).
+
+ major cleanup in qmail-lspawn ldap handling and exit-code handling code.
+ Also the forwarding code has been moved out so that this code is no longer
+ run under root.
+
+ NOPBS environment variable can now be used to disable pbsadd. This is useful
+ for nat-ed customers or if you have some local port forwarding and absolutly
+ neccessary for clusters (NOPBS set for all clusterhost IPs).
+
+ Integration for pbs tools in cluster environments. auth_* has a switch -d
+ to specify pbsadd or a other tool that is executed in all success cases be
+ it local access or session forwarding. The old way via chaning the processes
+ still works for non cluster setups.
+
+ new auth_pop, auth_imap and checkpassword implementation. The files are
+ now better seperated so that it should be possible to implement auth_smtp
+ without copying most of the auth* code. It is now possible to run the auth_*
+ tools without root priviledges and root priviledges are dropped as soon as
+ possible.
+
+ Salted versions of SHA and MD5 (SSHA and SMD5) implemented and major cleanup
+ of the hole passwd compare functions. The digest tool has been rewritten to
+ support the new algorithms and to support passwd verifying. Also the base64
+ and digest_* implementations have been cleaned up and stripped.
+
+ new and better structured ldap backend. This solves many issues we had
+ with the old hackish implementation. These are: functioning rebind, support
+ for multiple concurrent connections, more flexible support for ldap attribute
+ handling and upcomming filter functions that can handle mutliple results.
+
+ compile time option to enable ZLIB compression for QMQP cluster communication.
+ This is useful when cluster hosts are in different locations and have slow
+ or metered connections between them. All QMQP client/servers need to be
+ support the dynamic data compression, stock QMQP and compressed QMQP are
+ unable to understand each other. This may change for the server but not for the
+ client.  Enable in Makefile with -DQMQP_COMPRESSION switch.
+
+ cleaned up qmail.schema and added qmailGroup objectclass for mail groups.
+
+ major cleanup, actually a huge cleanup, currently over 75 modified, removed
+ or added files. The code is now much more modularized and protable.
+
+NEWS for 20030801 stuff:
 
  Removed checking of client certificates from TLS in qmail-smtpd. It is
  no longer possible to allow automatic relaying via TLS client certs.

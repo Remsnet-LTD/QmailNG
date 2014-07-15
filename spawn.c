@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "alloc.h"
 #include "sig.h"
 #include "wait.h"
 #include "substdio.h"
@@ -19,6 +20,8 @@ extern int truncreport;
 extern int spawn();
 extern void report();
 extern void initialize();
+
+int flagreinit = 0;
 
 struct delivery
  {
@@ -233,6 +236,8 @@ char **argv;
 
    if (r != -1)
     {
+     if (flagreinit)
+       initialize(argc,argv);
      if (flagreading)
        if (FD_ISSET(0,&rfds))
 	 getcmd();

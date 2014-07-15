@@ -1,34 +1,36 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "readwrite.h"
-#include "stralloc.h"
-#include "str.h"
-#include "open.h"
-#include "substdio.h"
-#include "getln.h"
-#include "error.h"
-#include "direntry.h"
-#include "strerr.h"
-#include "fmt.h"
-#include "scan.h"
-#include "now.h"
-#include "seek.h"
-#include "sig.h"
-#include "maildir++.h"
+#include <unistd.h>
+
 #include "alloc.h"
 #include "byte.h"
+#include "direntry.h"
+#include "error.h"
+#include "fmt.h"
+#include "getln.h"
+#include "now.h"
+#include "open.h"
+#include "scan.h"
+#include "seek.h"
+#include "sig.h"
+#include "str.h"
+#include "stralloc.h"
+#include "strerr.h"
+#include "substdio.h"
+
+#include "maildir++.h"
 
 static void temp_nomem() { strerr_die1x(111,"Out of memory. (QUOTA #1.0.1)"); }
 
 static int mailfolder(void);
-int quota_parsesize(quota_t *q, int *fd, char* buf, int len);
-static int quota_calcsize(quota_t *q, int *fd, char* buf, int len);
-static int quota_writesize(quota_t *q, int *fd, time_t maxtime);
-static int check_maxtime(time_t time);
-static int get_file_size(char *name, struct stat *st);
-static void calc_curnew(quota_t *q, time_t *maxtime);
-static int read5120(char* fn, char* buf, int *len);
+int quota_parsesize(quota_t *, int *, char *, int);
+static int quota_calcsize(quota_t *, int *, char *, int);
+static int quota_writesize(quota_t *, int *, time_t);
+static int check_maxtime(time_t);
+static int get_file_size(char *, struct stat *);
+static void calc_curnew(quota_t *, time_t *);
+static int read5120(const char *, char *, int *);
 
 
 static stralloc	path = {0};
@@ -36,11 +38,16 @@ static char writebuf[3*FMT_ULONG]; /* enough big to hold all needed data */
 static char buf5120[5120]; /* buffer for maildirsize */
 
 /* alarm handler */
-static void sigalrm() { unlink(path.s);
-	strerr_die1x(111,"Timeout while writing maildirsize. (QUOTA #1.0.2)"); }
+static void
+sigalrm()
+{
+	unlink(path.s);
+	strerr_die1x(111,"Timeout while writing maildirsize. (QUOTA #1.0.2)");
+}
 
-void quota_add(int fd, unsigned long size, unsigned long count)
-	/* add size and count to the quota (maildirsize) */
+void
+quota_add(int fd, unsigned long size, unsigned long count)
+/* add size and count to the quota (maildirsize) */
 {
 	char num[FMT_ULONG];
 	seek_pos pos;
@@ -76,9 +83,10 @@ addfail:
 	return; /* ignore errors, perhaps the file was removed */
 }
 
-void quota_rm(int fd, unsigned long size, unsigned long count)
-	/* remove size and count from the quota (maildirsize) *
-	 * both size and count are POSITVE integers           */
+void
+quota_rm(int fd, unsigned long size, unsigned long count)
+/* remove size and count from the quota (maildirsize) *
+ * both size and count are POSITVE integers           */
 {
 	char num[FMT_ULONG];
 	seek_pos pos;
@@ -94,11 +102,11 @@ void quota_rm(int fd, unsigned long size, unsigned long count)
 	/* create string of the form '-1232 -12\n' and add it to the quota */
 	if (substdio_bput(&ss, "-", 1) == -1)
 		goto rmfail;
-	if (substdio_bput(&ss, num, fmt_ulong(num, size) ) == -1)
+	if (substdio_bput(&ss, num, fmt_ulong(num, size)) == -1)
 		goto rmfail;
 	if (substdio_bput(&ss, " -", 2) == -1)
 		goto rmfail;
-	if (substdio_bput(&ss, num, fmt_ulong(num, count) ) == -1)
+	if (substdio_bput(&ss, num, fmt_ulong(num, count)) == -1)
 		goto rmfail;
 	if (substdio_bput(&ss, "\n", 1) == -1)
 		goto rmfail;
@@ -115,7 +123,8 @@ rmfail:
 	return; /* ignore errors, perhaps the file was removed */
 }
 
-int quota_calc(char *dir, int *fd, quota_t *q)
+int
+quota_calc(const char *dir, int *fd, quota_t *q)
 {
 	int i = 0;
 	int ret;
@@ -134,7 +143,7 @@ int quota_calc(char *dir, int *fd, quota_t *q)
 	if (! stralloc_cats(&path, "maildirsize")) temp_nomem();
 	if (! stralloc_0(&path)) temp_nomem();
 
-	*fd = read5120( path.s, buf5120, &i);
+	*fd = read5120(path.s, buf5120, &i);
 
 	if (*fd != -1) {
 		ret = quota_parsesize(q, fd, buf5120, i);
@@ -144,7 +153,8 @@ int quota_calc(char *dir, int *fd, quota_t *q)
 	return ret;
 }
 
-int quota_recalc(char *dir, int *fd, quota_t *q)
+int
+quota_recalc(const char *dir, int *fd, quota_t *q)
 {
 	int  i = 0;
 	int  j;
@@ -152,19 +162,19 @@ int quota_recalc(char *dir, int *fd, quota_t *q)
 	time_t tm;
 	struct stat st;
 
-	if (! stralloc_copys(&path, dir)) temp_nomem();
+	if (!stralloc_copys(&path, dir)) temp_nomem();
 	if (path.s[path.len-1] != '/')
 		if (! stralloc_cats(&path, "/")) temp_nomem();
 
 	while (mailfolder()) {
-		if (! stralloc_cats(&path, "../")) temp_nomem();
+		if (!stralloc_cats(&path, "../")) temp_nomem();
 		if (i++ > 1 ) strerr_die1x(111,
 				"Unable to calc quota: recursive "
 				"maildir++ (QUOTA #1.1.1)");
 	}
 
-	if (! stralloc_cats(&path, "maildirsize")) temp_nomem();
-	if (! stralloc_0(&path)) temp_nomem();
+	if (!stralloc_cats(&path, "maildirsize")) temp_nomem();
+	if (!stralloc_0(&path)) temp_nomem();
 
 	*fd = read5120( path.s, buf5120, &i);
 
@@ -201,7 +211,8 @@ int quota_recalc(char *dir, int *fd, quota_t *q)
 
 }
 
-int quota_check(quota_t *q, unsigned long size, unsigned long count, int *perc)
+int
+quota_check(quota_t *q, unsigned long size, unsigned long count, int *perc)
 {
 	int sp , cp;
 
@@ -235,7 +246,8 @@ int quota_check(quota_t *q, unsigned long size, unsigned long count, int *perc)
 	return 0;
 }
 
-void quota_get(quota_t *q, char *quota)
+void
+quota_get(quota_t *q, char const *quota)
 {
 	unsigned long i;
 
@@ -262,15 +274,15 @@ void quota_get(quota_t *q, char *quota)
 			case 'C':
 				q->quota_count = i;
 				break;
-			default: /* defaults to size */
-				q->quota_size = i*1024;
-				/* because in the old patch it was in kB */
-				break;		/* thanks to Aaron Nabil */
+			default:
+				/* ignore */
+				break;
 		}
 	}
 }
 
-static int mailfolder(void)
+static int
+mailfolder(void)
 {
 	unsigned int len;
 	struct stat st;
@@ -280,12 +292,12 @@ static int mailfolder(void)
 	 */
 
 	len = path.len;
-	if ( ! stralloc_cats(&path, "maildirfolder") ) temp_nomem();
-	if ( ! stralloc_0(&path) ) temp_nomem();
+	if (!stralloc_cats(&path, "maildirfolder")) temp_nomem();
+	if (!stralloc_0(&path)) temp_nomem();
 	path.len = len; /* cut away what this function has added */
 
-	if ( stat(path.s, &st) == -1 ) { /* are we in a subdir ? */
-		if ( errno != error_noent ) {
+	if (stat(path.s, &st) == -1) { /* are we in a subdir ? */
+		if (errno != error_noent) {
 			strerr_die3x(111, "Unable to stat maildirfolder: ",
 					error_str(errno), " (QUOTA #1.4.1)");
 		}
@@ -295,7 +307,8 @@ static int mailfolder(void)
 	}
 }
 
-int quota_parsesize(quota_t *q, int *fd, char* buf, int len)
+int
+quota_parsesize(quota_t *q, int *fd, char *buf, int len)
 {
 	char *s;
 	quota_t dummy;
@@ -357,7 +370,8 @@ int quota_parsesize(quota_t *q, int *fd, char* buf, int len)
 	return 0;
 }
 
-static int quota_calcsize(quota_t *q, int *fd, char* buf, int len)
+static int
+quota_calcsize(quota_t *q, int *fd, char *buf, int len)
 {
 	unsigned int plen;
 	time_t tm;
@@ -404,7 +418,8 @@ static int quota_calcsize(quota_t *q, int *fd, char* buf, int len)
 	return quota_writesize(q, fd, maxtime);
 }
 
-static int quota_writesize(quota_t *q, int *fd, time_t maxtime)
+static int
+quota_writesize(quota_t *q, int *fd, time_t maxtime)
 {
 	int pid;
 	int i;
@@ -505,7 +520,8 @@ fail:
 	_exit(111);
 }
 
-static int check_maxtime(time_t time)
+static int
+check_maxtime(time_t t)
 /* check if a directory has changed, to avoid race conditions */
 {
 	direntry *dp;
@@ -531,7 +547,7 @@ static int check_maxtime(time_t time)
 			if (!stralloc_cats(&path, "/cur")) temp_nomem();
 			if (!stralloc_0(&path)) temp_nomem();
 			if (stat(path.s, &filest) == 0
-			    && filest.st_mtime > time) {
+			    && filest.st_mtime > t) {
 				i = 1;
 				break;
 			}
@@ -540,7 +556,7 @@ static int check_maxtime(time_t time)
 			if (!stralloc_cats(&path, "/new")) temp_nomem();
 			if (!stralloc_0(&path)) temp_nomem();
 			if (stat(path.s, &filest) == 0
-			    && filest.st_mtime > time) {
+			    && filest.st_mtime > t) {
 				i = 1;
 				break;
 			}
@@ -549,7 +565,7 @@ static int check_maxtime(time_t time)
 			path.len = slen;
 			if (!stralloc_cats(&path, "/new")) temp_nomem();
 			if (stat(path.s, &filest) == 0
-			    && filest.st_mtime > time) {
+			    && filest.st_mtime > t) {
 				i = 1;
 				break;
 			}
@@ -558,7 +574,7 @@ static int check_maxtime(time_t time)
 			path.len = slen;
 			if (!stralloc_cats(&path, "/cur")) temp_nomem();
 			if (stat(path.s, &filest) == 0
-			    && filest.st_mtime > time) {
+			    && filest.st_mtime > t) {
 				i = 1;
 				break;
 			}
@@ -570,7 +586,8 @@ static int check_maxtime(time_t time)
 	return i;
 }
 
-static int get_file_size(char *name, struct stat *st)
+static int
+get_file_size(char *name, struct stat *st)
 /* get the filesize of the file name in dir, via the name or a stat */
 {
 	char *s = name;
@@ -602,7 +619,8 @@ static int get_file_size(char *name, struct stat *st)
 	}
 }
 
-static void calc_curnew(quota_t *q, time_t *maxtime)
+static void
+calc_curnew(quota_t *q, time_t *maxtime)
 /* calculate the size of the two dirs new and cur of a maildir
  * (uses get_file_size) */
 {
@@ -650,7 +668,8 @@ static void calc_curnew(quota_t *q, time_t *maxtime)
 	}
 }
 
-static int read5120(char* fn, char* buf, int *len)
+static int
+read5120(const char *fn, char* buf, int *len)
 {
 	int fd;
 	int r;

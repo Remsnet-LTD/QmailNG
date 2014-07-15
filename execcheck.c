@@ -101,8 +101,8 @@ execcheck_put(struct qmail *qq, char *ch)
 					while (cp < cpafter &&
 					    (*cp == ' ' || *cp == '\t'))
 						++cp;
-					if (9 < cpafter - cp &&
-					    case_diffb(cp, 9, "boundary=")==0) {
+					if (case_startb(cp, cpafter - cp,
+						    "boundary=")) {
 						cp += 9; /* after boundary= */
 						if (cp < cpafter &&
 						    *cp == '"') {
@@ -141,7 +141,8 @@ execcheck_put(struct qmail *qq, char *ch)
 					break;
 				}
 			} else {
-				if (!case_diffb(line.s, 13, "content-type:")) {
+				if (case_startb(line.s, line.len,
+					    "content-type:")) {
 					if (!stralloc_copyb(&content,
 						    line.s+13, line.len-14))
 						die_nomem();

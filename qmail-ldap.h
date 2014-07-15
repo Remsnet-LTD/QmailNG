@@ -3,8 +3,7 @@
 
 /* this is the "catch all" string
  * ATTN: escape the string correctly, remember
- * '(', ')', '\', '*' and '\0' have to be escaped with '\'
- * Escaping is broken in OpenLDAP up to release 1.2.6, 1.2.7 is OK
+ * '(', ')', '\', and '*' have to be escaped with '\'
  */
 #define LDAP_CATCH_ALL "catchall"
 
@@ -16,7 +15,7 @@
 /* timeout for one delivery per sender */
 #define REPLY_TIMEOUT 1209600 /* 1 Week */
 /* default content type (don't forget the '\n' at the end) */
-#define REPLY_CT "text/plain; charset=\"utf-8\"\n"
+#define REPLY_CT "text/plain; charset=utf-8\n"
 /* default content transfer encoding (don't forget the '\n' at the end) */
 #define REPLY_CTE "8bit\n"
 
@@ -37,16 +36,28 @@
 
 /* ALIASDEVNULL replacement for the std. aliasempty for user with
  * neither homeDirectory nor mailMessageStore defined */
-#define ALIASDEVNULL "|sh -c \"cat > /dev/null\""
-/* just pipe everything to /dev/null, you could also use a program/script
- * to make a notify the postmaster if something like this happens.
- * It's up to the reader to write such a simple script */
+#define ALIASDEVNULL "|echo \"Unable to deliver mail: account incorrectly configured. (#5.3.5)\"; exit 100"
+/* just echo a warning to notify the user and exit 100.
+ * It's up to the reader to write a simple script with
+ * postmaster notification. */
 
 /* Default ldap search timeout. In seconds */
 #define	QLDAP_TIMEOUT		30
 
+/* This needs DASH_EXT option.
+ * Limit dash ext to the first DASH_EXT_LEVELS extensions.
+ * Search only for (DASH_EXT_LEVELS = 4):
+ * a-b-c-d-e-f-g-...@foobar.com
+ * a-b-c-d-catchall@foobar.com
+ * a-b-c-catchall@foobar.com
+ * a-b-catchall@foobar.com
+ * a-catchall@foobar.com
+ * catchall@foobar.com
+ */
+#define DASH_EXT_LEVELS 4
+
 /*********************************************************************
-        ldap variables used in qmail-lspawn and checkpassword
+        ldap variables used in qmail-lspawn and auth_*
 *********************************************************************/
 #define LDAP_MAIL		"mail"
 #define LDAP_MAILALTERNATE	"mailAlternateAddress"
@@ -66,7 +77,7 @@
 #define LDAP_DOTMODE		"qmailDotMode"
 #define LDAP_UID		"uid"
 #define LDAP_PASSWD		"userPassword"
-#define LDAP_OBJECTCLASS	"objectclass"
+#define LDAP_OBJECTCLASS	"objectClass"
 #define LDAP_ISACTIVE		"accountStatus"
 #define LDAP_PURGE		"qmailAccountPurge"
 
@@ -76,18 +87,35 @@
 #define DOTMODE_BOTH		"both"
 #define DOTMODE_NONE		"none"
 
-#define MODE_NORMAL		"normal"
-#define MODE_FORWARD		"forwardonly"
+#define MODE_FONLY		"forwardonly"
 #define MODE_NOFORWARD		"noforward"
 #define MODE_NOMBOX		"nombox"
-#define MODE_LDELIVERY		"localdelivery"
+#define MODE_NOLOCAL		"nolocal"
+#define MODE_NOPROG		"noprogram"
 #define MODE_REPLY		"reply"
-#define MODE_ECHO		"echo"
+/* these are silently ignored */
+#define MODE_LOCAL		"local"
+#define MODE_FORWARD		"forward"
+#define MODE_PROG		"program"
+#define MODE_NOREPLY		"noreply"
 
 #define ISACTIVE_BOUNCE		"disabled"
 #define ISACTIVE_DELETE		"deleted"
 #define ISACTIVE_NOPOP		"nopop"
 #define ISACTIVE_ACTIVE		"active"
+
+/*********************************************************************
+        ldap variables used in qmail-group
+*********************************************************************/
+#define LDAP_GROUPMEMONLY	"membersonly"
+#define LDAP_GROUPCONFIRM	"senderconfirm"
+#define LDAP_GROUPCONFRIMTEXT	"confirmtext"
+#define LDAP_GROUPMODERATTEXT	"moderatortext"
+#define LDAP_GROUPMODERATDN	"dnmoderator"
+#define LDAP_GROUPMODERAT822	"rfc822moderator"
+#define LDAP_GROUPMEMBERDN	"dnmember"
+#define LDAP_GROUPMEMBER822	"rfc822member"
+#define LDAP_GROUPMEMBERFILTER	"filtermember"
 
 
 /*********************************************************************
@@ -96,7 +124,7 @@
 /* the same values as ints */
 #define STATUS_BOUNCE		2
 #define STATUS_NOPOP		1
-#define STATUS_OK 			0
+#define STATUS_OK 		0
 #define STATUS_UNDEF 		-1
 
 /* environment variables used between qmail-lspan and qmail-local
@@ -112,6 +140,8 @@
 #define ENV_REPLYTEXT		"QMAILREPLYTEXT"
 #define ENV_FORWARDS		"QMAILFORWARDS"
 #define ENV_PROGRAM		"QMAILDELIVERYPROGRAM"
+
+#define ENV_GROUP		"QLDAPGROUP"
 
 /* qmail-local.c only */
 #define DO_LDAP 	0x01

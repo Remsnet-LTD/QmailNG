@@ -231,7 +231,7 @@ void main()
 
 
   do_lst("badmailfrom","Any MAIL FROM is allowed.",""," not accepted in MAIL FROM.");
-  do_lst("badmailfrom-unknown","Any MAIL FROM from host without PTR is allowed.","",
+  do_lst("badmailfrom-unknown","Any MAIL FROM from hosts without PTR is allowed.","",
 	 " not accepted in MAIL FROM from host without PTR.");
   do_lst("badrcptto","Any RCPT TO is allowed.",""," not accepted in RCPT TO");
   if (stat("bigbrother",&stmrh) == 0)
@@ -270,7 +270,6 @@ void main()
   do_int("queuelifetime","604800","Message lifetime in the queue is "," seconds");
   do_lst("quotawarning","No quotawarning.","","");
   do_lst("rbllist","No RBL listed.","RBL to check: ",".");
-  do_int("rblonlyheader","0","Only tag RBLs in mail header: "," (1 = on, 0 = off)");
 
   if (do_lst("rcpthosts","SMTP clients may send messages to any recipient.","SMTP clients may send messages to recipients at ","."))
     do_lst("morercpthosts","No effect.","SMTP clients may send messages to recipients at ",".");
@@ -308,16 +307,18 @@ void main()
 
 
   substdio_puts(subfdout,"\n\n\nNow the qmail-ldap specific files:\n");
-  do_str("ldapserver",0,"undefined! Uh-oh","My LDAP Server is ");
   do_str("ldapbasedn",0,"NULL","LDAP basedn: ");
+  do_str("ldapserver",0,"undefined! Uh-oh","My LDAP Server is ");
   do_str("ldaplogin",0,"NULL","LDAP login: ");
   do_str("ldappassword",0,"NULL","LDAP password: ");
   do_int("ldaptimeout","30","LDAP server timeout is "," seconds");
   do_str("ldapuid",0,"not defined","Default UID is ");
   do_str("ldapgid",0,"not defined","Default GID is ");
+  do_str("ldapobjectclass",0,"not defined","The objectclass to limit ldap filter is ");
   do_str("ldapmessagestore",0,"not defined","Prefix for non absolute paths is ");
   do_str("ldapdefaultdotmode",0,"ldaponly","Default dot mode for ldap users is ");
-  do_str("ldapdefaultquota",0,"unlimited","Default quota for ldap users is ");
+  do_int("defaultquotasize","0","Mailbox size quota is "," bytes (0 is unlimited)");
+  do_int("defaultquotacount","0","Mailbox count quota is "," messages (0 is unlimited)");
   do_int("ldaplocaldelivery","1","Local passwd lookup is "," (1 = on, 0 = off)");
   do_int("ldaprebind","0","Ldap rebinding is "," (1 = on, 0 = off)");
   do_int("ldapcluster","0","Clustering is "," (1 = on, 0 = off)");
@@ -330,8 +331,6 @@ void main()
   while (d = readdir(dir)) {
     if (str_equal(d->d_name,".")) continue;
     if (str_equal(d->d_name,"..")) continue;
-    if (str_equal(d->d_name,"bouncefrom")) continue;
-    if (str_equal(d->d_name,"bouncehost")) continue;
     if (str_equal(d->d_name,"badmailfrom")) continue;
     if (str_equal(d->d_name,"badmailfrom-unknown")) continue;
     if (str_equal(d->d_name,"badrcptto")) continue;
@@ -345,6 +344,8 @@ void main()
     if (str_equal(d->d_name,"databytes")) continue;
     if (str_equal(d->d_name,"defaultdomain")) continue;
     if (str_equal(d->d_name,"defaulthost")) continue;
+    if (str_equal(d->d_name,"defaultquotacount")) continue;
+    if (str_equal(d->d_name,"defaultquotasize")) continue;
     if (str_equal(d->d_name,"dirmaker")) continue;
     if (str_equal(d->d_name,"doublebouncehost")) continue;
     if (str_equal(d->d_name,"doublebounceto")) continue;
@@ -355,7 +356,6 @@ void main()
     if (str_equal(d->d_name,"ldapcluster")) continue;
     if (str_equal(d->d_name,"ldapclusterhosts")) continue;
     if (str_equal(d->d_name,"ldapdefaultdotmode")) continue;
-    if (str_equal(d->d_name,"ldapdefaultquota")) continue;
     if (str_equal(d->d_name,"ldapgid")) continue;
     if (str_equal(d->d_name,"ldaplocaldelivery")) continue;
     if (str_equal(d->d_name,"ldaplogin")) continue;
@@ -387,7 +387,6 @@ void main()
     if (str_equal(d->d_name,"queuelifetime")) continue;
     if (str_equal(d->d_name,"quotawarning")) continue;
     if (str_equal(d->d_name,"rbllist")) continue;
-    if (str_equal(d->d_name,"rblonlyheader")) continue;
     if (str_equal(d->d_name,"rcpthosts")) continue;
     if (str_equal(d->d_name,"relaymailfrom")) continue;
     if (str_equal(d->d_name,"smtpgreeting")) continue;
@@ -402,12 +401,15 @@ void main()
     if (str_equal(d->d_name,"timeoutremote")) continue;
     if (str_equal(d->d_name,"timeoutsmtpd")) continue;
     if (str_equal(d->d_name,"virtualdomains")) continue;
-    if (str_equal(d->d_name,"ldappasswdappend")) {
-        substdio_puts(subfdout,"ldappasswdappend: No longer used, please remove.\n");
-        continue;
-    }
-    if (str_equal(d->d_name,"ldapusername")) {
-        substdio_puts(subfdout,"ldapusername: No longer used, please remove.\n");
+    if (str_equal(d->d_name,"ldapusername") ||
+	str_equal(d->d_name,"ldappasswdappend") ||
+	str_equal(d->d_name,"ldapdefaultquota") ||
+	str_equal(d->d_name,"rblonlyheader") ||
+	str_equal(d->d_name,"maxrcptcount") ||
+	str_equal(d->d_name,"tarpitdelay") ||
+	str_equal(d->d_name,"tarpitcount")) {
+        substdio_puts(subfdout,d->d_name);
+        substdio_puts(subfdout,": No longer used, please remove.\n");
         continue;
     }
     substdio_puts(subfdout,d->d_name);

@@ -17,9 +17,12 @@
 #include "auto_qmail.h"
 #include "control.h"
 #include "fmt.h"
+#ifdef QMQP_COMPRESS
+#include <zlib.h>
+#endif
 
-#ifndef PORT_QMQP /* this is for testing purposes, so you can overwrite
-		     this port via a simple -D argument */
+
+#ifndef PORT_QMQP /* this is for testing purposes */
 #define PORT_QMQP 628
 #endif
 
@@ -37,6 +40,51 @@ void die_format() { _exit(91); }
 int lasterror = 55;
 int qmqpfd;
 
+#ifdef QMQP_COMPRESS
+z_stream stream;
+char zbuf[4096];
+
+void compression_init(void)
+{
+  stream.zalloc = Z_NULL;
+  stream.zfree = Z_NULL;
+  stream.opaque = Z_NULL;
+  stream.avail_out = sizeof(zbuf);
+  stream.next_out = zbuf;
+  if (deflateInit(&stream,Z_DEFAULT_COMPRESSION) != Z_OK)
+    die_format();
+}
+void compression_done(void)
+{
+  int r;
+
+  do {
+    r = deflate(&stream,Z_FINISH);
+    switch (r) {
+    case Z_OK:
+      if (stream.avail_out == 0) {
+	r = timeoutwrite(60,qmqpfd,zbuf,sizeof(zbuf));
+	if (r <= 0) die_conn();
+	stream.avail_out = sizeof(zbuf);
+	stream.next_out = zbuf;
+	r = Z_OK;
+      }
+      break;
+    case Z_STREAM_END:
+      break;
+    default:
+      die_format();
+    }
+  } while (r!=Z_STREAM_END);
+  if (stream.avail_out != sizeof(zbuf)) {
+    /* write left data */
+    r = timeoutwrite(60,qmqpfd,zbuf,sizeof(zbuf)-stream.avail_out);
+    if (r <= 0) die_conn();
+  }
+  if (deflateEnd(&stream) != Z_OK) die_format();
+}
+#endif
+
 int saferead(fd,buf,len) int fd; char *buf; int len;
 {
   int r;
@@ -47,6 +95,26 @@ int saferead(fd,buf,len) int fd; char *buf; int len;
 int safewrite(fd,buf,len) int fd; char *buf; int len;
 {
   int r;
+#ifdef QMQP_COMPRESS
+  stream.avail_in = len;
+  stream.next_in = buf;
+  do {
+    r = deflate(&stream, 0);
+    switch (r) {
+    case Z_OK:
+      if (stream.avail_out == 0) {
+	r = timeoutwrite(60,qmqpfd,zbuf,sizeof(zbuf));
+	if (r <= 0) die_conn();
+	stream.avail_out = sizeof(zbuf);
+	stream.next_out = zbuf;
+      }
+      break;
+    default:
+      die_format();
+    }
+  } while (stream.avail_in != 0);
+  return len;
+#endif
   r = timeoutwrite(60,qmqpfd,buf,len);
   if (r <= 0) die_conn();
   return r;
@@ -146,8 +214,11 @@ char *server;
     return;
   }
 
+#ifdef QMQP_COMPRESS
+  compression_init();
+#endif
   strnum[fmt_ulong(strnum, (unsigned long)
-         (beforemessage.len + dtline.len + message.len + aftermessage.len))] = 0;
+         (beforemessage.len + message.len + aftermessage.len))] = 0;
   substdio_puts(&to,strnum);
   substdio_puts(&to,":");
   substdio_put(&to,beforemessage.s,beforemessage.len);
@@ -156,6 +227,9 @@ char *server;
   substdio_put(&to,aftermessage.s,aftermessage.len);
   substdio_puts(&to,",");
   substdio_flush(&to);
+#ifdef QMQP_COMPRESS
+  compression_done();
+#endif
 
   for (;;) {
     substdio_get(&from,&ch,1);
