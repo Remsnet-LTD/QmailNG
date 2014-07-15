@@ -293,6 +293,9 @@ void readenv()
   if(x) { scan_ulong(x,&u); relayrej = (int) u; }
 }
 
+int logregex = 0;
+stralloc matchedregex = {0};
+
 void setup()
 {
   char *x;
@@ -331,6 +334,8 @@ void setup()
   bhelook = control_readfile(&bhelo,"control/badhelo",0);
   if(bhelook == -1) die_control() ;
   if(env_get("NOBADHELO")) bhelook = 0;
+
+  if(env_get("LOGREGEX")) logregex = 1;
 
   vrtfd = open_read("control/validrcptto.cdb");
   if (-1 == vrtfd) if (errno != error_noent) die_control();
@@ -524,8 +529,16 @@ int bmcheck(which) int which;
     } else {
       x = matchregex(addr.s, curregex.s);
     }
-    if ((negate) && (x == 0)) return 1;
-    if (!(negate) && (x > 0)) return 1;
+    if ((negate) && (x == 0)) {
+      if (!stralloc_copyb(&matchedregex,bmb.s + j - 1,(i - j + 1))) die_nomem();
+      if (!stralloc_0(&matchedregex)) die_nomem();
+      return 1;
+    }
+    if (!(negate) && (x > 0)) {
+      if (!stralloc_copyb(&matchedregex,bmb.s + j,(i - j))) die_nomem();
+      if (!stralloc_0(&matchedregex)) die_nomem();
+      return 1;
+    }
     j = i + 1;
     negate = 0;
   }
@@ -837,12 +850,20 @@ void smtp_rcpt(arg) char *arg; {
   if (!addrparse(arg)) { err_syntax(); return; }
   if (addrrelay()) { err_relay(); return; }
   if (flagbarfbhelo) {
-    strerr_warn5(title.s,"badhelo: <",helohost.s,"> at ",remoteip,0);
+    if (logregex) {
+      strerr_warn7(title.s,"badhelo: <",helohost.s,"> at ",remoteip," matches pattern: ",matchedregex.s,0);
+    } else {
+      strerr_warn5(title.s,"badhelo: <",helohost.s,"> at ",remoteip,0);
+    }
     err_bhelo();
     return;
   }
   if (flagbarfbmf) {
-    strerr_warn5(title.s,"badmailfrom: <",mailfrom.s,"> at ",remoteip,0);
+    if (logregex) {
+      strerr_warn7(title.s,"badmailfrom: <",mailfrom.s,"> at ",remoteip," matches pattern: ",matchedregex.s,0);
+    } else {
+      strerr_warn5(title.s,"badmailfrom: <",mailfrom.s,"> at ",remoteip,0);
+    }
     err_bmf();
     return;
   }
@@ -851,7 +872,11 @@ void smtp_rcpt(arg) char *arg; {
     flagbarfbrt = bmcheck(BMCHECK_BRTNR);
   }
   if (flagbarfbrt) {
-    strerr_warn5(title.s,"badrcptto: <",addr.s,"> at ",remoteip,0);
+    if (logregex) {
+      strerr_warn7(title.s,"badrcptto: <",addr.s,"> at ",remoteip," matches pattern: ",matchedregex.s,0);
+    } else {
+      strerr_warn5(title.s,"badrcptto: <",addr.s,"> at ",remoteip,0);
+    }
     err_brt();
     return;
   }

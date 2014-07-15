@@ -1,4 +1,4 @@
-QREGEX (v2) 20040725 - README July 25, 2004
+QREGEX (v2) 20060423 - README April 23, 2006
 A Regular Expression matching patch for qmail 1.03 and netqmail
 
 
@@ -31,7 +31,8 @@ Features of qregex include:
    NOBADHELO environment variable prevents the host name from being
    compared to the patterns in the badhelo control file.
 
-3. Matches to patterns are logged
+3. Matches to patterns are logged. Setting the LOGREGEX environment
+   variable causes the matched regex pattern to be included in the log.
 
 4. Matching is case insensitive.
 
@@ -47,7 +48,7 @@ have any problems on any platform that qmail will run on (providing they have
 a regex interface) but if you run into problems let me know.
 
 	- OpenBSD 3.x
-	- FreeBSD 4.x
+	- FreeBSD 4.x, 5.x
 	- Mandrake Linux 9.x
 	- SuSE Linux 8.x
 
@@ -101,6 +102,12 @@ qmail-smtpd: badmailfrom: <sender address> at <remote IP>
 
 badrcptto and badrcpttonorelay
 qmail-smtpd: badrcptto: <rcpt address> at <remote IP>
+
+When the LOGREGEX environment variable is set, the matched pattern will
+be included in the log. Log messages will have the regex pattern appended
+to them. For example, a badhelo log message will look like this:
+
+qmail-smtpd: badhelo: <host> at <remote IP> matches pattern: <regex>
 
 
 CONTROL FILES:
