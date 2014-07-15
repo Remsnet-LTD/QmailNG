@@ -47,8 +47,9 @@ unsigned long getlen(void)
   char ch;
   for (;;) {
     substdio_get(&ssin,&ch,1);
-    if (ch == ':') return len;
     if (len > 200000000) resources();
+    if (ch == ':') return len;
+    if (ch < '0' || ch > '9') badproto();
     len = 10 * len + (ch - '0');
   }
 }
@@ -195,8 +196,9 @@ int main()
         if (!biglen) badproto();
         substdio_get(&ssin,&ch,1);
         --biglen;
-        if (ch == ':') break;
         if (len > 200000000) resources();
+        if (ch == ':') break;
+	if (ch < '0' || ch > '9') badproto();
         len = 10 * len + (ch - '0');
       }
       if (len >= biglen) badproto();
