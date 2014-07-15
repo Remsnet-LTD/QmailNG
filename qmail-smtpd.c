@@ -67,6 +67,7 @@ int useauth_cl = 0;
 int useauth_cdb = 0;
 int auth_cdb_fd = -1;
 char *auth_cdb_file;
+static stralloc authcdb_vars = {0};
 int usecram = 0;
 unsigned int essl = 0;
 char unique[FMT_ULONG + FMT_ULONG + 3];
@@ -216,7 +217,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.02 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.03 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -1106,6 +1107,31 @@ void acceptmessage(qp) unsigned long qp;
   out("\r\n");
 }
 
+void addvars(s)
+char *s;
+{
+  char *n;
+  char *v;
+  int x;
+
+  n = s;
+
+  while (*n)
+  {
+    if (','==*n) n++ ;
+    x = str_chr(n,'=');
+    if (!n[x]) return ;
+    n[x]=0;
+    if (n[x+1]!='\"') return ;
+    v = n+x+2 ;
+    x = str_chr(v,'\"');
+    if (!v[x]) return ;
+    v[x]=0;
+    env_put2(n,v);
+    n = v+x+1;
+  }
+}
+
 void auth_fixenv()
 {
   int i,f;
@@ -1146,6 +1172,9 @@ void auth_fixenv()
       }
     }
   } while (f);
+
+  if(authcdb_vars.s)
+    addvars(authcdb_vars.s);
 }
 
 void smtp_data() {
@@ -1322,31 +1351,6 @@ int authenticate_cl(void)
   return 0; /* yes */
 }
 
-void addvars(s)
-char *s;
-{
-  char *n;
-  char *v;
-  int x;
-
-  n = s;
-
-  while (*n)
-  {
-    if (','==*n) n++ ;
-    x = str_chr(n,'=');
-    if (!n[x]) return ;
-    n[x]=0;
-    if (n[x+1]!='\"') return ;
-    v = n+x+2 ;
-    x = str_chr(v,'\"');
-    if (!v[x]) return ;
-    v[x]=0;
-    env_put2(n,v);
-    n = v+x+1;
-  }
-}
-
 int authenticate_cdb(void)
 {
   int r,x;
@@ -1378,8 +1382,10 @@ int authenticate_cdb(void)
     return 1 ;
   }
 
-  if ( x < dlen )
-    addvars(epw.s+x+1,dlen-x-1) ;
+  if ( x < dlen ) {
+    stralloc_copyb(&authcdb_vars,epw.s+x+1,dlen-x-1);
+    stralloc_0(&authcdb_vars);
+  }
 
   strerr_warn5(title.s,"AUTH successful [",remoteip,"] ",user.s,0);
   return 0 ;
