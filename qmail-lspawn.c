@@ -40,6 +40,7 @@ char *aliasempty;
 
 /* initialize the string arrays, this uses DJB's libs */
 extern stralloc qldap_me;
+extern stralloc qldap_objectclass;
 stralloc    qldap_defdotmode = {0};
 stralloc    qldap_defaultquota = {0};
 stralloc    qldap_quotawarning = {0};
@@ -357,6 +358,13 @@ int qldap_get( stralloc *mail, char *from, int fdmess)
 
    /* build the search string for the email address */
    if (!stralloc_copys(&filter,"(|(" ) ) _exit(QLX_NOMEM);
+   /* optional objectclass */
+   if ( qldap_objectclass.len ) {
+     if (!stralloc_cats(&filter,LDAP_OBJECTCLASS)) _exit(QLX_NOMEM);
+     if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
+     if (!stralloc_cat(&filter,qldap_objectclass)) _exit(QLX_NOMEM);
+     if (!stralloc_cats(&filter,")(")) _exit(QLX_NOMEM);
+   } /* end */
    if (!stralloc_cats(&filter,LDAP_MAIL)) _exit(QLX_NOMEM);
    if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
    if (!stralloc_cat(&filter,mail)) _exit(QLX_NOMEM);
@@ -393,6 +401,13 @@ int qldap_get( stralloc *mail, char *from, int fdmess)
 	     /* handels also mailwith 2 @ */
       /* build the search string for the email address */
       if (!stralloc_copys(&filter,"(|(" ) ) _exit(QLX_NOMEM);
+      /* optional objectclass */
+      if (qldap_objectclass.len) {
+      if (!stralloc_cats(&filter,LDAP_OBJECTCLASS)) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
+      if (!stralloc_cat(&filter,qldap_objectclass)) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,")(")) _exit(QLX_NOMEM);
+      } /* end */
       if (!stralloc_cats(&filter,LDAP_MAIL)) _exit(QLX_NOMEM);
       if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
       if (!stralloc_cats(&filter,LDAP_CATCH_ALL)) _exit(QLX_NOMEM);

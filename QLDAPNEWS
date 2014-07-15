@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2000/11/30 23:42:11 $ ($Revision: 1.24 $)
+RELEASE: $Date: 2001/01/01 23:53:51 $ ($Revision: 1.29 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,30 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ introduced ~control/objectclass to limit the ldap search to a specific
+ ldap objectclass as suggested in some recommended procedures.
+
+ bugfix in maildir++:
+    files with sizes containig 0 or 9 where claclculated wrong
+    if only one of C or S type where declared the quota of the other was ignored
+
+ changed ALIASEMPTY in qmail-ldap.h from /dev/null to |sh -c "cat > /dev/null"
+ direct writing to /dev/null resulted in a soft error. This shell call does the
+ same without an error.
+
+ introduced ~control/ldaptimeout to limit the time and ldap search might
+ take until the delivery attempt is being deferred and tried again later.
+ The default is 30 seconds.
+
+ works fine with OpenLDAP 2.x (2.0.7).
+
+ included the OpenLDAP 2.x LDAPv3 Schema definition file created by
+ David E. Storey. This version is based on the original work by David
+ but modified quite a lot by Andre. Also qmail-ldap has got it's own
+ offcially IANA assigned OID.
+
+NEWS for 20001201:
 
  cluster loop protection enhanced, now also the users mailaddress is added:
      Delivered-To: CLUSTERHOST host.name.as.in.control.me users@e-mail.addr

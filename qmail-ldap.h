@@ -28,7 +28,13 @@
 
 /* ALIASDEVNULL replacement for the std. aliasempty for user with
  * neither homeDirectory nor mailMessageStore defined */
-#define ALIASDEVNULL "/dev/null"
+#define ALIASDEVNULL "|sh -c \"cat > /dev/null\""
+/* just pipe everything to /dev/null, you could also use a program/script
+ * to make a notify the postmaster if something like this happens.
+ * It's up to the reader to write such a simple script */
+
+/* Default ldap search timeout. In seconds */
+#define	QLDAP_TIMEOUT		30
 
 /*********************************************************************
         ldap variables used in qmail-lspawn and checkpassword
@@ -48,10 +54,11 @@
 #define LDAP_DOTMODE		"qmailDotMode"
 #define LDAP_UID			"uid"
 #define LDAP_PASSWD			"userPassword"
+#define LDAP_OBJECTCLASS	"objectclass"
 #define LDAP_ISACTIVE		"accountStatus"
 
 #define DOTMODE_LDAPONLY 	"ldaponly"
-#define DOTMODE_LDAPWITHPROG "ldapwithprog"
+#define DOTMODE_LDAPWITHPROG	"ldapwithprog"
 #define DOTMODE_DOTONLY		"dotonly"
 #define DOTMODE_BOTH		"both"
 #define DOTMODE_NONE		"none"
