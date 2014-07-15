@@ -389,6 +389,7 @@ char *append;
   outhost();
   out(append);
   out(".\n");
+#ifdef DATA_COMPRESS
   if (wantcomp == 1) {
 	  r = 100 - (int)(100.0*stream.total_out/stream.total_in);
 	  if (r < 0) {
@@ -399,6 +400,7 @@ char *append;
 	  out("Dynamic data compression saved ");
 	  out(num); out("%.\n");
   }
+#endif
   outsmtptext();
   zerodie();
 }
