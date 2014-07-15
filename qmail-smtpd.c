@@ -419,8 +419,7 @@ stralloc mailfrom = {0};
 stralloc rcptto = {0};
 int rcptcount;
 
-
-int addrallowed()
+int rmfcheck()
 {
   int r,j;
   j = byte_rchr(addr.s,addr.len,'@');
