@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "readwrite.h"
 #include "sig.h"
@@ -118,6 +119,7 @@ void fnmake_chanaddr(id,c) unsigned long id; int c;
 
 stralloc localscdb = {0};
 stralloc rwline = {0};
+struct cdb cdb;
 
 /* 1 if by land, 2 if by sea, 0 if out of memory. not allowed to barf. */
 /* may trash recip. must set up rwline, between a T and a \0. */
@@ -158,7 +160,9 @@ char *recip;
     case_lowerb(lowaddr.s, lowaddr.len);
     fd = open_read(localscdb.s);
     if (fd == -1) return 0;
-    r = cdb_seek(fd, lowaddr.s,lowaddr.len, &dlen);
+    cdb_init(&cdb, fd);
+    r = cdb_seek(&cdb, lowaddr.s,lowaddr.len, &dlen);
+    cdb_free(&cdb);
     close(fd);
     if (r == -1) return 0;
     if (r == 1) {
@@ -257,6 +261,7 @@ substdio sstoqc; char sstoqcbuf[1024];
 substdio ssfromqc; char ssfromqcbuf[1024];
 stralloc comm_buf[CHANNELS] = { {0}, {0} };
 int comm_pos[CHANNELS];
+int comm_needshup[CHANNELS];
 
 void comm_init()
 {
@@ -280,28 +285,34 @@ int c;
 void comm_hup(c)
 int c;
 {
-  int w;
-  int l = 0;
+  unsigned int delnum = 0xbeef;
+  unsigned char ch;
 
-  /* send a empty message with delivery number 0xBEEF (48879) to the
+  /*
+   * send a empty message with delivery number 0xbeef (48879) to the
    * spawn process. This may cause trouble if you have a concurrency
    * bigger than this. Acctually it should be save but who has such
    * a high concurrency anyway.
    */
-  do {
-    w = write(chanfdout[c], "\357\276\0\0\0" + l, 5 - l);
-    if (w <= 0)
-    {
-      if ((w == -1) && (errno == error_pipe))
-        spawndied(c);
-    }
-    l += w;
-  } while (l < 5);
+  if (comm_buf[c].s && comm_buf[c].len) {
+    comm_needshup[c] = 1;
+    return;
+  }
+  while (!stralloc_copys(&comm_buf[c],"")) nomem();
+  ch = delnum;
+  while (!stralloc_append(&comm_buf[c],&ch)) nomem();
+  ch = delnum >> 8;
+  while (!stralloc_append(&comm_buf[c],&ch)) nomem();
+  while (!stralloc_0(&comm_buf[c])) nomem();
+  while (!stralloc_0(&comm_buf[c])) nomem();
+  while (!stralloc_0(&comm_buf[c])) nomem();
+  comm_pos[c] = 0;
+  comm_needshup[c] = 0;
 }
 
 void comm_write(c,delnum,id,sender,recip)
 int c;
-int delnum;
+unsigned int delnum;
 unsigned long id;
 char *sender;
 char *recip;
@@ -361,8 +372,11 @@ fd_set *wfds;
 	 else
 	  {
 	   comm_pos[c] += w;
-	   if (comm_pos[c] == len)
+	   if (comm_pos[c] == len) {
 	     comm_buf[c].len = 0;
+	     if (comm_needshup[c])
+	       comm_hup(c);
+	   }
 	  }
         }
 }
@@ -979,8 +993,8 @@ int c;
      /* but from a security point of view, we don't trust rspawn */
    if (!ch && (dline[c].len > 2))
     {
-     delnum = (unsigned int) (unsigned char) dline[c].s[0];
-     delnum += (unsigned int) ((unsigned int) dline[c].s[1]) << 8;
+     delnum = (unsigned int)dline[c].s[0];
+     delnum += (unsigned int)dline[c].s[1] << 8;
 #if 0
      /* A hup is sent as delivery num 0xBEEF = 48879 */
      if (delnum == 0xBEEF) {
@@ -1136,7 +1150,16 @@ int c;
  unsigned int n;
 
  if (birth > recent) n = 0;
- else n = squareroot(recent - birth); /* no need to add fuzz to recent */
+ else {
+#ifdef notyet
+   /*
+    * add some fuzz to recent so that storms to a single host are
+    * dampened over the time.
+    */
+   recent += (int)random() % (((recent - birth) >> 2) + 1);
+#endif
+   n = squareroot(recent - birth);
+ }
  n += chanskip[c];
  return birth + n * n;
 }
@@ -1167,6 +1190,7 @@ int c;
    substdio_fdbuf(&pass[c].ss,subread,pass[c].fd,pass[c].buf,sizeof(pass[c].buf));
    pass[c].j = job_open(pe.id,c);
    jo[pass[c].j].retry = nextretry(birth,c);
+   /* XXX add fast timeouts for bounce double bounce here */
    jo[pass[c].j].flagdying = (recent > birth + lifetime);
    while (!stralloc_copy(&jo[pass[c].j].sender,&line)) nomem();
   }
@@ -1817,6 +1841,9 @@ void reread()
    wlog1("alert: unable to switch back to queue directory; HELP! sleeping...\n");
    sleep(10);
   }
+#ifdef notyet
+ srandom(now());
+#endif
 }
 
 int main()
@@ -1835,6 +1862,9 @@ int main()
   { wlog1("alert: cannot start: unable to read controls\n"); _exit(111); }
  if (chdir("queue") == -1)
   { wlog1("alert: cannot start: unable to switch to queue directory\n"); _exit(111); }
+#ifdef notyet
+ srandom(now() + (getpid() << 16));
+#endif
  sig_pipeignore();
  sig_termcatch(sigterm);
  sig_alarmcatch(sigalrm);

@@ -1,3 +1,37 @@
+/*
+ * Copyright (c) 2000-2004 Claudio Jeker,
+ *      Internet Business Solutions AG, CH-8005 Zürich, Switzerland
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Internet Business
+ *      Solutions AG and its contributors.
+ * 4. Neither the name of the author nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHORS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ */
+
 /* auth_imap.c for courier-imap */
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -15,6 +49,7 @@
 #include "qmail-ldap.h"
 #include "readwrite.h"
 #include "scan.h"
+#include "sgetopt.h"
 #include "sig.h"
 #include "str.h"
 #include "stralloc.h"
@@ -40,21 +75,24 @@ auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 {
 	char	*a, *s, *t, *l, *p;
 	int	waitstat;
-	int	i;
+	int	i, opt;
 
-	if (argc < 2)
-		auth_error(AUTH_CONF);
-	if (str_diff(argv[1], "-d") == 0) {
-		if (!argv[2])
+	while ((opt = getopt(argc, argv, "d:")) != opteof) {
+		switch (opt) {
+		case 'd':
+			pbstool = optarg;
+			break;
+		default:
 			auth_error(AUTH_CONF);
-		pbstool = argv[2];
-		argc -= 2;
-		argv += 2;
+		}
 	}
-	if (argc < 2)
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1)
 		auth_error(AUTH_CONF);
-	auth_argc = argc - 1;
-	auth_argv = argv + 1;
+	auth_argc = argc;
+	auth_argv = argv;
 
 	a = env_get("AUTHENTICATED");
 	if (a && *a) {  /* Already a good guy */

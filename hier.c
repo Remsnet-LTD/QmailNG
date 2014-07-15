@@ -82,6 +82,8 @@ void hier()
   d(auto_qmail,"log/qmail-qmqpd",auto_uidl,auto_gidq,0755);
   d(auto_qmail,"log/qmail-pop3d",auto_uidl,auto_gidq,0755);
   d(auto_qmail,"log/qmail-imapd",auto_uidl,auto_gidq,0755);
+  d(auto_qmail,"log/qmail-pop3d-ssl",auto_uidl,auto_gidq,0755);
+  d(auto_qmail,"log/qmail-imapd-ssl",auto_uidl,auto_gidq,0755);
   d(auto_qmail,"log/qmail-pbsdbd",auto_uidl,auto_gidq,0755);
 
   d(auto_qmail,"man",auto_uido,auto_gidq,0755);
@@ -136,8 +138,8 @@ void hier()
   C(auto_qmail,"boot/qmail-qmqpd", "run", "qmail-qmqpd.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-pop3d", "run", "qmail-pop3d.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-imapd", "run", "qmail-imapd.run",auto_uido,auto_gidq,0755);
-  C(auto_qmail,"boot/qmail-pop3d", "run", "qmail-pop3d-ssl.run",auto_uido,auto_gidq,0755);
-  C(auto_qmail,"boot/qmail-imapd", "run", "qmail-imapd-ssl.run",auto_uido,auto_gidq,0755);
+  C(auto_qmail,"boot/qmail-pop3d-ssl", "run", "qmail-pop3d-ssl.run",auto_uido,auto_gidq,0755);
+  C(auto_qmail,"boot/qmail-imapd-ssl", "run", "qmail-imapd-ssl.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-pbsdbd", "run", "qmail-pbsdbd.run",auto_uido,auto_gidq,0755);
 
   /* run files for logging process */
@@ -146,6 +148,8 @@ void hier()
   l(auto_qmail,"boot/qmail-qmqpd/log","log/qmail-qmqpd",auto_userl,auto_uido,auto_gidq,0755);
   l(auto_qmail,"boot/qmail-pop3d/log","log/qmail-pop3d",auto_userl,auto_uido,auto_gidq,0755);
   l(auto_qmail,"boot/qmail-imapd/log","log/qmail-imapd",auto_userl,auto_uido,auto_gidq,0755);
+  l(auto_qmail,"boot/qmail-pop3d-ssl/log","log/qmail-pop3d-ssl",auto_userl,auto_uido,auto_gidq,0755);
+  l(auto_qmail,"boot/qmail-imapd-ssl/log","log/qmail-imapd-ssl",auto_userl,auto_uido,auto_gidq,0755);
   l(auto_qmail,"boot/qmail-pbsdbd/log","log/qmail-pbsdbd",auto_userl,auto_uido,auto_gidq,0755);
 
   c(auto_qmail,"doc","FAQ",auto_uido,auto_gidq,0644);

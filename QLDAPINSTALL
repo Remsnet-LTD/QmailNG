@@ -1,12 +1,12 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001,2002,2003,2004 Internet Business Solutions AG
+(c) 1998-2004 Internet Business Solutions AG
 
 The qmail-ldap patch for qmail comes with NO WARRANTY.
 
 This patch is under the BSD license. See LICENSE.
 
-RELEASE: current ($Date: 2004/04/05 08:36:40 $)
+RELEASE: current ($Date: 2004/06/29 19:01:59 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -25,19 +25,11 @@ NEWS:
 
 IMPORTANT NEWS:
 
- - From release 20030901 on we broke certain backwards compatibility with release
-   20030801 and prior releases for clarity and cleanup reasons!!
+ - From release 20030901 on we broke certain backwards compatibility with
+   release 20030801 and prior releases for clarity and cleanup reasons!!
 
- - delivery modes changed in important ways (easier now, but incompatble
-   for some installations)
-
- - quota definitions are new format only (size and count separate)
-
- - qmail-smtpd control files are gone (tarpitcount/delay, maxrcptcount,
-   rblonlyheader) and are environment only (with tcpserver)
-
- - accountStatus NOPOP has been renamed to NOACCESS because it not just
-   blocks pop but also imap access
+ - To enable SMTP STARTTLS a the path to the cert file needs to be set in
+   ~control/smtpcert or set via the env var SSLCERT.
 
  - and as always a lot of smaller patches see QLDAPNEWS
 
@@ -253,8 +245,10 @@ INSTALL:
 CONFIG FILES:
 
 ~control/aliasempty
+OR
+~control/defaultdelivery
 
- Default delivery mode used by the startup scripts.
+ Default delivery mode used by and only by the startup scripts.
  Default: ./Maildir/
  Example: ./
  Note: If you have a more complex default delivery you need to edit the
@@ -278,8 +272,8 @@ CONFIG FILES:
  Default: rcpthosts and morercpthosts.cdb
  Note: qmail-smtpd reads locals(.cdb) as well and there is no need anymore
        to replicate all domains here too. Only domains you are doing queueing
-       for must be listed here. As soon as you regenerate locals.cdb it will
-       become active. Use bin/qmail-cdb to create the morercpthosts.cdb file.
+       for must be listed here. As soon as you regenerate rcpthosts.cdb it will
+       become active. Use bin/qmail-cdb to create the rcpthosts.cdb file.
        Alternatively you can do "make" in ~control/ directory. See the
        Makefile for more information.
        If this file exists rcpthosts and morercpthosts.cdb are ignored.
@@ -603,6 +597,45 @@ CONFIG FILES:
  Note: An extra recipient will be added in qmail-send. If the bigbrother
        address causes a bounce the sender will see this bounce.
 
+~control/signatures
+
+ This file contains content signatures for the REJECTEXEC functionality.
+ Default: none
+ Example: TVqQAAMAA  (block some windows executables, exe|com|pif|scr)
+ Example: UEsDBAoAAAAAA*****DKJx+eAFgAAABYAA**AAAA  (block MyDoom)
+ Note: These signatures are matched for in the first line of mime
+       attachments. Be sure to make them as specific as possible
+       to avoid to have a too broad filter and matching valid
+       content. The asterisk (*) is a single placeholder that will
+       match any single character at that position. The signature
+       is litteraly matches and no decoding of mime attachments is
+       being done. Normally the signature contains the base64
+       encoded version of the string you want to match. Lines
+       starting with a hash sign (#) are ignored and can be used
+       for comments.
+       The default file contains signatures of Windows executable
+       files (exe|com|pif|scr, etc) and common email Virii at the
+       time of the current release.
+
+~control/smtpcert
+
+ This file contains the location of the SSL certificate used for smtps STARTTLS
+ feature. The path may be relative to /var/qmail or whatever was specified in
+ conf-qmail.
+ Default: none
+ Example: control/cert.pem
+
+~control/remotecert
+
+ This file contains the location of the OPTIONAL SSL certificate used for
+ outgoing SMTP sessions. The path may be relative to /var/qmail or whatever
+ was specified in conf-qmail.
+ Default: none
+ Example: control/cert.pem
+ Note: Unlike ~control/smtpcert this file is completle optional for encrypion.
+       qmail-remote will use STARTTLS and SSL encryption even without a cert
+       file, as it is not neccessary for the client.
+
 ~control/tarpitcount
 ~control/tarpitdelay
 ~control/maxrcptcount
@@ -674,8 +707,9 @@ LOGLEVEL
  Levels:
      0 = no logging
      1 = fatal errors
-     2 = connection setup and warnings
-     3 = verbose
+     2 = accounting
+     3 = connection setup and smtp errors
+     4 = verbose
  Note: integer value, everything will be logged through tcpserver
 
 POP3_LOGLEVEL
@@ -809,7 +843,8 @@ REJECTEXEC
  Note: This patch does not distinguish between valid applications and
        evil viruses and trojans so handle with care. It is not a 100%
        guaranteed protection but it handles a lot of unwanted stuff.
-       See also: http://www.qmail.org/qmail-smtpd-viruscan-1.1.patch
+       The file ~control/signatures contains signatures for matching
+       of mime attachments.
 
 RETURNMXCHECK
 
@@ -850,6 +885,13 @@ SENDERCHECK
        if they have a valid existing email address with you.
        Addresses or domains listed in ~control/goodmailaddr are unconditionally
        allowed in all cases.
+
+SSLCERT
+
+ Path to the SSL certificate qmail-smtpd should use for STARTTLS. Overrides
+ ~control/smtpcert.
+ Default: none, ~control/smtpcert will be used
+ Example: /var/qmail/boot/qmail-smtpd/cert.pem
 
 SMTPAUTH
 

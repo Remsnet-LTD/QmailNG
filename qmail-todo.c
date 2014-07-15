@@ -1,3 +1,36 @@
+/*
+ * Copyright (c) 2002-2004 Andre Oppermann, Claudio Jeker,
+ *      Internet Business Solutions AG, CH-8005 Zürich, Switzerland
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Internet Business
+ *      Solutions AG and its contributors.
+ * 4. Neither the name of the author nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHORS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -101,6 +134,7 @@ void fnmake_chanaddr(unsigned long id, int c)
 
 stralloc localscdb = {0};
 stralloc rwline = {0};
+struct cdb cdb;
 
 /* 1 if by land, 2 if by sea, 0 if out of memory. not allowed to barf. */
 /* may trash recip. must set up rwline, between a T and a \0. */
@@ -140,7 +174,9 @@ int rewrite(char *recip)
     case_lowerb(lowaddr.s, lowaddr.len);
     fd = open_read(localscdb.s);
     if (fd == -1) return 0;
-    r = cdb_seek(fd, lowaddr.s,lowaddr.len, &dlen);
+    cdb_init(&cdb, fd);
+    r = cdb_seek(&cdb, lowaddr.s,lowaddr.len, &dlen);
+    cdb_free(&cdb);
     close(fd);
     if (r == -1) return 0;
     if (r == 1) {
@@ -353,7 +389,7 @@ void comm_do(fd_set *wfds, fd_set *rfds)
       int r;
       r = read(fdin, &c, 1);
       if (r <= 0) {
-	if ((r == -1) && (errno != error_intr))
+	if (r != -1 || errno != error_intr)
 	  senddied();
       } else {
 	switch(c) {

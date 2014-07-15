@@ -437,6 +437,9 @@ void blast(void)
 
 stralloc cookie = {0};
 stralloc recip = {0};
+#ifdef TLS_REMOTE
+stralloc sslcert = {0};
+#endif
 
 void smtp(void)
 {
@@ -510,62 +513,67 @@ void smtp(void)
   }
 
 #ifdef TLS_REMOTE
-  if (flagtls)
-   {
+  if (flagtls) {
     substdio_puts(&smtpto,"STARTTLS\r\n");
     substdio_flush(&smtpto);
-    if (smtpcode() == 220)
-     {
+    if (smtpcode() == 220) {
 #ifdef TLSDEBUG
       SSL_load_error_strings();
 #endif
       SSLeay_add_ssl_algorithms();
-      if(!(ctx=SSL_CTX_new(SSLv23_client_method())))
+      if (!(ctx=SSL_CTX_new(SSLv23_client_method()))) {
 #ifdef TLSDEBUG
-       {out("ZTLS not available: error initializing ctx");
+        out("ZTLS not available: error initializing ctx");
         out(": ");
         out(ERR_error_string(ERR_get_error(), buf));
         out("\n");
 #else
-       {out("ZTLS not available: error initializing ctx\n");
+        out("ZTLS not available: error initializing ctx\n");
 #endif
-         out("\n");
-         zerodie();}
+        out("\n");
+        zerodie();
+      }
 
-      SSL_CTX_use_RSAPrivateKey_file(ctx, "control/cert.pem", SSL_FILETYPE_PEM);
-      SSL_CTX_use_certificate_file(ctx, "control/cert.pem", SSL_FILETYPE_PEM);
+      if (sslcert.s && *sslcert.s) {
+        SSL_CTX_use_RSAPrivateKey_file(ctx, sslcert.s, SSL_FILETYPE_PEM);
+        SSL_CTX_use_certificate_file(ctx, sslcert.s, SSL_FILETYPE_PEM);
+      }
       /*SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);*/
 
-      if(!(ssl=SSL_new(ctx)))
+      if (!(ssl=SSL_new(ctx))) {
 #ifdef TLSDEBUG
-        {out("ZTLS not available: error initializing ssl");
-         out(": ");
-         out(ERR_error_string(ERR_get_error(), buf));
+        out("ZTLS not available: error initializing ssl");
+        out(": ");
+        out(ERR_error_string(ERR_get_error(), buf));
 #else
-        {out("ZTLS not available: error initializing ssl");
+        out("ZTLS not available: error initializing ssl");
 #endif
-         out("\n");
-         zerodie();}
+        out("\n");
+        zerodie();
+      }
       SSL_set_fd(ssl,smtpfd);
 
       alarm(timeout);
       r = SSL_connect(ssl); saveerrno = errno;
       alarm(0);
-      if (flagtimedout)
-       {out("ZTLS not available: connect timed out\n");
-        zerodie();}
+      if (flagtimedout) {
+        out("ZTLS not available: connect timed out\n");
+        zerodie();
+      }
       errno = saveerrno;
       if (r<=0) {
 #ifdef TLSDEBUG
-         {out("ZTLS not available: connect failed");
-          out(": ");
-          out(ERR_error_string(ERR_get_error(), buf));
-          out("\n");}
+        out("ZTLS not available: connect failed");
+        out(": ");
+        out(ERR_error_string(ERR_get_error(), buf));
+        out("\n");
 #else
-         out("ZTLS not available: connect failed\n");
+        out("ZTLS not available: connect failed\n");
 #endif
-         zerodie();}
+        zerodie();
+      }
 
+      /* re-EHLO as per RFC */
       substdio_puts(&smtpto,"EHLO ");
       substdio_put(&smtpto,helohost.s,helohost.len);
       substdio_puts(&smtpto,"\r\n");
@@ -574,6 +582,7 @@ void smtp(void)
       if (smtpcode() != 250) {
 	quit("ZTLS connected to "," but my name was rejected");
       }
+
       /* extension handling */
       for (i = 0; i < smtptext.len; i += str_chr(smtptext.s+i,'\n') + 1) {
 	if (i+8 < smtptext.len && !case_diffb("SIZE", 4, smtptext.s+i+4) )
@@ -863,6 +872,13 @@ void getcontrols(void)
     temp_control();
   if (!stralloc_0(&outgoingip)) temp_nomem();
   if (!ip_scan(outgoingip.s, &outip)) temp_noip();
+
+#ifdef TLS_REMOTE
+  if (control_rldef(&sslcert, "control/remotecert", 0, "") == -1)
+    temp_control();
+  if (!stralloc_0(&sslcert)) temp_nomem();
+#endif
+
 }
 
 int main(int argc, char **argv)
