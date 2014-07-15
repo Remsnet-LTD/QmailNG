@@ -87,6 +87,7 @@ char pid_buf[FMT_ULONG];
 stralloc title = {0};
 int log_mail = 0;
 int log_rcpt = 0;
+unsigned long pw_expire = 0;
 
 #ifdef TLS
 unsigned int force_tls = 0;
@@ -1107,8 +1108,9 @@ void acceptmessage(qp) unsigned long qp;
   out("\r\n");
 }
 
-void addvars(s)
+void addvars(s,doit)
 char *s;
+int doit;
 {
   char *n;
   char *v;
@@ -1127,7 +1129,8 @@ char *s;
     x = str_chr(v,'\"');
     if (!v[x]) return ;
     v[x]=0;
-    env_put2(n,v);
+    if(!str_diff(n,"PASSWORD_EXPIRES")) scan_ulong(v,&pw_expire);
+    if(doit) env_put2(n,v);
     n = v+x+1;
   }
 }
@@ -1174,7 +1177,7 @@ void auth_fixenv()
   } while (f);
 
   if(authcdb_vars.s)
-    addvars(authcdb_vars.s);
+    addvars(authcdb_vars.s,1);
 }
 
 void smtp_data() {
@@ -1385,6 +1388,12 @@ int authenticate_cdb(void)
   if ( x < dlen ) {
     stralloc_copyb(&authcdb_vars,epw.s+x+1,dlen-x-1);
     stralloc_0(&authcdb_vars);
+    addvars(authcdb_vars.s,0);
+    if(pw_expire && pw_expire <= time(0)) {
+      strerr_warn5(title.s,"AUTH failed (password expired) [",
+        remoteip,"] ",user.s,0);
+      return 1 ;
+    }
   }
 
   strerr_warn5(title.s,"AUTH successful [",remoteip,"] ",user.s,0);
@@ -1515,6 +1524,8 @@ char *arg;
   if (!stralloc_copys(&user,"")) die_nomem();
   if (!stralloc_copys(&pass,"")) die_nomem();
   if (!stralloc_copys(&chal,"")) die_nomem();
+  if (!stralloc_copys(&authcdb_vars,"")) die_nomem();
+  pw_expire = 0 ;
 
   i = str_chr(cmd,' ');
   arg = cmd + i;
