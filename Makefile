@@ -10,8 +10,9 @@
 # systems)
 # -DEXTERNAL_TODO to use the external high-performance todo processing (this
 # avoids the silly qmail syndrome with high injection rates)
+# -DBIGBROTHER to use the control/bigbrother file to forward all mails comming
+# from a specified account to another (swiss bigbrother law)
 #LDAPFLAGS=-DQLDAP_CLUSTER -DEXTERNAL_TODO
-LDAPFLAGS=-DQLDAP_CLUSTER -DEXTERNAL_TODO -DDASH_EXT
 
 # Perhaps you have different ldap libraries, change them here
 LDAPLIBS=-L/usr/local/lib -lldap -llber
@@ -47,7 +48,7 @@ MNW=-DMAKE_NETSCAPE_WORK
 #HDIRMAKE=-DAUTOHOMEDIRMAKE
 
 # on most systems we need this to make checkpassword
-#SHADOWLIBS=-lcrypt
+SHADOWLIBS=-lcrypt
 # OpenBSD Systems seems to have no libcrypt, so comment the line out if you
 # get linking problems
 # To use shadow passwords under some Linux OS, uncomment the next two lines.
@@ -1709,11 +1710,12 @@ qmail-qstat.8
 qmail-queue: \
 load qmail-queue.o triggerpull.o fmtqfn.o now.o date822fmt.o \
 datetime.a seek.a ndelay.a open.a sig.a alloc.a substdio.a error.a \
-str.a fs.a auto_qmail.o auto_split.o auto_uids.o
-	./load qmail-queue triggerpull.o fmtqfn.o now.o \
-	date822fmt.o datetime.a seek.a ndelay.a open.a sig.a \
-	alloc.a substdio.a error.a str.a fs.a auto_qmail.o \
-	auto_split.o auto_uids.o 
+str.a fs.a auto_qmail.o auto_split.o auto_uids.o control.o constmap.o \
+stralloc.a case.a getln.a
+	./load qmail-queue triggerpull.o fmtqfn.o now.o control.o \
+	constmap.o date822fmt.o datetime.a seek.a ndelay.a open.a sig.a \
+	stralloc.a getln.a case.a alloc.a substdio.a error.a str.a fs.a \
+	auto_qmail.o auto_split.o auto_uids.o
 
 qmail-queue.0: \
 qmail-queue.8
@@ -1723,7 +1725,22 @@ qmail-queue.o: \
 compile qmail-queue.c readwrite.h sig.h exit.h open.h seek.h fmt.h \
 alloc.h substdio.h datetime.h now.h datetime.h triggerpull.h extra.h \
 auto_qmail.h auto_uids.h date822fmt.h fmtqfn.h
-	./compile qmail-queue.c
+	./compile ${LDAPFLAGS} qmail-queue.c
+
+qmail-quotawarn: \
+load qmail-quotawarn.o newfield.o now.o date822fmt.o case.a fd.a wait.a \
+open.a myctime.o case.a getln.a sig.a open.a seek.a lock.a datetime.a \
+env.a stralloc.a alloc.a strerr.a substdio.a error.a str.a fs.a
+	./load qmail-quotawarn newfield.o now.o date822fmt.o case.a \
+	fd.a wait.a open.a myctime.o case.a getln.a sig.a open.a seek.a \
+	lock.a datetime.a env.a stralloc.a alloc.a strerr.a substdio.a \
+	error.a str.a fs.a
+
+qmail-quotawarn.o: \
+compile qmail-quotawarn.c readwrite.h sig.h byte.h case.h datetime.h \
+env.h error.h exit.h newfield.h open.h seek.h str.h strerr.h stralloc.h \
+substdio.h wait.h qmail-ldap.h
+	./compile qmail-quotawarn.c
 
 qmail-quotawarn: \
 load qmail-quotawarn.o newfield.o now.o date822fmt.o case.a fd.a wait.a \

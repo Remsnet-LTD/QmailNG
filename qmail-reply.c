@@ -30,7 +30,6 @@ void temp_nomem() { strerr_die2x(111, FATAL, "Out of memory."); }
 void temp_rewind() { strerr_die2x(111, FATAL, "Unable to rewind message."); }
 void temp_fork() { strerr_die2sys(111, FATAL, "Unable to fork: "); }
 
-
 void usage(void)
 {
 	strerr_die1x(100,
@@ -211,7 +210,6 @@ char* stamp(datetime_sec time)
 }
 
 stralloc rs = {0}; /* recent sender */
-int rsmatch = 0;
 datetime_sec timeout;
 #ifndef REPLY_TIMEOUT
 #define REPLY_TIMEOUT 1209600 /* 2 weeks */
@@ -235,16 +233,16 @@ int recent(char *buf, int len)
 	}
 
 	slen = rs.len; s = rs.s;
-	for (i = 0; i < slen; i += str_len(s+i)) {
+	for (i = 0; i < slen; i += str_len(s+i) + 1) {
 		if (case_diffb(buf, len, s+i) == 0) {
 			/* match found, look at timeval */
-			rsmatch = i; i += len;
+			i += len;
 			if (s[i++] != ':')
 				strerr_die2x(100, FATAL,
 				    "db file .qmail-reply.db corrupted");
 			last = get_stamp(s+i);
-			if (last + timeout > now()) return 1;
-			else return 0;
+			if (last + timeout < now()) return 0;
+			else return 1;
 		}
 	}
 
@@ -252,10 +250,10 @@ int recent(char *buf, int len)
 }
 
 char rsoutbuf[SUBSTDIO_OUTSIZE];
-char fntmptph[32 + FMT_ULONG * 2];
+char fntmptph[32 + FMT_ULONG];
 
-void tryunlinktmp() { unlink(fntmptph); }
-void sigalrm()
+void tryunlinktmp(void) { unlink(fntmptph); }
+void sigalrm(void)
 {
 	tryunlinktmp();
 	strerr_die2x(111, FATAL, "timeout while writing db file");
@@ -263,32 +261,41 @@ void sigalrm()
 
 void recent_update(char *buf, int len)
 {
-	char *s, *t;
 	struct stat st;
-	unsigned long pid, time;
-	int fd, loop, size, slen, i;
 	substdio ss;
+	char *s, *t;
+	datetime_sec time, last;
+	unsigned long pid;
+	unsigned int slen, i, n;
+	int fd, loop;
 
 	s = rs.s; slen = rs.len;
-	size = slen + len + 10;
-	for(; size > MAX_SIZE; ) {
+	n = slen + len + 10;
+	for(; n > MAX_SIZE; ) {
 		i = str_len(s) + 1;
-		size -= i;
+		n -= i;
 		slen -= i;
 		s += i;
 	}
 
 	pid = getpid();
+	time = now();
+	t = fntmptph;
+	t += fmt_str(t, ".qmail-reply.tmp.");
+	t += fmt_ulong(t, pid);
+	*t++ = 0;
+
 	for (loop = 0;;++loop) {
-		time = now();
-		t = fntmptph;
-		t += fmt_str(t, ".qmail-reply.tmp.");
-		t += fmt_ulong(t, time); *t++ = '.';
-		t += fmt_ulong(t, pid);
-		*t++ = 0;
-		if (stat(fntmptph, &st) == -1) if (errno == error_noent) break;
+		if (stat(fntmptph, &st) == -1) if (errno == error_noent)
+			break;
 		/* really should never get to this point */
-		if (loop == 2) _exit(1);
+		if (st.st_mtime + 900 < time) {
+			/* stale tmp file */
+			tryunlinktmp();
+		}
+		if (loop == 2)
+			strerr_die2x(111, FATAL,
+			    "could not open tmp file.");
 		sleep(2);
 	}
 
@@ -301,7 +308,11 @@ void recent_update(char *buf, int len)
 	substdio_fdbuf(&ss, write, fd, rsoutbuf, sizeof(rsoutbuf));
 
 	for (i = 0; i < slen; i += str_len(s+i) + 1) {
-		if (rs.s+rsmatch == s+i) continue;
+		n = byte_chr(s+i, slen, ':');
+		if (n++ != slen) {
+			last = get_stamp(s + i + n);
+			if (last + timeout < time) continue;
+		} /* else file corrupted */
 		if (substdio_puts(&ss, s+i) == -1) goto fail;
 		if (substdio_put(&ss, "\n", 1) == -1) goto fail;
 	}
@@ -314,7 +325,6 @@ void recent_update(char *buf, int len)
 	if (close(fd) == -1) goto fail; /* NFS dorks */
 
 	if (unlink(".qmail-reply.db") == -1 && errno != error_noent) goto fail;
-
 	if (link(fntmptph, ".qmail-reply.db") == -1) goto fail;
 	/* if it was error_exist, almost certainly successful; i hate NFS */
 
@@ -322,6 +332,7 @@ void recent_update(char *buf, int len)
 	return;
 
 fail:
+	strerr_warn2(WARN, "db update failed: ", &strerr_sys);
 	tryunlinktmp(); /* failed somewhere, giving up */
 	return;
 }
@@ -489,8 +500,11 @@ void sendmail(void)
 	do {
 		for(i = 0;;) {
 			i += byte_chr(s + i, len - i, '\n');
-			if (++i >= len)
-				strerr_die2x(100, FATAL, "parser error");
+			if (++i >= len) {
+				/* last line ends without a newline. */
+				i = len;
+				break;
+			}
 			if (s[i] == ' ' || s[i] == '\t')
 				continue;
 			break;
@@ -581,7 +595,9 @@ void sendmail(void)
 next:
 		s += i;
 		len -= i;
-	} while (header == 1);
+		if (len == 0 && header != 0)
+			strerr_die2sys(100, FATAL, "parser error");
+	} while (header != 0);
 
 	if (resubject.s == (char *)0) {
 		if (!stralloc_copys(&resubject, "[Auto-Reply] "))
@@ -618,10 +634,14 @@ next:
 		qmail_puts(&qqt, REPLY_CTE);
 	/* '\n' already written */
 	/* X-Mailer: qmail-reply */
-	qmail_puts(&qqt, "X-Mailer: qmail-reply\n\n");
+	qmail_puts(&qqt, "X-Mailer: qmail-reply\n");
+	/* end of header marker */
+	qmail_puts(&qqt, "\n");
 
 	/* body */
 	qmail_put(&qqt, s, len);
+	/* add a empty newline */
+	qmail_puts(&qqt, "\n");
 	qmail_from(&qqt, from.s);
 	qmail_to(&qqt, to.s);
 	qqx = qmail_close(&qqt);

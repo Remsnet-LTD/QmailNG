@@ -530,11 +530,17 @@ static void copyloop(int infd, int outfd, int timeout)
 
 static void forward_session(char *host, char *name, char *passwd)
 {
+	struct ip_address outip;
 	ipalloc ip = {0};
 	stralloc host_stralloc = {0};
 	int ffd;
 	int timeout = 31*60; /* ~30 min timeout RFC1730 */
 	int ctimeout = 20;
+
+	if (!ip_scan("0.0.0.0", &outip)) {
+		qldap_errno = ERRNO;
+		auth_error();
+	}
 
 	if (!stralloc_copys(&host_stralloc, host)) {
 		qldap_errno = ERRNO;
@@ -574,7 +580,7 @@ static void forward_session(char *host, char *name, char *passwd)
 		auth_error();
 	}
 
-	if (timeoutconn(ffd, &ip.ix[0].ip, auth_port, ctimeout) != 0) {
+	if (timeoutconn(ffd, &ip.ix[0].ip, &outip, auth_port, ctimeout) != 0) {
 		qldap_errno = ERRNO;
 		auth_error();
 	}

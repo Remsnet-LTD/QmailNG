@@ -408,7 +408,8 @@ char *arg;
   return 1;
 }
 
-int badmxcheck(dom) char *dom;
+int badmxcheck(dom)
+char *dom;
 {
   ipalloc checkip = {0};
   int ret = 0;
@@ -513,19 +514,15 @@ int rmfcheck()
   return 0;
 }
 
-int seenmail = 0;
-stralloc mailfrom = {0};
-stralloc rcptto = {0};
-int rcptcount;
-
-int rmfcheck()
+int bmfunknowncheck()
 {
   int j;
-  if (!rmfok) return 0;
-  if (constmap(&maprmf,addr.s,addr.len - 1)) return 1;
+  if (!bmfunknownok) return 0;
+  if (case_diffs(remotehost,"unknown")) return 0;
+  if (constmap(&mapbmfunknown,addr.s,addr.len - 1)) return 1;
   j = byte_rchr(addr.s,addr.len,'@');
   if (j < addr.len)
-    if (constmap(&maprmf,addr.s + j,addr.len - j - 1)) return 1;
+    if (constmap(&mapbmfunknown,addr.s + j,addr.len - j - 1)) return 1;
   return 0;
 }
 
