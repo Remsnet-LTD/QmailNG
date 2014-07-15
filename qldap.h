@@ -13,7 +13,9 @@
 
 typedef struct qldap qldap;
 
-int qldap_controls(void);
+int qldap_ctrl_login(void);
+int qldap_ctrl_trylogin(void);
+int qldap_ctrl_generic(void);
 int qldap_need_rebind(void);
 char *qldap_basedn(void);
 qldap *qldap_new(void);
@@ -75,5 +77,5 @@ char *filter_escape(char *);
 char *filter_objectclass(char *);
 char *filter_uid(char *);
 char *filter_mail(char *, int *);
-int filter_mail_ext(void);
+unsigned int filter_mail_ext(void);
 #endif

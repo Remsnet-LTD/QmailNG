@@ -67,8 +67,8 @@ void reopen(void);
 void trydelete(void);
 void secretary(char *, int);
 void explode(qldap *);
-void subscribed(qldap *);
-qldap *ldapgroup(char *, int *, int *, int *);
+void subscribed(qldap *, int);
+qldap *ldapgroup(char *, int *, int *, int *, int *);
 
 char *sender;
 char *dname;
@@ -78,7 +78,7 @@ main(int argc, char **argv)
 {
 	qldap *qlc;
 	char *maildir;
-	int flagm, flagc, flags;
+	int flagm, flagc, flags, flagS;
 
 	if (argv[1] == 0) usage();
 	if (argv[2] != 0) usage();
@@ -88,14 +88,14 @@ main(int argc, char **argv)
 	/* filter out loops as soon as poosible */
 	bouncefx();
 
-	flagc = flags = flagm = 0;
-	qlc = ldapgroup(dname, &flagc, &flags, &flagm);
+	flagc = flags = flagS = flagm = 0;
+	qlc = ldapgroup(dname, &flagc, &flags, &flagS, &flagS);
 	/* need to distinguish between new messages and responses */
 
 	if (flagc)
 		secretary(maildir, 0);
 	if (flags)
-		subscribed(qlc);
+		subscribed(qlc, flagS);
 	if (flagm) {
 		secretary(maildir, 1);
 	}
@@ -133,7 +133,8 @@ init_controls(void)
 }
 
 ctrlfunc ctrls[] = {
-	qldap_controls,
+	qldap_ctrl_trylogin,
+	qldap_ctrl_generic,
 	init_controls,
 	0
 };
@@ -147,7 +148,7 @@ void
 init(void)
 {
 	char *t;
-	int i;
+	unsigned int i;
 
 	/* read some control files */
 	if (read_controls(ctrls) == -1)
@@ -281,7 +282,7 @@ trydelete(void)
 		unlink(fname.s);
 }
 
-int nummoderators;
+unsigned int nummoderators;
 stralloc moderators = {0};
 
 void
@@ -290,9 +291,9 @@ secretary(char *maildir, int flagmoderate)
 	const char **args;
 	char *s, *smax;
 	int child, wstat;
-	int numargs;
+	unsigned int i, numargs;
 	int pi[2];
-	int i, r;
+	int r;
 
 	if (!stralloc_copys(&fname, "")) temp_nomem();
 
@@ -381,11 +382,12 @@ stralloc ldapval = {0};
 stralloc tmpval = {0};
 
 static int getmoderators(qldap *);
-static int unescape(char *, stralloc *, int *);
-static void extract_addrs822(qldap *, const char *, stralloc *, int *);
-static void extract_addrsdn(qldap *, qldap *, const char *, stralloc *, int *);
+static int unescape(char *, stralloc *, unsigned int *);
+static void extract_addrs822(qldap *, const char *, stralloc *, unsigned int *);
+static void extract_addrsdn(qldap *, qldap *, const char *, stralloc *,
+    unsigned int *);
 static void extract_addrsfilter(qldap *, qldap *, const char *, stralloc *,
-    int *);
+    unsigned int *);
 static int getentry(qldap *, char *);
 
 static int
@@ -458,7 +460,7 @@ fail:
 stralloc founddn = {0};
 
 void
-subscribed(qldap *q)
+subscribed(qldap *q, int flagS)
 {
 	qldap *sq;
 	const char *attrs[] = {
@@ -469,7 +471,8 @@ subscribed(qldap *q)
 
 	sq = 0;
 	if (!stralloc_copys(&recips, "")) { r = ERRNO; goto fail; }
-	extract_addrs822(q, LDAP_GROUPMEMBER822, &recips, 0);
+	extract_addrs822(q, flagS ? LDAP_GROUPSENDER822 : LDAP_GROUPMEMBER822,
+	    &recips, 0);
 
 	for (s = recips.s, smax = recips.s + recips.len; s < smax;
 	    s += str_len(s) + 1)
@@ -496,7 +499,8 @@ subscribed(qldap *q)
 	r = qldap_get_dn(sq, &founddn);
 	if (r != OK) goto fail;
 
-	r = qldap_get_attr(q, LDAP_GROUPMEMBERDN, &ldapval, MULTI_VALUE);
+	r = qldap_get_attr(q, flagS ? LDAP_GROUPSENDERDN : LDAP_GROUPMEMBERDN,
+	    &ldapval, MULTI_VALUE);
 	switch (r) {
 	case OK:
 		r = unescape(ldapval.s, &tmpval, 0);
@@ -515,7 +519,9 @@ subscribed(qldap *q)
 			return;
 		}
 
-	r = qldap_get_attr(q, LDAP_GROUPMEMBERFILTER, &ldapval, MULTI_VALUE);
+	r = qldap_get_attr(q,
+	    flagS ? LDAP_GROUPSENDERFILTER : LDAP_GROUPMEMBERFILTER,
+	    &ldapval, MULTI_VALUE);
 	switch (r) {
 	case OK:
 		r = unescape(ldapval.s, &tmpval, 0);
@@ -551,7 +557,7 @@ fail:
 
 
 qldap *
-ldapgroup(char *dn, int *flagc, int *flags, int *flagm)
+ldapgroup(char *dn, int *flagc, int *flags, int *flagS, int *flagm)
 {
 	qldap *q;
 	const char *attrs[] = {
@@ -564,6 +570,9 @@ ldapgroup(char *dn, int *flagc, int *flags, int *flagm)
 		LDAP_GROUPMEMBERDN,
 		LDAP_GROUPMEMBER822,
 		LDAP_GROUPMEMBERFILTER,
+		LDAP_GROUPSENDERDN,
+		LDAP_GROUPSENDER822,
+		LDAP_GROUPSENDERFILTER,
 		0 };
 	int r;
 
@@ -630,6 +639,43 @@ ldapgroup(char *dn, int *flagc, int *flags, int *flagm)
 
 	*flagm = getmoderators(q);
 
+	if (flags) {
+		r = qldap_get_attr(q, LDAP_GROUPSENDERDN,
+		    &ldapval, MULTI_VALUE);
+		switch (r) {
+		case OK:
+			*flagS = 1;
+			goto done;
+		case NOSUCH:
+			break;
+		default:
+			goto fail;
+		}
+		r = qldap_get_attr(q, LDAP_GROUPSENDER822,
+		    &ldapval, MULTI_VALUE);
+		switch (r) {
+		case OK:
+			*flagS = 1;
+			goto done;
+		case NOSUCH:
+			break;
+		default:
+			goto fail;
+		}
+		r = qldap_get_attr(q, LDAP_GROUPSENDERFILTER,
+		    &ldapval, MULTI_VALUE);
+		switch (r) {
+		case OK:
+			*flagS = 1;
+			goto done;
+		case NOSUCH:
+			break;
+		default:
+			goto fail;
+		}
+done:
+	}
+
 	return q;
 
 fail:
@@ -640,7 +686,7 @@ fail:
 }
 
 static int
-unescape(char *s, stralloc *t, int *count)
+unescape(char *s, stralloc *t, unsigned int *count)
 {
 	do {
 		if (s[0] == '\\' && s[1] == ':') s++;
@@ -656,7 +702,8 @@ unescape(char *s, stralloc *t, int *count)
 }
 
 static void
-extract_addrs822(qldap *q, const char *attr, stralloc *list, int *numlist)
+extract_addrs822(qldap *q, const char *attr, stralloc *list,
+    unsigned int *numlist)
 {
 	int r;
 
@@ -682,7 +729,7 @@ fail:
 
 static void
 extract_addrsdn(qldap *q, qldap *sq, const char *attr,
-    stralloc *list, int *numlist)
+    stralloc *list, unsigned int *numlist)
 {
 	const char *attrs[] = {
 		LDAP_MAIL,
@@ -748,7 +795,7 @@ fail:
 
 static void
 extract_addrsfilter(qldap *q, qldap *sq, const char *attr,
-    stralloc *list, int *numlist)
+    stralloc *list, unsigned int *numlist)
 {
 	const char *attrs[] = {
 		LDAP_MAIL,

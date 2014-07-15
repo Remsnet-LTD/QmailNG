@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license. See LICENSE.
 
-RELEASE: $Date: 2004/01/04 21:52:45 $ ($Revision: 1.161 $)
+RELEASE: $Date: 2004/02/02 01:25:24 $ ($Revision: 1.174 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -21,7 +21,54 @@ WARNING: If you are upgrading from 20030801a or earlier make sure that
 
 NEWS for current stuff:
 
- Newer fdcopy STDOUT with STDERR in qmail-popup. The copy was only skipped if
+ Yet another bug fix in the maildirmake code of auth_mod.c. The previous fix
+ was definitifly not strong enough,
+
+ Bug fix in condwrite. The maildir child should not exit 99 on finish the
+ parent should exit 99 and the child 0.
+
+ In qmail-smtpd limit the accepted text line lenght to 10000 characters.
+ The RFC proposes a maximum of a 1000 but be nice to broken MTA/MUAs and it
+ does not really hurt us.
+
+ Enhanced qmail-smtpd execcheck. Basic idea is form Russel Nelsons
+ qmail-smtpd-viruscan-1.3 patch. MIME signatrues are now stored in the control
+ file ~control/signatures. Two enhancements where done to Russels patch.
+ First MIME forwarded messages are also completly scanned and secondly it is
+ possible to use a '*' in the signature as a anymatch character. This makes
+ the signatures more powerful.
+
+ It is now possible to limit the allowed senders to a qmail-group with
+ dnsender, rfc822sender and filtersender similar to dnmember, rfc822member
+ and filtermember. If membersonly is enabled and one of those sender attributes
+ is used only mails comming form this list of senders are passed to the group.
+
+ Ensure qmail-remote does not print the DDC percentage in error messages.
+
+ Add auto maildirmake capability to qmail-secretary.
+
+ qmail-verify, auth_smtp, qmail-group and qmail-ldaplookup only try to read
+ ~control/ldaplogin and ~control/ldappassword. If one of the files can not be
+ read use anonymous login or the alternate login credentials in case of
+ qmail-group and qmail-ldaplookup.
+
+ Yet another cleanup round through the whole code. Fix many issues with integer
+ overflows inclusive the qmail-smtpd crash found by Georgi Guninski.
+ While doing that rename puts and log to putstr and logit so that it does not
+ conflict with gcc internals.
+
+ Bugfix in auth_mod.c reported by em (at) cmla.ens-cachan.fr
+
+ Yet another run script update. $ALIASEMPTY fix from Jo Geraerts and correct
+ $QMAIL idea from Ace Suares.
+
+ Do the same game in Makefile.cdb. Prepend %QMAIL%/bin infront of qmail-cdb.
+
+ Fix typo in qmail-secretary. Reported by Beni Schoedler.
+
+NEWS for 20040101 stuff:
+
+ Never fdcopy STDOUT with STDERR in qmail-popup. The copy was only skipped if
  DEBUG was set. So it was not possible to use qmail-pop3d accounting/logging
  if a non-DEBUG version was compiled. Report by Henning Brauer.
 

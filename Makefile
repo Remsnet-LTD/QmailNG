@@ -90,7 +90,9 @@ default: it ldap
 
 ldap: qmail-quotawarn qmail-reply auth_pop auth_imap auth_smtp digest \
 qmail-ldaplookup pbsadd pbscheck pbsdbd qmail-todo qmail-forward \
-qmail-secretary qmail-group qmail-verify condwrite qmail-cdb
+qmail-secretary qmail-group qmail-verify condwrite qmail-cdb \
+qmail-imapd.run qmail-pbsdbd.run qmail-pop3d.run qmail-qmqpd.run \
+qmail-smtpd.run qmail.run Makefile.cdb-p
 
 addresses.0: \
 addresses.5
@@ -478,8 +480,7 @@ error.h fmt.h localdelivery.h passwd.h pbsexec.h prot.h \
 qldap.h qldap-debug.h qldap-errno.h qmail-ldap.h scan.h str.h stralloc.h \
 dns.h ipalloc.h ipme.h ndelay.h qldap-cluster.h readwrite.h select.h \
 timeoutconn.h dirmaker.h mailmaker.h
-	./compile $(LDAPFLAGS) $(LDAPINCLUDES) $(DEBUG) $(HDIRMAKE) \
-	$(MDIRMAKE) checkpassword.c
+	./compile $(LDAPFLAGS) $(LDAPINCLUDES) $(DEBUG) checkpassword.c
 
 chkshsgr: \
 load chkshsgr.o
@@ -637,7 +638,7 @@ compile trydrent.c direntry.h1 direntry.h2
 dirmaker.o: \
 compile dirmaker.c dirmaker.h control.h qldap-debug.h qldap-errno.h \
 stralloc.h wait.h
-	./compile $(HDIRMAKE) $(MDIRMAKE) $(DEBUG) dirmaker.c
+	./compile $(HDIRMAKE) $(DEBUG) dirmaker.c
 
 dns.lib: \
 tryrsolv.c compile load socket.lib dns.o ipalloc.o strsalloc.o ip.o \
@@ -1184,7 +1185,7 @@ stralloc.h substdio.h qmail-ldap.h
 
 mailmaker.o: \
 compile mailmaker.c mailmaker.h error.h open.h qldap-errno.h
-	./compile $(HDIRMAKE) $(MDIRMAKE) mailmaker.c
+	./compile $(MDIRMAKE) mailmaker.c
 
 mailsubj: \
 warn-auto.sh mailsubj.sh conf-qmail conf-break conf-split
@@ -1213,6 +1214,13 @@ make-makelib: \
 make-makelib.sh auto-ccld.sh
 	cat auto-ccld.sh make-makelib.sh > make-makelib
 	chmod 755 make-makelib
+
+Makefile.cdb-p: \
+Makefile.cdb conf-qmail
+	cat Makefile.cdb \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> Makefile.cdb-p
+	chmod 644 Makefile.cdb-p
 
 makelib: \
 make-makelib warn-auto.sh systype
@@ -1559,6 +1567,13 @@ qmail-header.0: \
 qmail-header.5
 	nroff -man qmail-header.5 > qmail-header.0
 
+qmail-imapd.run: \
+qmail-imapd.sh conf-qmail
+	cat qmail-imapd.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-imapd.run
+	chmod 755 qmail-imapd.run
+
 qmail-inject: \
 load qmail-inject.o headerbody.o hfield.o newfield.o quote.o now.o \
 control.o date822fmt.o constmap.o qmail.o case.a fd.a wait.a open.a \
@@ -1617,7 +1632,7 @@ sgetopt.h subgetopt.h alloc.h error.h stralloc.h gen_alloc.h fmt.h \
 str.h now.h case.h quote.h qmail.h slurpclose.h myctime.h gfrom.h \
 auto_patrn.h qmail-ldap.h qldap-errno.h auto_qmail.h scan.h maildir++.h \
 mailmaker.h
-	./compile $(LDAPFLAGS) $(MDIRMAKE) $(HDIRMAKE) qmail-local.c
+	./compile $(LDAPFLAGS) $(MDIRMAKE) qmail-local.c
 
 qmail-log.0: \
 qmail-log.5
@@ -1626,11 +1641,12 @@ qmail-log.5
 qmail-ldaplookup: \
 load qmail-ldaplookup.o qldap.a passwd.o digest_md4.o digest_md5.o \
 digest_rmd160.o digest_sha1.o base64.o constmap.o localdelivery.o \
-read-ctrl.o control.o env.a getopt.a getln.a stralloc.a alloc.a strerr.a \
-error.a substdio.a open.a fs.a str.a case.a auto_usera.o auto_qmail.o
-	./load qmail-ldaplookup qldap.a passwd.o digest_md4.o \
-	digest_md5.o digest_rmd160.o digest_sha1.o base64.o constmap.o \
-	localdelivery.o read-ctrl.o control.o env.a getopt.a getln.a \
+dirmaker.o wait.a read-ctrl.o control.o env.a getopt.a getln.a stralloc.a \
+alloc.a strerr.a error.a substdio.a open.a fs.a str.a case.a auto_usera.o \
+auto_qmail.o
+	./load qmail-ldaplookup qldap.a passwd.o digest_md4.o digest_md5.o \
+	digest_rmd160.o digest_sha1.o base64.o constmap.o localdelivery.o \
+	dirmaker.o wait.a read-ctrl.o control.o env.a getopt.a getln.a \
 	stralloc.a alloc.a strerr.a error.a substdio.a open.a fs.a str.a \
 	case.a auto_usera.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS)
 
@@ -1638,8 +1654,9 @@ qmail-ldaplookup.o: \
 compile qmail-ldaplookup.c alloc.h auto_usera.h byte.h case.h env.h error.h \
 localdelivery.h output.h passwd.h qldap.h qldap-cluster.h qldap-debug.h \
 qldap-errno.h qmail-ldap.h read-ctrl.h scan.h sgetopt.h str.h stralloc.h \
-strerr.h subfd.h substdio.h
-	./compile $(LDAPFLAGS) $(SHADOWOPTS) $(DEBUG) qmail-ldaplookup.c
+strerr.h subfd.h substdio.h dirmaker.h
+	./compile $(LDAPFLAGS) $(SHADOWOPTS) $(HDIRMAKE) $(DEBUG) \
+	qmail-ldaplookup.c
 
 qmail-lspawn: \
 load qmail-lspawn.o spawn.o prot.o slurpclose.o coe.o control.o \
@@ -1717,6 +1734,13 @@ getln.h substdio.h cdbmss.h cdbmake.h uint32.h substdio.h exit.h \
 readwrite.h open.h error.h case.h auto_qmail.h
 	./compile qmail-newu.c
 
+qmail-pbsdbd.run: \
+qmail-pbsdbd.sh conf-qmail
+	cat qmail-pbsdbd.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-pbsdbd.run
+	chmod 755 qmail-pbsdbd.run
+
 qmail-pop3d: \
 load qmail-pop3d.o commands.o case.a timeoutread.o timeoutwrite.o \
 maildir.o prioq.o now.o env.a strerr.a sig.a open.a getln.a str.a \
@@ -1736,7 +1760,14 @@ compile qmail-pop3d.c commands.h sig.h getln.h stralloc.h gen_alloc.h \
 substdio.h alloc.h open.h prioq.h datetime.h gen_alloc.h scan.h fmt.h \
 str.h exit.h maildir.h strerr.h readwrite.h timeoutread.h \
 timeoutwrite.h maildir++.h
-	./compile $(LDAPFLAGS) $(MNW) $(MDIRMAKE) qmail-pop3d.c
+	./compile $(LDAPFLAGS) $(MNW) qmail-pop3d.c
+
+qmail-pop3d.run: \
+qmail-pop3d.sh conf-qmail
+	cat qmail-pop3d.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-pop3d.run
+	chmod 755 qmail-pop3d.run
 
 qmail-popup: \
 load qmail-popup.o commands.o timeoutread.o timeoutwrite.o now.o \
@@ -1819,6 +1850,13 @@ qmail-qmqpd.o: \
 compile qmail-qmqpd.c auto_qmail.h qmail.h substdio.h received.h \
 sig.h substdio.h readwrite.h exit.h now.h datetime.h fmt.h env.h
 	./compile $(LDAPFLAGS) $(ZINCLUDES) qmail-qmqpd.c
+
+qmail-qmqpd.run: \
+qmail-qmqpd.sh conf-qmail
+	cat qmail-qmqpd.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-qmqpd.run
+	chmod 755 qmail-qmqpd.run
 
 qmail-qmtpd: \
 load qmail-qmtpd.o rcpthosts.o control.o constmap.o received.o \
@@ -1970,19 +2008,19 @@ tcpto.h
 
 qmail-secretary: \
 load qmail-secretary.o base64.o digest_sha1.o control.o newfield.o now.o \
-date822fmt.o datetime.a mailmagic.o case.a getln.a qmail.o getopt.a seek.a \
-fd.a wait.a sig.a open.a stralloc.a env.a alloc.a strerr.a substdio.a error.a \
-str.a fs.a auto_qmail.o
+date822fmt.o datetime.a mailmaker.o mailmagic.o case.a getln.a qmail.o \
+getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a alloc.a strerr.a \
+substdio.a error.a str.a fs.a auto_qmail.o
 	./load qmail-secretary base64.o digest_sha1.o control.o newfield.o \
-	now.o date822fmt.o datetime.a mailmagic.o case.a getln.a qmail.o \
-	getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a \
+	now.o date822fmt.o datetime.a mailmaker.o mailmagic.o case.a getln.a \
+	qmail.o getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a \
 	alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o
 
 qmail-secretary.o: \
 compile qmail-secretary.c uint32.h base64.h byte.h case.h digest_sha1.h \
 env.h error.h fmt.h getln.h mailmagic.h now.h open.h seek.h sgetopt.h \
-sig.h str.h stralloc.h strerr.h substdio.h
-	./compile $(LDAPFLAGS) qmail-secretary.c
+sig.h str.h stralloc.h strerr.h substdio.h qldap-errno.h mailmaker.h
+	./compile $(LDAPFLAGS) $(MDIRMAKE) qmail-secretary.c
 
 qmail-send: \
 load qmail-send.o qsutil.o control.o constmap.o newfield.o prioq.o \
@@ -2064,6 +2102,13 @@ substdio.h str.h fmt.h scan.h byte.h case.h env.h now.h datetime.h \
 exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h rbl.h
 	./compile $(LDAPFLAGS) $(TLS) $(TLSINCLUDES) $(ZINCLUDES) \
 	qmail-smtpd.c
+
+qmail-smtpd.run: \
+qmail-smtpd.sh conf-qmail
+	cat qmail-smtpd.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-smtpd.run
+	chmod 755 qmail-smtpd.run
 
 qmail-start: \
 load qmail-start.o prot.o fd.a auto_uids.o
@@ -2171,6 +2216,13 @@ qmail.o: \
 compile qmail.c substdio.h readwrite.h wait.h exit.h fork.h fd.h \
 qmail.h substdio.h auto_qmail.h
 	./compile $(LDAPFLAGS) qmail.c
+
+qmail.run: \
+qmail.sh conf-qmail
+	cat qmail.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail.run
+	chmod 755 qmail.run
 
 qreceipt: \
 load qreceipt.o headerbody.o hfield.o quote.o token822.o qmail.o \

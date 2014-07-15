@@ -114,7 +114,7 @@ check_ldap(stralloc *login, stralloc *authdata,
 		if (r != OK && r != NOSUCH) goto fail;
 		if (r == OK && cluster(c->forwarder.s) == 1) {
 			/* hostname is different, so I reconnect */
-			log(8, "check_ldap: forwarding session to %s\n",
+			logit(8, "check_ldap: forwarding session to %s\n",
 			    c->forwarder.s);
 			needforward = 1;
 		}
@@ -126,6 +126,9 @@ check_ldap(stralloc *login, stralloc *authdata,
 		if (r != OK) goto fail;
 		r = qldap_get_mailstore(q, &c->home, &c->maildir);
 		if (r != OK) goto fail;
+		if (!stralloc_0(&c->home) ||
+		    !stralloc_0(&c->maildir))
+			return ERRNO;
 		size = count = max = 0;
 		r = qldap_get_quota(q, &size, &count, &max);
 		if (r != OK) goto fail;
@@ -178,7 +181,7 @@ check_ldap(stralloc *login, stralloc *authdata,
 			break;
 		}
 	}
-	log(32, "check_ldap: password compare was %s\n",
+	logit(32, "check_ldap: password compare was %s\n",
 	    pwok == OK?"successful":"not successful");
 	qldap_free(q);
 	if (pwok == OK  && needforward == 1)
@@ -197,7 +200,7 @@ change_uid(int uid, int gid)
 	id = geteuid();
 	if (id != 0 && (id == uid || id == -1)) {
 		/* not running as root so return */
-		log(32, "change_uid: already running non root\n");
+		logit(32, "change_uid: already running non root\n");
 		return;
 	}
 	if (uid == -1 && gid == -1) {
@@ -208,12 +211,12 @@ change_uid(int uid, int gid)
 	/* first set the group id */
 	if (prot_gid(gid) == -1)
 		auth_error(ERRNO);
-	log(32, "setgid succeeded (%i)\n", gid);
+	logit(32, "setgid succeeded (%i)\n", gid);
 
 	/* ... then the user id */
 	if (prot_uid(uid) == -1)
 		auth_error(ERRNO);
-	log(32, "setuid succeeded (%i)\n", uid);
+	logit(32, "setuid succeeded (%i)\n", uid);
 
 	/* ... now check that we are realy not running as root */
 	if (!getuid())
@@ -242,7 +245,7 @@ setup_env(char *user, struct credentials *c)
 		if (!env_unset("MAILDIR"))
 			auth_error(ERRNO);
 	}
-	log(32, "environment successfully set: "
+	logit(32, "environment successfully set: "
 	    "USER %s, HOME %s, MAILDIR %s\n",
 	    user, c->home.s != 0 && c->home.len > 0?
 	    c->home.s:"unset, forwarding",

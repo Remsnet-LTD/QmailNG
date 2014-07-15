@@ -28,12 +28,16 @@
 #include "strerr.h"
 #include "substdio.h"
 #include "wait.h"
+#ifdef AUTOMAILDIRMAKE
+#include "qldap-errno.h"
+#include "mailmaker.h"
+#endif
 
 #define FATAL "qmail-secretary: fatal: "
 #define WARN  "qmail-secretary: warn: "
 
 const char *confirmmess = "Hi,\n\n\
-I'm mailgroup secretatry, an automated mail-handling program.\n\
+I'm mailgroup secretary, an automated mail-handling program.\n\
 I received a message from you addressed to %LIST%\n\
 for which I'm responsible. The top of your message is shown below.\n\
 \n\
@@ -56,7 +60,7 @@ The mailgroup secretary program\n\
 ";
 
 const char *approvemess = "Hi,\n\n\
-I'm mailgroup secretatry, an automated mail-handling program.\n\
+I'm mailgroup secretary, an automated mail-handling program.\n\
 I need an approval that the attached message is allowed to be sent\n\
 to the %LIST% mailinglist.\n\
 \n\
@@ -77,7 +81,7 @@ temp_nomem(void)
 	strerr_die2x(111, FATAL, "Out of memory.");
 }
 void
-temp_qmail(char *fn)
+temp_qmail(const char *fn)
 {
 	strerr_die4sys(111, FATAL, "Unable to open ", fn, ": ");
 }
@@ -159,10 +163,11 @@ void clean(const char *);
 int
 main(int argc, char **argv)
 {
-	char	*ezmlmdir;
-	char	*maildir;
-	char	*modfile;
-	int	opt, i;
+	char		*ezmlmdir;
+	char		*maildir;
+	char		*modfile;
+	int		opt;
+	unsigned int	i;
 
 	sender = env_get("SENDER");
 	if (!sender) strerr_die2x(100, FATAL, "SENDER not set");
@@ -231,6 +236,19 @@ main(int argc, char **argv)
 
 
 	extractrcpt(&action, &hashid);
+#ifdef AUTOMAILDIRMAKE
+	switch (maildir_make(maildir)) {
+	case OK:
+		break;
+	case MAILDIR_CORRUPT:
+		strerr_die4x(111,FATAL, "The maildir '", maildir,
+		    "' seems to be corrupted. (#4.2.1)");
+	case ERRNO:
+	default:
+		strerr_die4x(111,FATAL, "Unable to create maildir '", maildir,
+		    "' (#4.3.0)");
+	}
+#endif
 
 	if (action.len == 0) {
 		nullsender();
@@ -357,8 +375,8 @@ ezmlminit(char *dir)
 void
 extractrcpt(stralloc *a, stralloc *h)
 {
-	char	*s;
-	int	i;
+	char		*s;
+	unsigned int	i;
 
 	if (!stralloc_copys(a, "")) temp_nomem();
 	if (!stralloc_copys(h, "")) temp_nomem();
@@ -589,7 +607,8 @@ sendmail(struct qmail *qq, int fd, int maxsize,
     stralloc *head, stralloc *message, stralloc *hash)
 {
 	datetime_sec starttime;
-	int offset, len, i, j;
+	int offset;
+	unsigned int len, i, j;
 
 	/* mail header */
 	qmail_put(qq, dtline.s, dtline.len);
@@ -981,7 +1000,7 @@ clean_child(void)
 	DIR *folder;
 	struct dirent *entry;
 	datetime_sec t;
-	int i;
+	unsigned int i;
 
 	t = now();
 

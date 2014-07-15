@@ -12,7 +12,7 @@
 strsalloc ssa = {0};
 struct ip_address ip;
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
@@ -23,11 +23,8 @@ char **argv;
  ip_scan(argv[1],&ip);
 
  dns_init(0);
- dnsdoe(dns_ptr(&ssa,&ip));
- for(j = 0;j < ssa.len;++j)
-  {
-   substdio_putflush(subfdout,ssa.sa[j].s,ssa.sa[j].len);
-   substdio_putsflush(subfdout,"\n");
-  }
- _exit(0);
+ dnsdoe(dns_ptr(&sa,&ip));
+ substdio_putflush(subfdout,sa.s,sa.len);
+ substdio_putsflush(subfdout,"\n");
+ return 0;
 }

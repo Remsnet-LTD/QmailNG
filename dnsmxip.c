@@ -16,7 +16,7 @@ char temp[IPFMT + FMT_ULONG];
 stralloc sa = {0};
 ipalloc ia = {0};
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
@@ -35,8 +35,8 @@ char **argv;
   {
    substdio_put(subfdout,temp,ip_fmt(temp,&ia.ix[j].ip));
    substdio_puts(subfdout," ");
-   substdio_put(subfdout,temp,fmt_ulong(temp,(unsigned long) ia.ix[j].pref));
+   substdio_put(subfdout,temp,fmt_uint(temp,ia.ix[j].pref));
    substdio_putsflush(subfdout,"\n");
   }
- _exit(0);
+ return 0;
 }
