@@ -16,7 +16,6 @@
 #include "byte.h"
 #include "getln.h"
 #include <sys/types.h>
-#include "compatibility.h"
 #include "digest_md4.h"
 #include "digest_md5.h"
 #include "digest_rmd160.h"
@@ -255,6 +254,7 @@ int main(int argc, char **argv)
 	}
 	output( "\t\t%s: %s\n", LDAP_ISACTIVE,
 			info.status==STATUS_BOUNCE?ISACTIVE_BOUNCE:
+			info.status==STATUS_BOUNCE?ISACTIVE_DELETE:
 			info.status==STATUS_NOPOP?ISACTIVE_NOPOP:
 			info.status==STATUS_OK?ISACTIVE_ACTIVE:"undefined");
 
@@ -505,7 +505,10 @@ static int cmp_passwd(unsigned char *clear, char *encrypted)
 			} /* boom */
 			byte_copy(salt, 32, &encrypted[44]);
 			salt[32] = 0;
-			ns_mta_hash_alg(hashed, salt, (char *) clear);
+			if ( ns_mta_hash_alg(hashed, salt, (char *) clear) == -1 ) {
+				qldap_errno = ERRNO;
+				return -1;
+			}
 			byte_copy(&hashed[32], 33, salt);
 		} else if (!str_diffn("{SHA}", encrypted, 5) ) {
 			/* SHA */

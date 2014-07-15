@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2001/03/01 20:20:08 $ ($Revision: 1.34 $)
+RELEASE: $Date: 2001/05/04 09:55:44 $ ($Revision: 1.40 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,30 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ bugfix in qmail-local.c by Mark Belnap. Problems with deliverymode reply.
+
+ disallow null passwords in auth_pop and auth_imap.
+
+ added RBLONLYHEADER logging control file and variable. With this it will
+ no longer reject a mail upon a RBL match but it will mark it with a "X-RBL:"
+ header.
+
+ major cleanup in digest_* and base64 to make the code more djb style.
+ Minor cleanup in some other files. compatibility.h is no longer needed. YES!
+
+ string fix in digest_md5.c (NS_MTA handling)
+
+ bugfix in catchall search string generation.
+
+ bugfixes in maildir++ support. Thanks to Franky Van Liedekerke.
+
+ bugfixes in qmail-reply
+
+ new attribute qmailAccountPurge for automatic purging of maildirs from
+ deleted accounts
+
+NEWS for 20010301
 
  added 0.0.0.0 patch
 

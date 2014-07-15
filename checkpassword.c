@@ -12,7 +12,6 @@
 #include "getln.h"
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "compatibility.h"
 #include "digest_md4.h"
 #include "digest_md5.h"
 #include "digest_rmd160.h"
@@ -91,6 +90,12 @@ void main(int argc, char **argv)
 
 	auth_init(argc, argv, &login, &authdata);
 	debug(256, "auth_init: login=%s, authdata=%s\n", login.s, authdata.s);
+
+	if ( authdata.len <= 1 ) {
+		debug(1, "alert: null password.\n");
+		qldap_errno = AUTH_NEEDED;
+		auth_fail(argc, argv, login.s);
+	}
 
 	if ( init_ldap(&locald, &cluster, &rebind, &homemaker, 0, 0, 0) == -1 ) {
 		debug(1, "alert: init_ldap failed.\n");
@@ -351,7 +356,10 @@ static int cmp_passwd(unsigned char *clear, char *encrypted)
 			} /* boom */
 			byte_copy(salt, 32, &encrypted[44]);
 			salt[32] = 0;
-			ns_mta_hash_alg(hashed, salt, (char *) clear);
+			if (ns_mta_hash_alg(hashed, salt, (char *) clear) == -1) {
+				qldap_errno = ERRNO;
+				return -1;
+			}
 			byte_copy(&hashed[32], 33, salt);
 		} else if (!str_diffn("{SHA}", encrypted, 5) ) {
 			/* SHA */

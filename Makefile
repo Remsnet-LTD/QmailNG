@@ -52,7 +52,7 @@ SHADOWLIBS=-lcrypt
 # to enable the possibility to log and debug imap and pop uncoment the
 # next line
 #DEBUG=-DDEBUG
-# WARNING: you need NONE DEBUG auth_* to run with inetd
+# WARNING: you need a NONE DEBUG auth_* to run with inetd
 
 # for profiling ...
 #INCTAI=../libtai-0.60
@@ -99,8 +99,8 @@ dns.o timeoutconn.o ndelay.a ipalloc.o dns.lib socket.lib qldap-ldaplib.o \
 timeoutread.o qldap-mdm.o wait.a sig.a prot.o qldap-errno.o
 	./load auth_imap checkpassword.o check.o control.o qldap-ldaplib.o \
 	qldap-debug.o auto_qmail.o dns.o timeoutconn.o timeoutread.o ip.o \
-	ipalloc.o getln.a open.a env.a stralloc.a alloc.a substdio.a str.a \
 	base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
+	ipalloc.o getln.a open.a env.a stralloc.a alloc.a substdio.a str.a \
 	qldap-mdm.o wait.a qldap-errno.o error.a fs.a ndelay.a sig.a prot.o \
 	$(LDAPLIBS) $(SHADOWLIBS) `cat dns.lib` `cat socket.lib`
 
@@ -118,8 +118,8 @@ dns.o timeoutconn.o ndelay.a ipalloc.o dns.lib socket.lib qldap-ldaplib.o \
 timeoutread.o qldap-mdm.o wait.a prot.o qldap-errno.o
 	./load auth_pop checkpassword.o check.o control.o qldap-ldaplib.o \
 	qldap-debug.o auto_qmail.o dns.o timeoutconn.o timeoutread.o ip.o \
-	ipalloc.o getln.a open.a env.a stralloc.a alloc.a substdio.a str.a \
 	base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
+	ipalloc.o getln.a open.a env.a stralloc.a alloc.a substdio.a str.a \
 	qldap-mdm.o wait.a qldap-errno.o error.a fs.a ndelay.a prot.o \
 	$(LDAPLIBS) $(SHADOWLIBS) `cat dns.lib` `cat socket.lib`
 
@@ -240,7 +240,7 @@ compile auto_usera.c
 	./compile auto_usera.c
 
 base64.o: \
-compile base64.c base64.h
+compile base64.c base64.h str.h
 	./compile $(LDAPFLAGS) base64.c
 
 binm1: \
@@ -405,7 +405,7 @@ compile check.c check.h str.h str_len.c
 checkpassword.o: \
 compile checkpassword.c qmail-ldap.h stralloc.h auth_mod.h qldap-ldaplib.h \
 qldap-errno.h readwrite.h error.h str.h open.h substdio.h getln.h select.h \
-compatibility.h digest_md4.h digest_md5.h digest_rmd160.h digest_sha1.h dns.h \
+digest_md4.h digest_md5.h digest_rmd160.h digest_sha1.h dns.h \
 ipalloc.h timeoutconn.h byte.h scan.h fmt.h alloc.h qldap-debug.h
 	./compile $(LDAPFLAGS) $(SHADOWOPTS) $(LDAPINCLUDES) checkpassword.c
 
@@ -514,28 +514,29 @@ compile datetime_un.c datetime.h
 
 digest: \
 load digest.o digest_md4.o digest_md5.o digest_rmd160.o \
-digest_sha1.o base64.o
+digest_sha1.o base64.o stralloc.a str.a alloc.a error.a
 	./load digest digest_md4.o digest_md5.o digest_rmd160.o \
-	digest_sha1.o base64.o
+	digest_sha1.o base64.o stralloc.a str.a alloc.a error.a
 
 digest.o: \
-compile digest.c compatibility.h
+compile digest.c uint32.h
 	./compile $(LDAPFLAGS) digest.c
 
 digest_md4.o: \
-compile endian digest_md4.c digest_md4.h compatibility.h
+compile endian digest_md4.c digest_md4.h uint32.h base64.h byte.h
 	./compile $(LDAPFLAGS) `./endian` digest_md4.c
 
 digest_md5.o: \
-compile endian digest_md5.c digest_md5.h compatibility.h
+compile endian digest_md5.c digest_md5.h uint32.h base64.h byte.h \
+stralloc.h str.h
 	./compile $(LDAPFLAGS) `./endian` digest_md5.c
 
 digest_rmd160.o: \
-compile endian digest_rmd160.c digest_rmd160.h compatibility.h
+compile endian digest_rmd160.c digest_rmd160.h uint32.h base64.h byte.h
 	./compile $(LDAPFLAGS) `./endian` digest_rmd160.c
 
 digest_sha1.o: \
-compile endian digest_sha1.c digest_sha1.h compatibility.h
+compile endian digest_sha1.c digest_sha1.h uint32.h base64.h byte.h
 	./compile $(LDAPFLAGS) `./endian` digest_sha1.c
 
 direntry.h: \
@@ -1016,7 +1017,7 @@ strerr.h
 maildir++.o: \
 compile maildir++.c maildir++.h readwrite.h stralloc.h error.h str.h \
 open.h substdio.h getln.h error.h strerr.h fmt.h scan.h now.h seek.h \
-sig.h
+sig.h direntry.h
 	./compile maildir++.c
 
 maildir2mbox: \
@@ -1408,14 +1409,14 @@ base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
 auto_qmail.o getln.a substdio.a strerr.a
 	./load qmail-ldaplookup qldap-ldaplib.o  control.o error.a \
 	getln.a stralloc.a qldap-debug.o qldap-errno.o check.o fs.a \
-	open.a env.a strerr.a substdio.a str.a alloc.a \
 	base64.o digest_md4.o digest_md5.o digest_rmd160.o digest_sha1.o \
+	open.a env.a strerr.a substdio.a str.a alloc.a \
 	auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS)
 
 qmail-ldaplookup.o: \
 compile qmail-ldaplookup.c qmail-ldap.h qldap-errno.h stralloc.h \
 alloc.h error.h str.h qldap-debug.h qldap-ldaplib.h check.h substdio.h \
-fmt.h scan.h readwrite.h byte.h getln.h compatibility.h digest_md4.h \
+fmt.h scan.h readwrite.h byte.h getln.h digest_md4.h \
 digest_md5.h digest_rmd160.h digest_sha1.h open.h
 	./compile $(LDAPFLAGS) $(SHADOWOPTS) qmail-ldaplookup.c
 

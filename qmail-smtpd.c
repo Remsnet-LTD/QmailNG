@@ -109,7 +109,7 @@ void logpid(level) int level;
 void logline(level,string) int level; char *string;
 {
   if (level > loglevel) return;
-  logpid();
+  logpid(level);
   substdio_puts(subfderr,string);
   substdio_puts(subfderr,"\n");
   substdio_flush(subfderr);
@@ -139,7 +139,7 @@ void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n")
 void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
 void err_bmf() { out("553 syntax error, please forward to your postmaster (#5.7.1)\r\n"); }
 void err_hard(arg) char *arg; { out("554 syntax error, "); out(arg); out(" (#5.5.4)\r\n"); }
-void err_rbl() { out("553 sorry, your mailserver is listed in an RBL, mail from your location is not accepted here (#5.7.1)\r\n"); }
+void err_rbl(arg) char *arg; { out("553 sorry, your mailserver is listed in "); out(arg); out(", mail from your location is not accepted here (#5.7.1)\r\n"); }
 void err_maxrcpt() { out("553 sorry, too many recipients (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
 #ifdef TLS
@@ -153,7 +153,7 @@ void err_wantrcpt() { out("503 RCPT first (#5.5.1)\r\n"); logline(3,"'rcpt to' f
 void err_noop() { out("250 ok\r\n"); logline(3,"'noop'"); }
 void err_vrfy(arg) char *arg; { out("252 send some mail, i'll try my best\r\n"); logpid(3); logstring(3,"vrfy for ="); logstring(3,arg); logflush(3); }
 void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
-void err_dns() { out("451 DNS temporary failure (#4.3.0)\r\n"); }
+void err_dns() { out("451 DNS temporary failure, try again later (#4.3.0)\r\n"); }
 void err_spam() { out("553 sorry, mail from your location is not accepted here (#5.7.1)\r\n"); }
 void err_badrcptto() { out("553 sorry, mail to that recipient is not accepted on this system (#5.7.1)\r\n"); }
 
@@ -192,6 +192,7 @@ char *relayclient;
 char *relayok;
 char *denymail;
 char *rblenabled;
+char *rblonlyheader;
 int  spamflag = 0;
 
 stralloc helohost = {0};
@@ -212,7 +213,9 @@ int rmfok = 0;
 stralloc rmf = {0};
 struct constmap maprmf;
 int rblok = 0;
+int rblohok = 0;
 stralloc rbl = {0};
+stralloc rblmessage = {0};
 int tarpitcount = 0;
 int tarpitdelay = 5;
 int maxrcptcount = 0;
@@ -267,8 +270,14 @@ void setup()
 
   rblok = control_readfile(&rbl,"control/rbllist",0);
   if (rblok == -1) die_control();
-  if (rblok)
+  if (rblok) {
     rblenabled = env_get("RBL");
+
+    rblohok = control_readint(&rblonlyheader,"control/rblonlyheader",0);
+    if (rblohok == -1) die_control();
+    rblonlyheader = env_get("RBLONLYHEADER");
+    if (rblonlyheader) logline(2,"Log RBL match only in header, do not reject message");
+  }
 
   if (control_readint(&databytes,"control/databytes") == -1) die_control();
   x = env_get("DATABYTES");
@@ -457,11 +466,12 @@ int rbl_lookup(char *base)
          return 1; /* found match */
          break;
   }
+  return 1; /* should never get here */
 }
 
 int rblcheck()
 {
-  int r;
+  int r = 1;
   char *p;
 
   rbl_init();
@@ -473,16 +483,18 @@ int rblcheck()
     r = rbl_lookup(p);
       if (r == 2)
       {
-        logstring(2,"temporary DNS error"); logflush();
+        logstring(2,"temporary DNS error"); logflush(2);
         return 2;
       }
       if (r == 1)
       {
-        logstring(2,"found match, sender is blocked"); logflush();
+        logstring(2,"found match, sender is blocked"); logflush(2);
+        stralloc_copys(&rblmessage,p);
+        stralloc_0(&rblmessage);
         return 1;
       }
     /* continue */
-    logstring(2,"no match found, continue"); logflush();
+    logstring(2,"no match found, continue"); logflush(2);
     p = p+strlen(p);
     p++;
   }
@@ -623,6 +635,8 @@ void smtp_rset()
   logline(3,"remote rset");
 }
 
+struct qmail qqt;
+
 void smtp_mail(arg) char *arg;
 {
   int r;
@@ -705,10 +719,14 @@ void smtp_mail(arg) char *arg;
         err_dns();
         return;
       case 1: /* host is listed in RBL */
-        err_rbl();
-        return;
+        if (rblonlyheader)
+          rblheader(qqt,remoteip,rblmessage.s);
+        else {
+         err_rbl(rblmessage.s);
+         return;
+         }
       default: /* ok, go ahead */
-    logline(3,"RBL checking completed without match");
+    logline(3,"RBL checking completed without match or listed in header");
     }
   }
 
@@ -960,7 +978,6 @@ int saferead(fd,buf,len) int fd; char *buf; int len;
 char ssinbuf[1024];
 substdio ssin = SUBSTDIO_FDBUF(saferead,0,ssinbuf,sizeof ssinbuf);
 
-struct qmail qqt;
 unsigned int bytestooverflow = 0;
 unsigned int bytesreceived = 0;
 
@@ -1075,7 +1092,7 @@ void smtp_data() {
   int hops;
   unsigned long qp;
   char *qqx;
-  char buf[FMT_ULONG];
+/*  char buf[FMT_ULONG]; */
 #ifdef TLS
   stralloc protocolinfo = {0};
 #endif
