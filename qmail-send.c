@@ -44,6 +44,8 @@
 
 int lifetime = 604800;
 
+int bouncemaxbytes = 0;
+
 stralloc percenthack = {0};
 struct constmap mappercenthack;
 stralloc locals = {0};
@@ -740,9 +742,26 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
      qmail_fail(&qqt);
    else
     {
-     substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
-     while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
-       qmail_put(&qqt,buf,r);
+     if(bouncemaxbytes)
+     {
+       int bytestogo = bouncemaxbytes;
+       int bytestoget = (bytestogo < sizeof buf) ? bytestogo : sizeof buf;
+       substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
+       while (bytestoget > 0 && (r = substdio_get(&ssread,buf,bytestoget)) > 0) {
+         qmail_put(&qqt,buf,r);
+         bytestogo -= bytestoget;
+         bytestoget = (bytestogo < sizeof buf) ? bytestogo : sizeof buf;
+       }
+       if (r > 0) {
+         qmail_puts(&qqt,"\n\n--- End of message stripped.\n");
+       }
+     }
+     else
+     {
+       substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
+       while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
+         qmail_put(&qqt,buf,r);
+     }
      close(fd);
      if (r == -1)
        qmail_fail(&qqt);
@@ -1580,6 +1599,7 @@ fd_set *rfds;
 /* this file is too long ---------------------------------------------- MAIN */
 
 int getcontrols() { if (control_init() == -1) return 0;
+ if (control_readint(&bouncemaxbytes,"control/bouncemaxbytes") == -1) return 0;
  if (control_readint(&lifetime,"control/queuelifetime") == -1) return 0;
  if (control_readint(&concurrency[0],"control/concurrencylocal") == -1) return 0;
  if (control_readint(&concurrency[1],"control/concurrencyremote") == -1) return 0;

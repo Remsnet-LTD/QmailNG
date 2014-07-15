@@ -12,6 +12,8 @@
 #include "dns.h"
 #include "case.h"
 #include "spf.h"
+#include "env.h"
+#include "qregex.h"
 
 #define SPF_EXT    -1
 #define SPF_SYNTAX -2
@@ -76,6 +78,7 @@ static struct ip_address ip;
 static void hdr_pass() { received = "pass (%{xr}: %{xs} designates %{i} as permitted sender)"; };
 static void hdr_softfail() { received = "softfail (%{xr}: transitioning %{xs} does not designate %{i} as permitted sender)"; };
 static void hdr_fail() { received = "fail (%{xr}: %{xs} does not designate %{i} as permitted sender)"; };
+static void hdr_plusall() { received = "fail (%{xr}: %{xs} has an improper SPF record)"; };
 static void hdr_unknown() { received = "unknown (%{xr}: domain at %{d} does not designate permitted sender hosts)"; };
 static void hdr_neutral() { received = "neutral (%{xr}: %{i} is neither permitted nor denied by %{xs})"; };
 static void hdr_none() { received = "none (%{xr}: domain at %{d} does not designate permitted sender hosts)"; };
@@ -617,6 +620,7 @@ static int spflookup(stralloc *domain)
 	int done;
 	int guessing = 0;
 	char *p;
+	char *x;
 
 	if (!stralloc_readyplus(&spf, 0)) return SPF_NOMEM;
 	if (!stralloc_readyplus(&sa, 0)) return SPF_NOMEM;
@@ -695,6 +699,17 @@ redirect:
 		alloc_free(spf.s);
 		return r;
 	}
+
+	/* if "+all" is seen, reject the message */
+	x = env_get("SPF_BLOCK_PLUS_ALL");
+	if (x)
+		if (!str_equal(x,"0"))
+			if (matchregex(spf.s,"\\+all")) {
+				alloc_free(spf.s);
+				alloc_free(sa.s);
+				hdr_plusall();
+				return SPF_FAIL;
+			}
 
 	pos = 0;
 	done = 0;

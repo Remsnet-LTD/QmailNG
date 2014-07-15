@@ -215,7 +215,12 @@ void main()
     _exit(111);
   }
 
-  do_lst("badmailfrom","Any MAIL FROM is allowed.",""," not accepted in MAIL FROM.");
+  do_lst("badhelo","Any HELO host name is allowed.",""," HELO host name denied if it matches this pattern.");
+  do_lst("badmailfrom","Any MAIL FROM is allowed.",""," MAIL FROM denied if it matches this pattern.");
+  do_lst("badmailfromnorelay","Any MAIL FROM is allowed.",""," MAIL FROM denied if it matches this pattern and RELAYCLIENT is not set.");
+  do_lst("badrcptto","No RCPT TO are specifically denied.",""," RCPT TO denied if it matches this pattern.");
+  do_lst("badrcpttonorelay","No RCPT TO are specifically denied.","",
+    " RCPT TO denied if it matches this pattern, RELAYCLIENT is not set, and client has not done a successful AUTH.");
   do_str("bouncefrom",0,"MAILER-DAEMON","Bounce user name is ");
   do_str("bouncehost",1,"bouncehost","Bounce host name is ");
   do_int("concurrencylocal","10","Local concurrency is ","");
@@ -272,7 +277,11 @@ void main()
     if (str_equal(d->d_name,"..")) continue;
     if (str_equal(d->d_name,"bouncefrom")) continue;
     if (str_equal(d->d_name,"bouncehost")) continue;
+    if (str_equal(d->d_name,"badhelo")) continue;
     if (str_equal(d->d_name,"badmailfrom")) continue;
+    if (str_equal(d->d_name,"badmailfromnorelay")) continue;
+    if (str_equal(d->d_name,"badrcptto")) continue;
+    if (str_equal(d->d_name,"badrcpttonorelay")) continue;
     if (str_equal(d->d_name,"bouncefrom")) continue;
     if (str_equal(d->d_name,"bouncehost")) continue;
     if (str_equal(d->d_name,"concurrencylocal")) continue;

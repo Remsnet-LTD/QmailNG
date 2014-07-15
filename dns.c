@@ -355,6 +355,14 @@ int pref;
 {
  int r;
  struct ip_mx ix;
+#ifdef TLS
+ stralloc fqdn = {0};
+
+ if (!stralloc_copy(&fqdn,sa)) return DNS_MEM;
+ if (!stralloc_0(&fqdn)) return DNS_MEM;
+ ix.fqdn = fqdn.s;
+ alloc_free(fqdn);
+#endif
 
  if (!stralloc_copy(&glue,sa)) return DNS_MEM;
  if (!stralloc_0(&glue)) return DNS_MEM;
@@ -415,6 +423,9 @@ unsigned long random;
    ix.pref = 0;
    if (!glue.s[ip_scan(glue.s,&ix.ip)] || !glue.s[ip_scanbracket(glue.s,&ix.ip)])
     {
+#ifdef TLS
+     ix.fqdn = NULL;
+#endif
      if (!ipalloc_append(ia,&ix)) return DNS_MEM;
      return 0;
     }

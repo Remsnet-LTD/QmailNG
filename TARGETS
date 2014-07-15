@@ -258,8 +258,10 @@ qmail-qmqpd
 qmail-qmtpd.o
 rcpthosts.o
 qmail-qmtpd
+base64.o
 qmail-smtpd.o
 qmail-smtpd
+qregex.o
 sendmail.o
 sendmail
 tcp-env.o

@@ -133,7 +133,7 @@ char **argv;
       execvp(*qcargs,qcargs);
       die();
   }
- 
+
 #ifdef EXTERNAL_TODO
   switch(fork()) {
     case -1: die();

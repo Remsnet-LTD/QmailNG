@@ -138,6 +138,10 @@ auto_usera.o: \
 compile auto_usera.c
 	./compile auto_usera.c
 
+base64.o: \
+compile base64.c base64.h stralloc.h substdio.h str.h
+	./compile base64.c
+
 binm1: \
 binm1.sh conf-qmail
 	cat binm1.sh \
@@ -1355,10 +1359,10 @@ auto_usera.h
 
 qmail-qmqpc: \
 load qmail-qmqpc.o slurpclose.o timeoutread.o timeoutwrite.o \
-timeoutconn.o ip.o control.o auto_qmail.o sig.a ndelay.a open.a \
+timeoutconn.o constmap.o case.a ip.o control.o auto_qmail.o sig.a ndelay.a open.a \
 getln.a substdio.a stralloc.a alloc.a error.a str.a fs.a socket.lib
 	./load qmail-qmqpc slurpclose.o timeoutread.o \
-	timeoutwrite.o timeoutconn.o ip.o control.o auto_qmail.o \
+	timeoutwrite.o timeoutconn.o constmap.o case.a ip.o control.o auto_qmail.o \
 	sig.a ndelay.a open.a getln.a substdio.a stralloc.a alloc.a \
 	error.a str.a fs.a  `cat socket.lib`
 
@@ -1463,12 +1467,14 @@ qmail-remote: \
 load qmail-remote.o control.o constmap.o timeoutread.o timeoutwrite.o \
 timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o strsalloc.o ipme.o quote.o \
 ndelay.a case.a sig.a open.a lock.a seek.a getln.a stralloc.a alloc.a \
-substdio.a error.a str.a fs.a auto_qmail.o dns.lib socket.lib
+substdio.a error.a str.a fs.a auto_qmail.o base64.o qregex.o dns.lib \
+socket.lib
 	./load qmail-remote control.o constmap.o timeoutread.o \
 	timeoutwrite.o timeoutconn.o tcpto.o now.o dns.o ip.o \
 	ipalloc.o strsalloc.o ipme.o quote.o ndelay.a case.a sig.a open.a \
 	lock.a seek.a getln.a stralloc.a alloc.a substdio.a error.a \
-	str.a fs.a auto_qmail.o  `cat dns.lib` `cat socket.lib`
+	str.a fs.a auto_qmail.o base64.o qregex.o `cat dns.lib` \
+	`cat socket.lib` -lssl -lcrypto
 
 qmail-remote.0: \
 qmail-remote.8
@@ -1554,17 +1560,19 @@ auto_split.h spf.h
 	./compile qmail-showctl.c
 
 qmail-smtpd: \
-load qmail-smtpd.o rcpthosts.o commands.o timeoutread.o \
+load qmail-smtpd.o qregex.o rcpthosts.o commands.o timeoutread.o \
 timeoutwrite.o ip.o ipme.o ipalloc.o strsalloc.o control.o constmap.o \
 received.o date822fmt.o now.o qmail.o spf.o dns.o cdb.a fd.a wait.a \
-datetime.a getln.a open.a sig.a case.a env.a stralloc.a alloc.a substdio.a \
-error.a str.a fs.a auto_qmail.o socket.lib dns.lib
-	./load qmail-smtpd rcpthosts.o commands.o timeoutread.o \
+datetime.a getln.a open.a sig.a case.a env.a stralloc.a alloc.a strerr.a \
+substdio.a error.a str.a fs.a auto_qmail.o base64.o socket.lib dns.lib \
+auto_break.o
+	./load qmail-smtpd qregex.o rcpthosts.o commands.o timeoutread.o \
 	timeoutwrite.o ip.o ipme.o ipalloc.o strsalloc.o control.o \
 	constmap.o received.o date822fmt.o now.o qmail.o spf.o dns.o cdb.a \
 	fd.a wait.a datetime.a getln.a open.a sig.a case.a env.a stralloc.a \
-	alloc.a substdio.a error.a fs.a auto_qmail.o \
-	str.a `cat socket.lib` `cat dns.lib`
+	alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o \
+	auto_break.o base64.o `cat socket.lib` `cat dns.lib` \
+	-lssl -lcrypto -lcrypt
 
 qmail-smtpd.0: \
 qmail-smtpd.8
@@ -1575,7 +1583,8 @@ compile qmail-smtpd.c sig.h readwrite.h stralloc.h gen_alloc.h \
 substdio.h alloc.h auto_qmail.h control.h received.h constmap.h \
 error.h ipme.h ip.h ipalloc.h strsalloc.h ip.h gen_alloc.h ip.h qmail.h \
 substdio.h str.h fmt.h scan.h byte.h case.h env.h now.h datetime.h \
-exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h
+exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h \
+cdb.h uint32.h auto_break.h
 	./compile qmail-smtpd.c
 
 qmail-start: \
@@ -1716,6 +1725,10 @@ rcpthosts.o: \
 compile rcpthosts.c cdb.h uint32.h byte.h open.h error.h control.h \
 constmap.h stralloc.h gen_alloc.h rcpthosts.h
 	./compile rcpthosts.c
+
+qregex.o: \
+compile qregex.c qregex.h
+	./compile qregex.c
 
 readsubdir.o: \
 compile readsubdir.c readsubdir.h direntry.h fmt.h scan.h str.h \
@@ -1936,15 +1949,16 @@ auto_qmail.h auto_uids.h auto_spawn.h
 
 spf.o: \
 compile spf.c stralloc.h gen_alloc.h alloc.h ipme.h ip.h ipalloc.h \
-strsalloc.h str.h fmt.h scan.h byte.h now.h case.h
+strsalloc.h str.h fmt.h scan.h byte.h now.h case.h qregex.h
 	./compile spf.c
 
 spfquery: \
-load spfquery.o spf.o ip.o ipme.o ipalloc.o strsalloc.o now.o dns.o \
-datetime.a stralloc.a alloc.a str.a substdio.a error.a fs.a case.a dns.lib
+load spfquery.o spf.o ip.o ipme.o ipalloc.o strsalloc.o now.o dns.o env.o \
+datetime.a stralloc.a alloc.a str.a substdio.a error.a fs.a case.a dns.lib \
+socket.lib envread.o qregex.o
 	./load spfquery spf.o ip.o ipme.o ipalloc.o strsalloc.o \
-	now.o dns.o datetime.a stralloc.a alloc.a str.a substdio.a \
-	case.a error.a fs.a `cat dns.lib` `cat socket.lib`
+	now.o dns.o env.o datetime.a stralloc.a alloc.a str.a substdio.a \
+	case.a error.a fs.a `cat dns.lib` `cat socket.lib` envread.o qregex.o
 
 spfquery.o: \
 compile spfquery.c substdio.h subfd.h stralloc.h gen_alloc.h alloc.h \
@@ -2129,9 +2143,11 @@ find-systype trycpp.c
 
 tcp-env: \
 load tcp-env.o dns.o remoteinfo.o timeoutread.o timeoutwrite.o \
+constmap.o control.o open.a getln.a \
 timeoutconn.o ip.o ipalloc.o strsalloc.o case.a ndelay.a sig.a env.a \
 getopt.a stralloc.a alloc.a substdio.a error.a str.a fs.a dns.lib socket.lib
 	./load tcp-env dns.o remoteinfo.o timeoutread.o \
+	constmap.o control.o open.a getln.a \
 	timeoutwrite.o timeoutconn.o ip.o ipalloc.o strsalloc.o case.a \
 	ndelay.a sig.a env.a getopt.a stralloc.a alloc.a substdio.a error.a \
 	str.a fs.a  `cat dns.lib` `cat socket.lib`
@@ -2202,3 +2218,22 @@ compile wait_nohang.c haswaitp.h
 wait_pid.o: \
 compile wait_pid.c error.h haswaitp.h
 	./compile wait_pid.c
+
+cert:
+	openssl req -new -x509 -nodes \
+	-out /var/qmail/control/servercert.pem -days 366 \
+	-keyout /var/qmail/control/servercert.pem
+	chmod 640 /var/qmail/control/servercert.pem
+	chown qmaild.qmail /var/qmail/control/servercert.pem
+	ln -s /var/qmail/control/servercert.pem /var/qmail/control/clientcert.pem
+
+cert-req:
+	openssl req -new -nodes \
+	-out req.pem \
+	-keyout /var/qmail/control/servercert.pem
+	chmod 640 /var/qmail/control/servercert.pem
+	chown qmaild.qmail /var/qmail/control/servercert.pem
+	ln -s /var/qmail/control/servercert.pem /var/qmail/control/clientcert.pem
+	@echo
+	@echo "Send req.pem to your CA to obtain signed_req.pem, and do:"
+	@echo "cat signed_req.pem >> /var/qmail/control/servercert.pem"

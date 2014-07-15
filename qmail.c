@@ -106,8 +106,10 @@ struct qmail *qq;
 
   switch(exitcode) {
     case 115: /* compatibility */
+    case  1: return "IYour SPAM has been ignored.";
     case 11: return "Denvelope address too long for qq (#5.1.3)";
     case 31: return "Dmail server permanently rejected message (#5.3.0)";
+    case 32: return "Dwe do not accept SPAM (#5.3.0)";
     case 51: return "Zqq out of memory (#4.3.0)";
     case 52: return "Zqq timeout (#4.3.0)";
     case 53: return "Zqq write error or disk full (#4.3.0)";
