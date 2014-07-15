@@ -35,12 +35,17 @@
 #ifdef TLS
 #include <sys/stat.h>
 #include <openssl/ssl.h>
-SSL *ssl = NULL;
+
+SSL *ssl = 0;
+char *fqdn = 0;
 #endif
 
 #define HUGESMTPTEXT 5000
 
+#ifndef PORT_SMTP /* this is for testing purposes, so you can overwrite
+					 this port via a simple -D argument */
 #define PORT_SMTP 25 /* silly rabbit, /etc/services is for users */
+#endif
 unsigned long port = PORT_SMTP;
 
 GEN_ALLOC_typedef(saa,stralloc,sa,len,a)
@@ -312,11 +317,13 @@ void smtp()
   stralloc servercert = {0};
   struct stat st;
 
-  if(!stralloc_copys(&servercert, "control/tlshosts/")) temp_nomem();
-  if(!stralloc_catb(&servercert, fqdn, str_len(fqdn))) temp_nomem();
-  if(!stralloc_catb(&servercert, ".pem", 4)) temp_nomem();
-  if(!stralloc_0(&servercert)) temp_nomem();
-  if (stat(servercert.s,&st) == 0)  needtlsauth = 1;
+  if( fqdn && *fqdn ) {
+    if(!stralloc_copys(&servercert, "control/tlshosts/")) temp_nomem();
+    if(!stralloc_cats(&servercert, fqdn)) temp_nomem();
+    if(!stralloc_cats(&servercert, ".pem")) temp_nomem();
+    if(!stralloc_0(&servercert)) temp_nomem();
+    if (stat(servercert.s,&st) == 0)  needtlsauth = 1;
+  }
 #endif
 
   if (smtpcode() != 220) quit("ZConnected to "," but greeting failed");
@@ -418,7 +425,7 @@ void smtp()
         X509_NAME_get_text_by_NID(X509_get_subject_name(
                                    SSL_get_peer_certificate(ssl)),
                                    NID_commonName, commonName, 256);
-        if (strcasecmp(fqdn,commonName)){
+        if (case_diffs(fqdn,commonName)){
          out("ZTLS connection to "); out(fqdn);
          out(" wanted, certificate for "); out(commonName);
          out(" received\n");
@@ -438,7 +445,7 @@ void smtp()
    }
   if ((!ssl) && needtlsauth)
    {out("ZNo TLS achieved while "); out(servercert.s); out(" exists.\n");
-    quit();}
+    zerodie();}
 #endif
 
   substdio_puts(&smtpto,"MAIL FROM:<");
@@ -636,8 +643,8 @@ char **argv;
       tcpto_err(&ip.ix[i].ip,0);
       partner = ip.ix[i].ip;
 #ifdef TLS
-      smtp(ip.ix[i].fqdn); /* does not return */
-#else
+	  fqdn = ip.ix[i].fqdn;
+#endif
       smtp(); /* does not return */
 #endif
     }

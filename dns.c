@@ -368,7 +368,7 @@ int pref;
  if (!stralloc_0(&glue)) return DNS_MEM;
 #ifdef TLS
  if (!(ix.fqdn = alloc(glue.len) ) ) return DNS_MEM;
- str_copy(glue.s, ix.fqdn);
+ byte_copy(ix.fqdn, glue.len, glue.s);
 #endif
  if (glue.s[0]) {
    ix.pref = 0;

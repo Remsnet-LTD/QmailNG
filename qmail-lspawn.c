@@ -31,6 +31,10 @@
 #include "str.h"
 #include <pwd.h>
 #include <sys/types.h>
+#ifdef QLDAP_CLUSTER
+#include "seek.h"
+#include "getln.h"
+#endif
 
 char *aliasempty;
 
@@ -281,8 +285,8 @@ int len;
          substdio_puts(ss, "ZConfiguration file ~control/ldapmessagestore does not end with an / or is empty. (LDAP-ERR #237)\n");
       REPORT_RETURN;
 
-   case 238: /* XXX */
-         substdio_puts(ss, "ZAACK: qmail-qmqpc (as mail forwarder) crashed (LDAP-ERR #238)\n");
+   case 238:
+         substdio_puts(ss, "Zqmail-qmqpc (as mail forwarder) crashed (LDAP-ERR #238)\n");
       REPORT_RETURN;
 
 #ifdef QLDAP_CLUSTER
@@ -292,6 +296,10 @@ int len;
 
    case 240:
          substdio_puts(ss, "DPermanet error in qmail-qmqpc (as mail forwarder) (LDAP-ERR #240)\n");
+      REPORT_RETURN;
+
+   case 241:
+         substdio_puts(ss, "DThis message is looping: it already has my Delivered-To line. (LDAP-ERR #241 CLUSTERLOOP)\n");
       REPORT_RETURN;
 #endif /* QLDAP_CLUSTER */
 /* end -- report LDAP errors */
@@ -348,9 +356,13 @@ int qldap_get( stralloc *mail, char *from, int fdmess)
    if (!escape_forldap(mail) ) _exit(QLX_NOMEM);
 
    /* build the search string for the email address */
-   if (!stralloc_copys(&filter,"(|(mail=" ) ) _exit(QLX_NOMEM);
+   if (!stralloc_copys(&filter,"(|(" ) ) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&filter,LDAP_MAIL)) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
    if (!stralloc_cat(&filter,mail)) _exit(QLX_NOMEM);
-   if (!stralloc_cats(&filter,")(mailalternateaddress=")) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&filter,")(")) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&filter,LDAP_MAILALTERNATE)) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
    if (!stralloc_cat(&filter,mail)) _exit(QLX_NOMEM);
    if (!stralloc_cats(&filter,"))")) _exit(QLX_NOMEM);
    if (!stralloc_0(&filter)) _exit(QLX_NOMEM);
@@ -380,10 +392,14 @@ int qldap_get( stralloc *mail, char *from, int fdmess)
       for (at = i - 1; r[at] != '@' && at >= 0 ; at--) ;
 	     /* handels also mailwith 2 @ */
       /* build the search string for the email address */
-      if (!stralloc_copys(&filter,"(|(mail=" ) ) _exit(QLX_NOMEM);
+      if (!stralloc_copys(&filter,"(|(" ) ) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,LDAP_MAIL)) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
       if (!stralloc_cats(&filter,LDAP_CATCH_ALL)) _exit(QLX_NOMEM);
       if (!stralloc_catb(&filter,r+at, i-at)) _exit(QLX_NOMEM);
-      if (!stralloc_cats(&filter,")(mailalternateaddress=")) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,")(")) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,LDAP_MAILALTERNATE)) _exit(QLX_NOMEM);
+      if (!stralloc_cats(&filter,"=")) _exit(QLX_NOMEM);
       if (!stralloc_cats(&filter,LDAP_CATCH_ALL)) _exit(QLX_NOMEM);
       if (!stralloc_catb(&filter,r+at, i-at)) _exit(QLX_NOMEM);
       if (!stralloc_cats(&filter,"))")) _exit(QLX_NOMEM);
@@ -837,13 +853,46 @@ char *s; char *r; int at;
 
 
 #ifdef QLDAP_CLUSTER
+stralloc dtline = {0};
+
+void bouncexf(int fdmess)
+{
+ char buf[1024];
+ int match;
+ substdio ss;
+
+ if (seek_begin(fdmess) == -1) _exit(QLX_SYS);
+ substdio_fdbuf(&ss,read,fdmess,buf,sizeof(buf));
+ for (;;)
+  {
+   if (getln(&ss,&foo,&match,'\n') != 0) _exit(QLX_SYS);
+   if (!match) break;
+   if (foo.len <= 1)
+     break;
+   if (foo.len == dtline.len)
+     if (!str_diffn(foo.s,dtline.s,dtline.len))
+       _exit(241);
+  }
+}
+
 void forward_mail(char *host, stralloc *to, char* from, int fdmess)
 {
    char *(args[3]);
    int pi[2];
    int wstat;
    int child;
+   int i;
 
+   if (!stralloc_copys(&dtline, "Delivered-To: CLUSTERHOST ")) _exit(QLX_NOMEM);
+   if (!stralloc_catb(&dtline, qldap_me.s, qldap_me.len - 1 )) _exit(QLX_NOMEM);
+   if (!stralloc_cats(&dtline, " ")) _exit(QLX_NOMEM);
+   if (!stralloc_cat(&dtline, to)) _exit(QLX_NOMEM);
+   for (i = 0;i < dtline.len;++i) if (dtline.s[i] == '\n') dtline.s[i] = '_';
+   if (!stralloc_cats(&dtline,"\n")) _exit(QLX_NOMEM);
+
+   bouncexf(fdmess);
+
+   if (seek_begin(fdmess) == -1) _exit(QLX_SYS);
    if (pipe(pi) == -1) _exit(QLX_SYS);
 
    switch( child = fork() ) {
@@ -860,7 +909,7 @@ void forward_mail(char *host, stralloc *to, char* from, int fdmess)
 		  _exit(QLX_EXECHARD);
    }
 
-   debug(8, "Forwarding to %S at host %s from %s\n", to, host, from);
+   debug(8, "Forwarding to %S at host %s from %s ", to, host, from);
    close(pi[0]);
    allwrite(write, pi[1], "F", 1);
    allwrite(write, pi[1], from, str_len(from));
@@ -869,17 +918,24 @@ void forward_mail(char *host, stralloc *to, char* from, int fdmess)
    allwrite(write, pi[1], to->s, to->len);
    allwrite(write, pi[1], "", 1);
    allwrite(write, pi[1], "", 1);
+   allwrite(write, pi[1], "H",1);
+   allwrite(write, pi[1], qldap_me.s, qldap_me.len);
+   allwrite(write, pi[1], "", 1);
    close(pi[1]);
    wait_pid(&wstat,child);
    if (wait_crashed(wstat)) {
       _exit(238);
    }
 
-   switch(wait_exitcode(wstat)) {
-      case 0: _exit(0);
+   switch(i=wait_exitcode(wstat)) {
+      case 0:
+          debug(8, "was successful\n");
+		  _exit(0);
       case 31: case 61:
+         debug(8, "failed (hard error %i)/n", i);
          _exit(240);
       default:
+		 debug(8, "failed (soft error %i)/n", i);
          _exit(239);
    }
 }

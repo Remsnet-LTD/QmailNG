@@ -52,6 +52,10 @@ SHADOWLIBS=-lcrypt
 #DEBUG=-DDEBUG
 # WARNING: you need NONE DEBUG auth_* to run with inetd
 
+# for profiling ...
+#INCTAI=../libtai-0.60
+#LIBTAI=../libtai-0.60
+
 # Just for me, make from time to time a backup
 BACKUPPATH=/backup/qmail-backup/qmail-ldap.`date "+%Y%m%d-%H%M"`.tar
 # STOP editing HERE !!!
@@ -1264,6 +1268,12 @@ qldap-mdm.o: \
 compile qldap-mdm.c qldap-errno.h wait.h
 	./compile $(LDAPFLAGS) $(HDIRMAKE) $(MDIRMAKE) $(DEBUG) qldap-mdm.c
 
+profile: qldap-profile.o
+
+qldap-profile.o: \
+compile qldap-profile.c qldap-profile.h qldap-debug.h
+	./compile ${INCTAI} qldap-profile.c
+
 qmail-clean: \
 load qmail-clean.o fmtqfn.o now.o getln.a sig.a stralloc.a alloc.a \
 substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
@@ -1412,10 +1422,10 @@ load qmail-lspawn.o spawn.o prot.o slurpclose.o coe.o control.o check.o \
 sig.a strerr.a getln.a wait.a case.a cdb.a fd.a open.a stralloc.a \
 alloc.a substdio.a error.a str.a fs.a auto_qmail.o auto_uids.o \
 auto_spawn.o auto_usera.o env.a qldap-ldaplib.o qldap-debug.o \
-qldap-errno.o
+qldap-errno.o seek.a
 	./load qmail-lspawn spawn.o prot.o slurpclose.o coe.o control.o \
 	check.o qldap-ldaplib.o qldap-debug.o sig.a strerr.a getln.a \
-	wait.a case.a cdb.a fd.a open.a env.a stralloc.a alloc.a \
+	wait.a case.a cdb.a fd.a seek.a open.a env.a stralloc.a alloc.a \
 	substdio.a str.a qldap-errno.o error.a fs.a auto_qmail.o \
 	auto_uids.o auto_usera.o auto_spawn.o $(LDAPLIBS)
 
@@ -1428,7 +1438,7 @@ compile qmail-lspawn.c fd.h wait.h prot.h substdio.h stralloc.h \
 gen_alloc.h scan.h exit.h fork.h error.h cdb.h uint32.h case.h \
 slurpclose.h auto_qmail.h auto_uids.h qlx.h qmail-ldap.h check.h \
 qldap-ldaplib.h qldap-errno.h qldap-debug.h env.h auto_usera.h \
-auto_uids.h fmt.h sig.h
+auto_uids.h fmt.h sig.h seek.h
 	./compile $(LDAPFLAGS) $(HDIRMAKE) $(LDAPINCLUDES) qmail-lspawn.c
 
 qmail-newmrh: \

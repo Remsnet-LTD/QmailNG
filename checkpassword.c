@@ -62,7 +62,7 @@ static int check_passwd(stralloc *login,
 						stralloc *home,
 						stralloc *md);
 
-static int cmp_passwd(char *clear, char *encrypted);
+static int cmp_passwd(unsigned char *clear, char *encrypted);
 
 static int get_local_maildir(stralloc *home, stralloc *maildir);
 
@@ -85,8 +85,8 @@ void main(int argc, char **argv)
 	unsigned long uid;
 	unsigned long gid;
 
-	init_debug(STDERR, 64); /* XXX limited to 64 so it is not possible to get
-				 * XXX passwords via debug on normal systems */
+	init_debug(STDERR, 255); /* XXX limited to 64 so it is not possible to get
+				  * XXX passwords via debug on normal systems */
 
 	auth_init(argc, argv, &login, &authdata);
 	debug(256, "auth_init: login=%s, authdata=%s\n", login.s, authdata.s);
@@ -245,7 +245,7 @@ int check_ldap(stralloc *login, stralloc *authdata, unsigned long *uid,
 		return -1;
 	}
 
-	ret = cmp_passwd(authdata->s, extra[0].vals[0]);
+	ret = cmp_passwd((unsigned char*) authdata->s, extra[0].vals[0]);
 	debug(32, "check_ldap: password compare was %s\n",
 			ret==0?"successful":"not successful");
 	ldap_value_free(extra[0].vals);
@@ -300,7 +300,7 @@ static int check_passwd(stralloc *login, stralloc *authdata, unsigned long *uid,
 		qldap_errno = AUTH_ERROR;
 		return -1;
 	}
-	ret = cmp_passwd(authdata->s, spw->sp_pwdp);
+	ret = cmp_passwd((unsigned char*) authdata->s, spw->sp_pwdp);
 #else /* no PW_SHADOW */
 #ifdef AIX
 	spw = getuserpw(login->s);
@@ -309,9 +309,9 @@ static int check_passwd(stralloc *login, stralloc *authdata, unsigned long *uid,
 		qldap_errno = AUTH_ERROR;
 		return -1;
 	}
-	ret = cmp_passwd(authdata->s, spw->upw_passwd);
+	ret = cmp_passwd((unsigned char*) authdata->s, spw->upw_passwd);
 #else /* no AIX */
-	ret = cmp_passwd(authdata->s, pw->pw_passwd);
+	ret = cmp_passwd((unsigned char*) authdata->s, pw->pw_passwd);
 #endif /* END AIX */
 #endif /* END PW_SHADOW */
 	debug(32, "check_pw: password compare was %s\n",
@@ -320,7 +320,7 @@ static int check_passwd(stralloc *login, stralloc *authdata, unsigned long *uid,
 
 }
 
-static int cmp_passwd(char *clear, char *encrypted)
+static int cmp_passwd(unsigned char *clear, char *encrypted)
 {
 #define HASH_LEN 100	/* XXX is this enough, I think yes */
 						/* What do you think ? */
@@ -350,7 +350,7 @@ static int cmp_passwd(char *clear, char *encrypted)
 			} /* boom */
 			byte_copy(salt, 32, &encrypted[44]);
 			salt[32] = 0;
-			ns_mta_hash_alg(hashed, salt, clear);
+			ns_mta_hash_alg(hashed, salt, (char *) clear);
 			byte_copy(&hashed[32], 33, salt);
 		} else if (!str_diffn("{SHA}", encrypted, 5) ) {
 			/* SHA */
@@ -520,6 +520,7 @@ static void forward_session(char *host, char *name, char *passwd)
 		auth_error();
 	}
 
+	dns_init(0);
 	switch (dns_ip(&ip,&host_stralloc)) {
 		case DNS_MEM:
 			qldap_errno = ERRNO;

@@ -62,7 +62,7 @@ substdio ssout;
 char buffer[LEN];
 
 void output(char *fmt, ...);
-static int cmp_passwd(char *clear, char *encrypted);
+static int cmp_passwd(unsigned char *clear, char *encrypted);
 static void local_lookup(char *username, char *passwd);
 
 void usage()
@@ -158,9 +158,13 @@ int main(int argc, char **argv)
 	}
 	if ( mode == mail) {
 		/* build the search string for the email address */
-		if ( !stralloc_copys(&filter,"(|(mail=" ) ||
+		if ( !stralloc_copys(&filter,"(|(" ) ||
+			 !stralloc_cats(&filter, LDAP_MAIL ) ||
+			 !stralloc_cats(&filter, "=" ) ||
 			 !stralloc_cat(&filter,&value) ||
-			 !stralloc_cats(&filter,")(mailalternateaddress=") ||
+			 !stralloc_cats(&filter,")(" ) ||
+			 !stralloc_cats(&filter,LDAP_MAILALTERNATE ) ||
+			 !stralloc_cats(&filter, "=") ||
 			 !stralloc_cat(&filter,&value) ||
 			 !stralloc_cats(&filter,"))") ||
 			 !stralloc_0(&filter)) {
@@ -255,7 +259,7 @@ int main(int argc, char **argv)
 	}
 
 	if ( mode == uid && argv[3] && !rebind ) {
-		ret = cmp_passwd(argv[3], extra[8].vals[0] );
+		ret = cmp_passwd((unsigned char *) argv[3], extra[8].vals[0] );
 		output( "ldap_lookup:\tpassword compare was %s\n",
 				ret==0?"successful":"not successful");
 	}
@@ -335,7 +339,7 @@ void output(char *fmt, ...)
 					if ( substdio_put(&ssout, "%", 1) == -1 ) return;
 					break;
 				case 'c':
-					c = va_arg(args, unsigned char);
+					c = (unsigned char) va_arg(args, unsigned int);
 					substdio_BPUTC(&ssout, c);
 					break;
 			}
@@ -410,7 +414,7 @@ static void local_lookup(char *username, char *passwd)
 				qldap_err_str(qldap_errno));
 	}
 	output( "\t\tcrypted passwd: %s\n", spw->sp_pwdp);
-	ret = cmp_passwd(passwd, spw->sp_pwdp);
+	ret = cmp_passwd((unsigned char *) passwd, spw->sp_pwdp);
 #else /* no PW_SHADOW */
 #ifdef AIX
 	spw = getuserpw(username);
@@ -421,10 +425,10 @@ static void local_lookup(char *username, char *passwd)
 				qldap_err_str(qldap_errno));
 	}
 	output( "\t\tcrypted passwd: %s\n", spw->upw_passwd);
-	ret = cmp_passwd(passwd, spw->upw_passwd);
+	ret = cmp_passwd((unsigned char *) passwd, spw->upw_passwd);
 #else /* no AIX */
 	output( "\t\tcrypted passwd: %s\n", pw->pw_passwd);
-	ret = cmp_passwd(passwd, pw->pw_passwd);
+	ret = cmp_passwd((unsigned char *) passwd, pw->pw_passwd);
 #endif /* END AIX */
 #endif /* END PW_SHADOW */
 	output( "local_lookup:\tpassword compare was %s\n",
@@ -432,7 +436,7 @@ static void local_lookup(char *username, char *passwd)
 	_exit(0);
 }
 
-static int cmp_passwd(char *clear, char *encrypted)
+static int cmp_passwd(unsigned char *clear, char *encrypted)
 {
 #define HASH_LEN 100	/* XXX is this enough, I think yes */
 						/* What do you think ? */
@@ -462,7 +466,7 @@ static int cmp_passwd(char *clear, char *encrypted)
 			} /* boom */
 			byte_copy(salt, 32, &encrypted[44]);
 			salt[32] = 0;
-			ns_mta_hash_alg(hashed, salt, clear);
+			ns_mta_hash_alg(hashed, salt, (char *) clear);
 			byte_copy(&hashed[32], 33, salt);
 		} else if (!str_diffn("{SHA}", encrypted, 5) ) {
 			/* SHA */

@@ -59,11 +59,11 @@ typedef unsigned char *POINTER;
 static void MD4Transform __P ((u_int32_t [4], const unsigned char [64]));
 
 #ifdef __LITTLE_ENDIAN__
-#warning __LITTLE_ENDIAN__
+/* #warning __LITTLE_ENDIAN__ */
 #define Encode memcpy
 #define Decode memcpy
 #else  /* __BIG_ENDIAN__ */
-#warning __BIG_ENDIAN__
+/* #warning __BIG_ENDIAN__ */
 static void Encode __P ((void *, const void *, size_t));
 static void Decode __P ((void *, const void *, size_t));
 #endif /* __LITTLE_ENDIAN__ */
@@ -379,7 +379,7 @@ MD4DataBase64 (data, len, buf, buflen)
     size_t buflen;
 {
     MD4_CTX ctx;
-    char buffer[16];
+    unsigned char buffer[16];
 
     MD4Init(&ctx);
     MD4Update(&ctx, data, len);

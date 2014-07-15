@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: 20000701 ($Date: 2000/06/25 01:05:43 $)
+RELEASE: 20001201 ($Date: 2000/11/28 12:59:32 $)
 
 TOC:
  INSTALL             how to install the patch
@@ -24,16 +24,6 @@ NEWS:
  see QLDAPNEWS
 
 IMPORTANT NEWS:
-
- added new tool qmail-ldaplookup: with this program you can check the ldap
- db entries. Similar to the old checkpassword with debug support.
- Usage: qmail-ldaplookup {-m mailaddress | -u userid [passwd]}
- NOTE: because this tool could show critical data (like the hashed passwd)
-       it is installed with mode 700 (rwx------) only root has the permission
-       to start it.
-
- Add the new control files and their meaning to qmail-showctl
- You can use qmail-showctl to check your setup.
 
  new check algorithm (see QLDAPNEWS)
 
@@ -69,7 +59,7 @@ INSTALL:
    You can set/change:
    - LDAPFLAGS=-DQLDAP_CLUSTER (turns the cluster support on) +
                -DLDAP_ESCAPE_BUG (see NOTE) +
-               -DCLEARTEXTPASSWD (for cleartext passwords in ldap bad idea)
+               -DCLEARTEXTPASSWD (for cleartext passwords in ldap, bad idea)
      NOTE: at the moment -DLDAP_ESCAPE_BUG is not defined, this should be
            added if your ldap server has problems with the escapeing of
            LDAP filters (fixed as of OpenLDAP 1.2.8 and higher)
@@ -114,8 +104,8 @@ INSTALL:
 
 7.  Create the LDAP user database and start the LDAP server
 
-8.  Create the proper ~control/ldap* files for qldap
-    At least ldapserver and ldapbasedn must exist (and also me)
+8.  Create the proper ~control/ldap* files for qmail-ldap
+    At least ldapserver and ldapbasedn must exist (and also 'me')
 
 9.  Test and Enjoy!
 
@@ -158,7 +148,7 @@ CONFIG FILES:
 ~control/ldapbasedn
 
  The base DN from where the search in the LDAP tree begins
- Most times required
+ Required
  Default: NULL
  Example: o=Internet Pipeline, c=CH
  Note: Referrals are ignored
@@ -179,8 +169,8 @@ CONFIG FILES:
 
 ~control/ldaplocaldelivery
 
- If on do a lookup on the local passwd file. This affects qmail-lspawn and
- checkpassword if the LDAP lookup returns nothing.
+ To lookup the local passwd file if the LDAP lookup finds no match. This
+ affects qmail-lspawn and checkpassword if the LDAP lookup returns nothing.
  Default: enabled
  Example: 1
  Note: boolean, use 0 (zero) or 1 (one)
@@ -196,14 +186,13 @@ CONFIG FILES:
 ~control/ldapcluster
 
  Turn clustering on and off. Needs a qmail-ldap compiled with
- -DQLDAP_CLUSTER else nothing will happen. Also don't forget to set up
+ -DQLDAP_CLUSTER or nothing will happen. Also don't forget to set up
  qmail-qmqpd on all servers in the cluster.
  Default: disabled
  Example: 1
  Note: boolean, use 0 (zero) or 1 (one)
  ATTN: the control files me, rcpthosts and locals have to be set carfully
-       or you will have big problems. Right now there is no loop detection
-       in the clustering code.
+       or you will have big problems.
 
 ~control/ldapdefaultquota
 
@@ -212,7 +201,8 @@ CONFIG FILES:
  count 'S') and count (a file count 'C')
  Default: unlimited
  Example: 1000000S,1000C (max 1000000 bytes size and max 1000 Mails)
- Note: is overridden by mailQuota
+ Note: is overridden by mailQuota, make sure to have set ~control/quotowarning
+       otherwise you wont quota warning messages
 
 ~control/ldapdefaultdotmode
 
@@ -225,21 +215,23 @@ CONFIG FILES:
 
 ~control/ldapmessagestore
 
- The default prefix for pathes in mailMessageStore without trailing /
+ The default prefix for path's in mailMessageStore without trailing /
  Default: NULL
  Example: /maildisk/
  Note: Used in virtual users environments
 
 ~control/ldapuid
 
- The default UID used in virtual users environments
+ The default UID used in virtual users environments. This value will be
+ used for ldap entries with no LDAP_QMAILUID (see below) field
  Default: NULL
  Example: 1010
  Note: should be a real UID, must be above 100
 
 ~control/ldapgid
 
- The default GID used in virtual users environments
+ The default GID used in virtual users environments. This value will be
+ used for ldap entries with no LDAP_QMAILGID (see below) field
  Default: NULL
  Example: 1010
  Note: should be a real GID, must be above 100
@@ -277,6 +269,33 @@ CONFIG FILES:
  Note: You can override tarpitdelay by setting TARPITDELAY in qmail-smtpd's
        environment (with tcpserver).
 
+~control/maxrcptcount
+
+ Maxrcptcount is the maximum number of RCPT TOs you accept before permanently
+ rejecting this delivery attempt.
+ Default: 0 (which means no maxrcptcount)
+ Example: 5
+ Note: You can override maxrcptcount by setting MAXRCPTCOUNT in qmail-smtpd's
+       environment (with tcpserver).
+
+~control/relaymailfrom
+
+ This file contains envelope sender addresses that are allowed to relay through
+ this server.
+ Default: none
+ Example: user@domain or @domain
+ Note: Use with care, the envelope senders address can easily be spoofed and
+       then you are an open relay again. It is better to use a scheme like
+       POP before SMTP.
+
+~control/rbllist
+
+ Rbllist contains a number of RBL's to check for the given senders IP address.
+ Default: none
+ Example: rbl.maps.vix.com
+ Note: Multiline. To activate RBL checks you have to set RBL in qmail-smtpd's
+       environment (with tcpserver).
+
 ~control/badrcptto
 
  This file contains local recipient addresses that are rejected.
@@ -312,6 +331,28 @@ CONFIG FILES:
  Now the auth modules extract the Maildir out of the .qmail file, but only
  on local (/etc/passwd) lookups.
 
+Environment variables without control file:
+
+LOGLEVEL
+
+ Level of log verbosity in qmail-smtpd
+ Default: none
+ Affects: qmail-smtpd
+ Example: 3
+ Note: integer value from 0-3, everything will be logged through tcpserver
+
+DENYMAIL
+
+ Heavy sanity checking of the envelope sender address
+ Default: none
+ Affects: qmail-smtpd
+ Example: DNSCHECK
+ Note: The following variables are supported:
+        SPAM     -> refuse all mail
+        NOBOUNCE -> refuse null mail from
+        DNSCHECK -> validate that envelope senders domain has an MX or A record
+                    plus check for other invalid envelope sender constructs
+
 
 DEFAULT LDAP PARAMETER FIELDS:
 NOTE: keywords have to match exactly, so pay attention.
@@ -344,13 +385,14 @@ LDAP_QMAILUID (default: "qmailUID")
  UID of the user on the mailsystem
  Example: 1010
  Note: Can be omitted in a virtual users environment
-
+       but only if it is defined via the control file ~control/ldapuid
 
 LDAP_QMAILGID (default: "qmailGID")
 
  GID of the user on the mailsystem
  Example: 1010
  Note: Can be omitted in a virtual users environment
+       but only if it is defined via the control file ~control/ldapgid
 
 
 LDAP_PASSWD (default: "userPassword")
@@ -393,12 +435,13 @@ LDAP_QUOTA (default: "mailQuota")
  The mailQuota is a string of the form figures type (S or C) and a ',' separating
  multiple entries.
  Example: 1000000S,1000C (max 1000000 bytes size and max 1000 Mails)
- Note: overrides ldapdefaultquota, the old format is still supported
+ Note: overrides ldapdefaultquota, the old format (only a number representing
+       the amount of bytes allowed) is still supported
 
 
 LDAP_FORWARDS (default: "mailForwardingAddress")
 
- Address(es) to forward all incoming messages to.
+ Address(es) to forward all incoming messages for this user to.
  Example: jdoe@new.place
  Note: multifield
 

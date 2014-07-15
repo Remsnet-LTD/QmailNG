@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2000/06/28 23:00:42 $ ($Revision: 1.13 $)
+RELEASE: $Date: 2000/11/30 23:42:11 $ ($Revision: 1.24 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -16,8 +16,58 @@ TODO:
 
  see QLDAPTODO
 
-
 NEWS for current stuff:
+
+ cluster loop protection enhanced, now also the users mailaddress is added:
+     Delivered-To: CLUSTERHOST host.name.as.in.control.me users@e-mail.addr
+
+ new maildir++ quota algorithm implemented. This one is simpler and should
+ therefor work much better. NOTE: The code was not tested under havy load.
+
+ major enhancements in qmail-reply.c. Fixed a bug that could crash qmail-reply
+ if a bad mail was sent. The output of qmail-reply was also beautified.
+
+ introduced MAXRCPTCOUNT to limit the maximum number of rcpt to's in one session.
+
+ introduced RBL support to check the senders IP against a number of RBL's, see
+ ~control/rbllist.
+
+ documented ~control/relaymailfrom to allow relaying based on the senders
+ mail address.
+
+ documented LOGLEVEL and DENYMAIL environment variables to qmail-smtpd.
+
+NEWS for 20001013:
+
+ possible fix for newer gcc. Problems with va_arg and unsigned chars.
+ I don't have such a new gcc, so I don't know if this fixes the problem.
+
+ bug fix for the problem mentioned by Aleksander Dzierzanowski (mail to deleted
+ mailfiles bounce if there is a quota set).
+
+ cluster loop protection added. Now it should be impossible that mail loop
+ forever if the cluster was badly configured. It works via the Delivered-To line
+ and uses something like this:
+     Delivered-To: CLUSTERHOST host.name.as.in.control.me
+
+ fixed multiple problems with suns cc.
+
+ fixed multiple problems and bugs in TLS support.
+
+ fixed a bug introduced with the bitmask support for debug outputs.
+
+ cleanup at different locations to respect the signedness of variables
+
+ added bitmask support for debug outputs, so DEBUGLEVEL=3 will print error and
+ warnings but DEBUGLEVEL=2 only warnings. Note: init_debug's 2nd argument has
+ changed, it's now a binary mask that is binary anded with the debuglevel.
+ e.g.  to disable PASSWD outputs use something like -1^256 as 2nd argument.
+
+ added some defines for better testing:
+   use -DPORT_SMTP="alternate smtp port", -DPORT_LDAP="alternate ldap port" and
+       -DPORT_QMQP="alternate qmqp port" to change those ports.
+
+NEWS for 20000701 patch:
 
  if the LDAP server is down put the message back into the queue instead of
  bouncing
@@ -30,17 +80,19 @@ NEWS for current stuff:
  bugfixes in hier.c and install-big.c to install qmail-ldaplookup with correct
  0700 permission, as told in the QLDAPINSTALL file
 
- bugfix in checkpassword.c and qmail-ldaplookup.c with wrong index to the
+ bug fix in checkpassword.c and qmail-ldaplookup.c with wrong index to the
  LDAP args array. Thanks to Ricardo Cerqueira
 
  small bug fix in qmail-ldaplookup, fixed a wrong output.
 
+ added possible connection less LDAP support. Untested because slapd does not
+ support cladp until now. To turn it on use -DUSE_CLDAP as LDAPFLAGS
 
 NEWS for 20000601 patch:
 
  update of the QLDAP* files
 
- bugfix in maildir++.c and qmail-local.c, now quota_add should add the correct
+ bug fix in maildir++.c and qmail-local.c, now quota_add should add the correct
  size of the mail. Until now only the message without DTLINE and RPLINE was
  sized
 
@@ -57,23 +109,23 @@ NEWS for 20000501 patch (and some also for 20000401):
  Usage: qmail-ldaplookup {-m mailaddress | -u userid [passwd]}
  NOTE: because this tool could show critical data (like the hashed passwd)
        it is installed with mode 000 (no rights for anybody)
-       You should only give root the permision to start it.
+       You should only give root the permission to start it.
 
  new mailMessageStore/homeDirectory handling.
  Because a lot of people requested it and because I was also unhappy with it
  I have rewritten/enhanced the mailMessageStore handling.
  Now the homedir and aliasempty are set via both
- mailMessageStore (LDAP_MAILSTORE) and homedirectory (LDAP_HOMEDIR).
+ mailMessageStore (LDAP_MAILSTORE) and homeDirectory (LDAP_HOMEDIR).
   It works like this:
     IF LDAP_HOMEDIR exists it is used as $HOME (qmail-locals 3rd ARGV)
       IF also LDAP_MAILSTORE exists LDAP_MAILSTORE is used as aliasempty
         (last ARGV of qmail-local)
       ELSE (no LDAP_MAILSTORE ) use the aliasempty specified
-        in /var/qmail/rc or simmilar
+        in /var/qmail/rc or similar
       FI
     ELSE IF LDAP_MAILSTORE exists but no LDAP_HOMEDIR exists
       IF LDAP_MAILSTORE is absolute use LDAP_MAILSTORE as
-        $HOME and use standart aliasempty
+        $HOME and use standard aliasempty
       ELSE (LDAP_MAILSTORE not absolute) use control/ldapmessagestore as
         prefix to LDAP_MAILSTORE and use this as $HOME and use std. aliasempty
     ELSE neither LDAP_MAILSTORE nor LDAP_HOMEDIR exists
@@ -83,18 +135,18 @@ NEWS for 20000501 patch (and some also for 20000401):
   NOTE: the case neither LDAP_MAILSTORE nor LDAP_HOMEDIR is a bit special
         ~alias is installed as root.qmail mode 02755 (rwxr-sr-x) so no user
         can write to this directory. ALIASDEVNULL is defined in qmail-ldap.h
-        normaly /dev/null can be used (forward-only and ldaponly will be forced
+        normally /dev/null can be used (forward-only and ldaponly will be forced
         in the next release) or a special alert tool can be used
         ("|/var/qmail/bin/myalerttool")
-  NOTE2: if you use "homedirectory" and "mailMessageStore" in an incompatible
-        way and you want the old behaviour back define LDAP_HOMEDIR in
-        qmail-ldap.h as an nonexsitent ldap db field like noHomeDirectory.
+  NOTE2: if you use "homeDirectory" and "mailMessageStore" in an incompatible
+        way and you want the old behavior back define LDAP_HOMEDIR in
+        qmail-ldap.h as an nonexistent ldap db field like noHomeDirectory.
 
  new check algorithm, I think it's faster and better.
  Have a look at check.c. At the end of the file there is a array with all
  ASCII chars (7bit). You can allow or deny char by adding:
-  DENY_ALL:   allways deny this char
-  ALLOW_ALL:  allways allow this char
+  DENY_ALL:   always deny this char
+  ALLOW_ALL:  always allow this char
   ALLOW_USER: allow this char for username checks (chck_user)
   DENY_USER:  deny this char for username checks (chck_user)
   ALLOW_PATH: allow this char for path checks (chck_path)
@@ -134,9 +186,9 @@ NEWS for previous releases:
  Created a new auth tool for pop3 and imap. The old checkpassword is not
  needed anymore. The new programs are auth_pop and auth_imap.
  To have the possibility to compare cleartextpasswords (password how are
- stored cleartext in ldap) define CLEARTEXTPASSWORD. Because this setting
- is a security disaster it is normaly off. All other modes (hashed MD4, MD5,
- SHA and the standart DES crypt) are not affected.
+ stored clear text in ldap) define CLEARTEXTPASSWORD. Because this setting
+ is a security disaster it is normally off. All other modes (hashed MD4, MD5,
+ SHA and the standard DES crypt) are not affected.
 
  Rewritten qmail-lspawn and the auth tools. Both programs use now the same
  debug and ldap functions, which are now moved to new files (qldap-*).
@@ -158,7 +210,7 @@ NEWS for previous releases:
  Removed PWOPTS=-DLOOK_UP_PASSWD because it was only for checkpassword
  and with ldaplocaldelivery you get the same result on the fly.
 
- Few minor bug fixes (qmail-qmqpd.c, qmail-qmtpd.c, receive.c)
+ Few minor bugfixes (qmail-qmqpd.c, qmail-qmtpd.c, receive.c)
 
  Updated QLDAPINSTALL and added new QLDAPNEWS because QLDAPINSTALL was
  getting to long.
@@ -166,10 +218,10 @@ NEWS for previous releases:
  Changed the make process, now with the make setup check also the qmail-ldap
  parts are build and installed. Have fun ...
 
- Few minor bug fixes (accountStatus, AUTO_MAILDIRMAKE)
+ Few minor bugfixes (accountStatus, AUTO_MAILDIRMAKE)
 
- Hack in the LDAP serch filter escape function due to a bug in most LDAP
- servers. Instead of escapeing the wildchars we replace them with '_' as
+ Hack in the LDAP search filter escape function due to a bug in most LDAP
+ servers. Instead of escaping the wildchars we replace them with '_' as
  long as -DLDAP_ESCAPE_BUG is present. (see Makefile)
 
  a catch all mail for one domain system is now available. The default
@@ -184,7 +236,7 @@ NEWS for previous releases:
 
  fixed some old bugs in qmail-local
 
- fixed allready some bugs in new qmail-local code ;-)
+ fixed already some bugs in new qmail-local code ;-)
 
  added a log facility to qmail-lspawn.
 
@@ -193,7 +245,7 @@ NEWS for previous releases:
  Added a headerfile qmail-ldap.h where all parameters are set.
  This includes some changes in qmail-local.c qmail-lspawn.c and checkpassword.c
 
- qmail-lspawn checks no longer for "correct" mailaddresses, now the possibe
+ qmail-lspawn checks no longer for "correct" mailaddresses, now the possible
  mailaddress is escaped ('(', ')', '*') before added to the search filter.
 
  all the stuff that was fixed in the subpatches. (XXX double check that)
@@ -240,11 +292,14 @@ NEWS for previous releases:
  digest computes MD4, MD5, RMD160 and SHA passwords (compatible to Netscape)
   Usage: ./digest POPPassword
 
- solved a problem on big endian machines that caused wrong SHA, MD5, MD4, RMD160
- passwords. (Added an endian testprogram to solve those probs)
+ solved a problem on big endian machines that caused wrong SHA, MD5, MD4,
+ RMD160 passwords. (Added an endian testprogram to solve those probs)
 
  added a working version of the "MAKE_NETSCAPE_WORK" patch under qmail-pop3d.
  The download bar should now work correctly.
+
+ Fixed the bugs in qmail-lspawn. Changed stralloc_catb to stralloc_cat.
+ Thanks to Franky Van Liedekerke <franky.van.liedekerke@telenet.be>
 
  Fixed the bugs in qmail-lspawn. Changed starlloc_catb to stralloc_cat.
  Thanks to Franky Van Liedekerke <franky.van.liedekerke@telenet.be>
