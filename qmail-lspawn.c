@@ -177,6 +177,9 @@ int len;
    case QLX_DISABLED:
      substdio_puts(ss, "DMailaddress is administratively disabled. (#5.2.1)\n");
      return;
+   case QLX_DELETED:
+     substdio_puts(ss, "DSorry, no mailbox here by that name. (#5.1.1)\n");
+     return;
    case QLX_MAXSIZE:
      substdio_puts(ss, "DThe message exeeded the maximum size the user accepts. (#5.2.3)\n");
      return;
@@ -363,7 +366,10 @@ int qldap_get(stralloc *mail, int at, int fdmess)
    if (rv != OK) goto fail;
    if (status == STATUS_BOUNCE) {
      log(2, "warning: %s's account status is bounce\n", mail->s);
-     cae(q, 225);
+     cae(q, QLX_DISABLED);
+   } else if (status == STATUS_DELETE) {
+     log(2, "warning: %s's account status is deleted\n", mail->s);
+     cae(q, QLX_DELETED);
    }
 
    /* get the quota for the user of that maildir mbox */
@@ -386,6 +392,7 @@ int qldap_get(stralloc *mail, int at, int fdmess)
 
    /* check if the I'm the right host */
    if (rv == OK && cluster(host.s) == 1) {
+     log(8, "cluster: forwarding session to %s\n", host.s);
      /* hostname is different, so I reconnect */
      return 2;
    }
@@ -503,14 +510,15 @@ int qldap_get(stralloc *mail, int at, int fdmess)
     * set the quota environment
     */
    if (size != 0 || count != 0) {
+     if (!stralloc_copys(&foo, "")) cae(q, QLX_NOMEM);
      if (size != 0) {
-       if (!stralloc_copyb(&foo, num, fmt_ulong(num, size))) cae(q, QLX_NOMEM);
+       if (!stralloc_catb(&foo, num, fmt_ulong(num, size))) cae(q, QLX_NOMEM);
        if (!stralloc_append(&foo, "S")) cae(q, QLX_NOMEM);
      }
      if (count != 0) {
        if (size != 0)
 	 if (!stralloc_append(&foo, ",")) cae(q, QLX_NOMEM);
-       if (!stralloc_copyb(&foo, num, fmt_ulong(num, count))) cae(q, QLX_NOMEM);
+       if (!stralloc_catb(&foo, num, fmt_ulong(num, count))) cae(q, QLX_NOMEM);
        if (!stralloc_append(&foo, "C")) cae(q, QLX_NOMEM);
      }
      if (!stralloc_0(&foo)) cae(q, QLX_NOMEM);
@@ -757,17 +765,17 @@ char *s; char *r; int at;
      if (!stralloc_copys(&nughde,"")) _exit(QLX_NOMEM);
      if (localdelivery()) {
        /*
-	*  Do the local address lookup.
+	* Do the local address lookup.
         * This is the standart qmail lookup funktion.
 	*/
-       log(4, "LDAP lookup failed using local db\n");
+       log(4, "LDAP lookup failed, using local db\n");
        nughde_get(r);
      } else {
        /* the alias-user handling for LDAP only mode */
        struct passwd *pw;
        char num[FMT_ULONG];
 
-       log(4, "LDAP lookup failed using alias (no local db)\n");
+       log(4, "LDAP lookup failed, using alias (no local db)\n");
        pw = getpwnam(auto_usera);
        if (!pw) _exit(QLX_NOALIAS);
 

@@ -84,9 +84,9 @@ qldap_controls(void)
 	     ldapdefaultdotmode ???
 	     ldapdefaultquota
 	 */
-	if (control_rldef(&ldap_server, "control/ldapserver", 0,
-		    (char *) 0) != 1)
+	if (control_readfile(&ldap_server, "control/ldapserver", 0) != 1)
 		return -1; /* ... the errno should be set by control_* */
+	byte_repl(ldap_server.s, ldap_server.len, '\0', ' ');
 	if (!stralloc_0(&ldap_server)) return -1;
 	log(64, "init_ldap: control/ldapserver: %s\n", ldap_server.s);
 
@@ -149,8 +149,8 @@ qldap_controls(void)
 		return -1;
 	if (control_readulong(&quotacount, "control/defaultquotacount") == -1)
 		return -1;
-	log(64, "init_ldap: control/defaultquotasize: %lu\n", quotasize);
-	log(64, "init_ldap: control/defaultquotacount: %lu\n", quotacount);
+	log(64, "init_ldap: control/defaultquotasize: %u\n", quotasize);
+	log(64, "init_ldap: control/defaultquotacount: %u\n", quotacount);
 
 	return 0;
 }
@@ -482,7 +482,7 @@ qldap_next(qldap *q)
 	if (q->msg == 0) return FAILED;
 
 	q->msg = ldap_next_entry(q->ld, q->msg);
-	if (q->msg == (LDAPMessage *)0)
+	if (q->msg == (LDAPMessage*)0)
 		return NOSUCH;
 	q->state = EXTRACT;
 	return OK;
@@ -623,9 +623,9 @@ qldap_get_status(qldap *q, int *status)
 		if (!case_diffs(ldap_attr.s, ISACTIVE_BOUNCE))
 			*status = STATUS_BOUNCE;
 		else if (!case_diffs(ldap_attr.s, ISACTIVE_DELETE))
-			*status = STATUS_BOUNCE;
-		else if (!case_diffs(ldap_attr.s, STATUS_NOPOP))
-			*status = STATUS_NOPOP;
+			*status = STATUS_DELETE;
+		else if (!case_diffs(ldap_attr.s, ISACTIVE_NOACCESS))
+			*status = STATUS_NOACCESS;
 		else	*status = STATUS_OK; /* default to OK */
 		/* perhaps we should spill out a warning for unknown settings */
 		return OK;

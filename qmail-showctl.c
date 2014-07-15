@@ -16,6 +16,7 @@
 #include "auto_spawn.h"
 #include "auto_split.h"
 #include "spf.h"
+#include "byte.h"
 
 stralloc me = {0};
 int meok;
@@ -217,7 +218,8 @@ void main()
     substdio_flush(subfdout);
     _exit(111);
   }
-  ldapok = control_readline(&ldapserver,"ldapserver");
+  ldapok = control_readfile(&ldapserver,"ldapserver",0);
+  byte_repl(ldapserver.s, ldapserver.len, '\0', ' ');
   if (ldapok == -1) {
     substdio_puts(subfdout,"Oops! Trouble reading control/ldapserver.");
     substdio_flush(subfdout);
@@ -249,6 +251,7 @@ void main()
   do_str("doublebouncehost",1,"doublebouncehost","2B recipient host: ");
   do_str("doublebounceto",0,"postmaster","2B recipient user: ");
   do_str("envnoathost",1,"envnoathost","Presumed domain name is ");
+  do_lst("goodmailaddr","No good mail addresses.",""," is allowed in any case.");
   do_str("helohost",1,"helohost","SMTP client HELO host name is ");
   do_str("idhost",1,"idhost","Message-ID host name is ");
   do_str("localiphost",1,"localiphost","Local IP address becomes ");
@@ -308,7 +311,7 @@ void main()
 
   substdio_puts(subfdout,"\n\n\nNow the qmail-ldap specific files:\n");
   do_str("ldapbasedn",0,"NULL","LDAP basedn: ");
-  do_str("ldapserver",0,"undefined! Uh-oh","My LDAP Server is ");
+  do_lst("ldapserver","undefined! Uh-oh","","");
   do_str("ldaplogin",0,"NULL","LDAP login: ");
   do_str("ldappassword",0,"NULL","LDAP password: ");
   do_int("ldaptimeout","30","LDAP server timeout is "," seconds");
@@ -351,6 +354,7 @@ void main()
     if (str_equal(d->d_name,"doublebounceto")) continue;
     if (str_equal(d->d_name,"envnoathost")) continue;
     if (str_equal(d->d_name,"helohost")) continue;
+    if (str_equal(d->d_name,"goodmailaddr")) continue;
     if (str_equal(d->d_name,"idhost")) continue;
     if (str_equal(d->d_name,"ldapbasedn")) continue;
     if (str_equal(d->d_name,"ldapcluster")) continue;

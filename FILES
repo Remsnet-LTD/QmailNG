@@ -450,6 +450,7 @@ auth_imap.c
 auth_mod.c
 auth_mod.h
 auth_pop.c
+auth_smtp.c
 base64.c
 base64.h
 byte_repl.c
@@ -458,6 +459,7 @@ check.c
 check.h
 checkpassword.c
 checkpassword.h
+condwrite.c
 digest.c
 digest_md4.c
 digest_md4.h
@@ -513,8 +515,11 @@ qmail-reply.c
 qmail-secretary
 qmail-secretary.c
 qmail-todo.c
+qmail-verify.c
 qmail.schema
 rbl.c
 rbl.h
 read-ctrl.c
 read-ctrl.h
+smtpcall.c
+smtpcall.h

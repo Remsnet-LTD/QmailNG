@@ -107,7 +107,7 @@ auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 	auth_up[i++] = '\0';
 	p = auth_up + i; /* and the password */
 	while (auth_up[i] && auth_up[i] != '\n' ) i++;
-	if (i == auth_uplen)
+	if (i >= auth_uplen)
 		auth_error(NEEDED);
 	auth_up[i++] = '\0';
 	if (i > auth_uplen) /* paranoia */
@@ -172,7 +172,7 @@ auth_fail(const char *login, int reason)
 }
 
 void
-auth_success(void)
+auth_success(const char *login)
 {
 	byte_zero(auth_up, sizeof(auth_up));
 

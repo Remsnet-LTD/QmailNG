@@ -111,6 +111,9 @@ void perm_ambigmx() { out("D\
 Sorry. Although I'm listed as a best-preference MX or A for that host,\n\
 it isn't in my control/locals file, so I don't treat it as local. (#5.4.6)\n");
 zerodie(); }
+void perm_looping() { out("D\
+Sorry. Message is looping within cluster, giving up. (#5.4.6)\n");
+zerodie(); }
 
 void outhost()
 {
@@ -360,8 +363,8 @@ char *append;
 #if defined(TLS_REMOTE) && defined(TLSDEBUG)
 #define ONELINE_NAME(X) X509_NAME_oneline(X,NULL,0)
 
- if(ssl){
- X509 *peer;
+ if (ssl) {
+  X509 *peer;
 
   out("STARTTLS proto="); out(SSL_get_version(ssl));
   out("; cipher="); out(SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
@@ -390,7 +393,7 @@ char *append;
   out(append);
   out(".\n");
 #ifdef DATA_COMPRESS
-  if (wantcomp == 1) {
+  if (wantcomp == 2) {
 	  r = 100 - (int)(100.0*stream.total_out/stream.total_in);
 	  if (r < 0) {
 	    num[0] = '-'; r*= -1;
@@ -430,6 +433,7 @@ void blast()
   substdio_flush(&smtpto);
 }
 
+stralloc cookie = {0};
 stralloc recip = {0};
 
 #ifdef TLS
@@ -461,7 +465,13 @@ void smtp()
   if (code >= 500) quit("DConnected to "," but greeting failed");
   if (code >= 400) return;
   if (code != 220) quit("ZConnected to "," but greeting failed");
- 
+
+  if (cookie.len > 0)
+    if (smtptext.len > cookie.len + 1)
+      if (!str_diffn(smtptext.s + smtptext.len - cookie.len - 1,
+		  cookie.s, cookie.len))
+        perm_looping();
+
   flagsize = 0;
   substdio_puts(&smtpto,"EHLO ");
   substdio_put(&smtpto,helohost.s,helohost.len);
@@ -624,8 +634,10 @@ void smtp()
  
   blast();
 #ifdef DATA_COMPRESS
-  if (wantcomp == 1)
+  if (wantcomp == 1) {
     compression_done();
+    wantcomp = 2;
+  }
 #endif
   code = smtpcode();
   flagcritical = 0;
@@ -779,6 +791,9 @@ int flagcname;
 void getcontrols()
 {
   if (control_init() == -1) temp_control();
+  if (control_rldef(&cookie,"control/smtpclustercookie",0,"") == -1)
+    temp_control();
+  if (cookie.len > 32) cookie.len = 32;
   if (control_readint(&timeout,"control/timeoutremote") == -1) temp_control();
   if (control_readint(&timeoutconnect,"control/timeoutconnect") == -1)
     temp_control();

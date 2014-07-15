@@ -16,6 +16,10 @@ extern int res_search();
 #include "stralloc.h"
 #include "dns.h"
 #include "case.h"
+#ifdef IGNOREVERISIGN
+#include "byte.h"
+#define FUCKVERISIGN
+#endif
 
 static unsigned short getshort(c) unsigned char *c;
 { unsigned short u; u = c[0]; return (u << 8) + c[1]; }
@@ -347,6 +351,10 @@ struct ip_address *ip;
  return r;
 }
 
+#ifdef FUCKVERISIGN
+static stralloc tld = {0};
+static ipalloc  tldia = {0};
+#endif
 
 static int dns_ipplus(ia,sa,pref)
 ipalloc *ia;
@@ -355,13 +363,9 @@ int pref;
 {
  int r;
  struct ip_mx ix;
-#ifdef TLS_off
- stralloc fqdn = {0};
-
- if (!stralloc_copy(&fqdn,sa)) return DNS_MEM;
- if (!stralloc_0(&fqdn)) return DNS_MEM;
- ix.fqdn = fqdn.s;
- alloc_free(fqdn);
+#ifdef FUCKVERISIGN
+ int j;
+ struct ip_mx tldix;
 #endif
 
  if (!stralloc_copy(&glue,sa)) return DNS_MEM;
@@ -380,6 +384,32 @@ int pref;
 
  }
 
+#ifdef FUCKVERISIGN
+   j = byte_rchr(sa->s,sa->len,'.');
+   if (j+2 < sa->len) {
+     if(!stralloc_copys(&tld, "*")) return DNS_MEM;
+     if(!stralloc_catb(&tld, sa->s+j, sa->len-j)) return DNS_MEM;
+     switch(resolve(&tld,T_A))
+     {
+       case DNS_HARD: tldia.len = 0; break;
+       case DNS_MEM: return DNS_MEM;
+       case DNS_SOFT: return DNS_SOFT;
+       default:
+         if (!ipalloc_readyplus(&tldia,0)) return DNS_MEM;
+	 tldia.len = 0;
+	 tldix.pref = 0;
+         while ((r = findip(T_A)) != 2)
+         {
+           if (r == DNS_SOFT) return DNS_SOFT;
+           if (r == 1) {
+	     tldix.ip = ip;
+	     if (!ipalloc_append(&tldia,&tldix)) return DNS_MEM;
+	   }
+         }
+     }
+   }
+#endif
+
  switch(resolve(sa,T_A))
   {
    case DNS_MEM: return DNS_MEM;
@@ -391,8 +421,15 @@ int pref;
    ix.ip = ip;
    ix.pref = pref;
    if (r == DNS_SOFT) return DNS_SOFT;
-   if (r == 1)
+   if (r == 1) {
+#ifdef FUCKVERISIGN
+     for (j = 0; j < tldia.len; j++)
+       if (byte_diff(&tldia.ix[j].ip, sizeof(struct ip_address), &ip) == 0)
+	 break;
+     if (j < tldia.len) continue;
+#endif
      if (!ipalloc_append(ia,&ix)) return DNS_MEM;
+   }
   }
  return 0;
 }

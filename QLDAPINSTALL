@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license. See LICENSE.
 
-RELEASE: current ($Date: 2003/09/02 12:15:44 $)
+RELEASE: current ($Date: 2003/10/01 09:20:23 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -25,8 +25,8 @@ NEWS:
 
 IMPORTANT NEWS:
 
- - This release breaks certain backwards compatibility for clarity and
-   cleanup reasons!!
+ - From release 20030901 on we broke certain backwards compatibility with release
+   20030801 and prior releases for clarity and cleanup reasons!!
 
  - delivery modes changed in important ways (easier now, but incompatble
    for some installations)
@@ -35,6 +35,9 @@ IMPORTANT NEWS:
 
  - qmail-smtpd control files are gone (tarpitcount/delay, maxrcptcount,
    rblonlyheader) and are environment only (with tcpserver)
+
+ - accountStatus NOPOP has been renamed to NOACCESS because it not just
+   blocks pop but also imap access
 
  - and as always a lot of smaller patches see QLDAPNEWS
 
@@ -55,6 +58,9 @@ INSTALL:
       OpenLDAP releases < 2.0 should no longer be used (you have been warned).
    and
     - OpenSSL 0.9.4 or higher if you want TLS SMTP encrytion
+
+   We recommend also using Dan Bernstein's toolset daemontools-0.76,
+   ucspi-tcp-0.88 and djbdns-1.05 to run qmail.
 
    If you have problems with OpenLDAP look into their FAQ. The same for
    OpenSSL.
@@ -244,10 +250,13 @@ CONFIG FILES:
 
 ~control/ldapserver
 
- Space separated list of Hostnames or IP addresses of LDAP servers.
+ List of Hostnames or IP addresses of LDAP servers. One per line.
  An additional port can be supplied with the host:port notation.
  Required
- Example: ldap.nrg4u.com ldap2.nrg4u.com ldap3.nrg4u.com:1234
+ Example:
+   ldap.nrg4u.com
+   ldap2.nrg4u.com
+   ldap3.nrg4u.com:1234
 
 ~control/ldapbasedn
 
@@ -438,6 +447,17 @@ CONFIG FILES:
        The environment variable RBLONLYHEADER overrides any rejects and only
        adds headers. This can be set by ip-range with tcpserver.
 
+~control/goodmailaddr
+
+ This file contains local recipient addresses that are always accepted in
+ conjunction with sender or recipient verify checks.
+ Default: none
+ Example: user@domain or @domain
+ Note: This is useful for things like <postmaster@domain.com> and other
+       addresses you always want to accept, even if they are not in the
+       ldap directory or when a lookup temporarly fails. See RCPTCHECK
+       and SENDERCHECK.
+
 ~control/badrcptto
 
  This file contains local recipient addresses that are rejected.
@@ -461,6 +481,21 @@ CONFIG FILES:
  message.
  Default: 0 (off)
  Example: 102400 (equivalent to 10kB)
+
+~control/smtpclustercookie
+
+ This file contains a cookie (random string) that is the same on all
+ smtp MX clusters. It is to prevent outgoing mails looping back because
+ of incorrect or faked MX records pointing to some external ip address
+ which qmail-remote does not recognise as in reality 'itself' (as seen
+ from the cluster perspective). The external ip address can be for example
+ a load balancer or a NAT device.
+ Default: none
+ Example: cvkmd9078923hjv4nkd890q3g
+ Note: String will be truncated after 32 characters. If qmail-remote
+       sees the same string advertised in qmail-smtpd greeting it will
+       abort the delivery attempt, bounce the message and report a smtp
+       loop error.
 
 ~control/outgoingip
 
@@ -684,6 +719,18 @@ SANITYCHECK
  Note: Rejects stuff which you probably don't want on your mailserver
        because it's highly likely that it'll bounce later.
 
+550GREETING
+
+ Rejects a connection right away with an 550 in the greeting line and
+ closes the connection.
+ Default: off
+ Affects: qmail-smtpd
+ Example: ""
+ Example: "Go away!"
+ Note: You can set this in tcpserver if you want to reject messages from
+       an ip address permanently. If no string is given it will default
+       to "your message has been administratively denied".
+
 SMTP550DISCONNECT
 
  Disconnect the SMTP session if a 5xx is produced by the sender
@@ -711,6 +758,38 @@ TARPITDELAY
  Note: Connection which are tarpitted take a long time to finish. Be aware
        that this ties up the available qmail-smtpd slots. Raise connection
        limits with tcpserver if neccessary.
+
+RCPTCHECK
+
+ Check if the recipient (envelope "rcpt to:") of a message really exists. If not
+ give a 550 reject right now instead of bouncing later in qmail-lspawn.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: Only applies to recipients whose domain is listed in ~control/locals.
+       Recipients domains listed in ~control/rcpthosts are allowed without
+       further checks. If RELAYCLIENT is set, all other recipients are allowed
+       as well. Addresses or domains listed in ~control/goodmailaddr are
+       unconditionally allowed in all cases.
+
+SENDERCHECK
+
+ Check if the sender (envelope "mail from:") of a message really exists (in the
+ ldap directory). If not give a 550 reject right now.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" or "LOOSE" or "STRICT"
+ Note: Only applies to senders whose domain is listed in ~control/locals.
+       Everything else is assumed to be an external message with a foreign
+       sender coming in, so no check applied. This is normal mode.
+       Setting to "LOOSE" will allow only senders which are listed either in
+       ~control/locals or ~control/rcpthosts. Setting to "STRICT" will only
+       allow senders which are listed in ~control/locals. With this you can
+       enforce for example that people from certain ip ranges can only send
+       if they have a valid existing email address with you.
+       Addresses or domains listed in ~control/goodmailaddr are unconditionally
+       allowed in all cases.
+
 
 ================================================================================
 
@@ -833,6 +912,8 @@ LDAP_PROGRAM (default: "deliveryProgramPath")
        Program delivery is done in addition to local (maildir/mbox) delivery.
        Program delivery can be disabled without having to remove the
        entries. See deliveryMode for more information on both.
+       A valid home-directory is needed so either LDAP_MAILSTORE or
+       LDAP_HOMEDIR needs to be defined.
 
 LDAP_MODE (default: "deliveryMode")
 
@@ -910,7 +991,7 @@ LDAP_ISACTIVE (default: "accountStatus")
 
  The status of a user account.
  Values: active (no restrictions),
-         nopop (only mail delivery but no pop access),
+         noaccess (only mail delivery but no pop/imap access),
          disabled (bounce incoming messages)
          deleted (bounce incoming messages and mark for deletion,
                   see LDAP_PURGE)
