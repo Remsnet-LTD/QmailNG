@@ -32,24 +32,24 @@
 #ifndef TLS_REMOTE
 #include "timeoutread.h"
 #include "timeoutwrite.h"
+#ifdef TLS_REMOTE /* openssl/ssh.h needs to be included befor zlib.h else ... */
+#include <sys/stat.h>
+#include <openssl/ssl.h>
+#endif
+#ifdef DATA_COMPRESS
+#include <zlib.h>
 #endif
 
 #ifdef TLS_REMOTE
-#include <sys/stat.h>
-#include <openssl/ssl.h>
-
 SSL *ssl = 0;
-char *fqdn = 0;
 #endif
 
 #define HUGESMTPTEXT 5000
 
-#ifndef PORT_SMTP /* this is for testing purposes, so you can overwrite
-					 this port via a simple -D argument */
+#ifndef PORT_SMTP /* this is for testing purposes, so you can overwrite it */
 #define PORT_SMTP 25 /* silly rabbit, /etc/services is for users */
 #endif
-#ifndef PORT_QMTP /* this is for testing purposes, so you can overwrite
-					 this port via a simple -D argument */
+#ifndef PORT_QMTP /* this is for testing purposes, so you can overwrite it */
 #define PORT_QMTP 209 /* silly rabbit, /etc/services is for users */
 #endif
 unsigned long smtp_port = PORT_SMTP;
@@ -144,7 +144,7 @@ int ssl_timeoutread(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
  int r; int saveerrno;
  if (flagtimedout) { errno = error_timeout; return -1; }
  alarm(timeout);
- if (ssl) r = SSL_read(ssl,buf,n); else r = read(fd,buf,n);
+ r = SSL_read(ssl,buf,n);
  saveerrno = errno;
  alarm(0);
  if (flagtimedout) { errno = error_timeout; return -1; }
@@ -156,7 +156,7 @@ int ssl_timeoutwrite(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
  int r; int saveerrno;
  if (flagtimedout) { errno = error_timeout; return -1; }
  alarm(timeout);
- if (ssl) r = SSL_write(ssl,buf,n); else r = write(fd,buf,n);
+ r = SSL_write(ssl,buf,n);
  saveerrno = errno;
  alarm(0);
  if (flagtimedout) { errno = error_timeout; return -1; }
@@ -165,12 +165,87 @@ int ssl_timeoutwrite(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
 }
 #endif
 
+#ifdef DATA_COMPRESS
+z_stream stream;
+char zbuf[4096];
+int compdata = 0;
+int wantcomp = 0;
+
+void compression_init(void)
+{
+  int r;
+
+  compdata = 1;
+  stream.zalloc = Z_NULL;
+  stream.zfree = Z_NULL;
+  stream.opaque = Z_NULL;
+  stream.avail_out = sizeof(zbuf);
+  stream.next_out = zbuf;
+  if (deflateInit(&stream,Z_DEFAULT_COMPRESSION) != Z_OK) {
+    out("ZInitalizing data compression failed: ");
+    out(stream.msg); out(" #(4.3.0)\n");
+    zerodie();
+  }
+}
+void compression_done(void)
+{
+  int r;
+
+  compdata = 0;
+  do {
+    r = deflate(&stream,Z_FINISH);
+    switch (r) {
+    case Z_OK:
+      if (stream.avail_out == 0) {
+#ifdef TLS_REMOTE
+	if (ssl)
+	  r = ssl_timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf));
+	else
+#endif
+	r = timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf));
+	if (r <= 0) dropped();
+	stream.avail_out = sizeof(zbuf);
+	stream.next_out = zbuf;
+	r = Z_OK;
+      }
+      break;
+    case Z_STREAM_END:
+      break;
+    default:
+      out("ZSending compressed data to "); outhost();
+      out("but compression failed: ");
+      out(stream.msg); out(" (#4.4.2)\n");
+      zerodie();
+    }
+  } while (r!=Z_STREAM_END);
+  if (stream.avail_out != sizeof(zbuf)) {
+    /* write left data */
+#ifdef TLS_REMOTE
+    if (ssl)
+      r = ssl_timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf)-stream.avail_out);
+    else
+#endif
+    r = timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf)-stream.avail_out);
+    if (r <= 0) dropped();
+  }
+  if (deflateEnd(&stream) != Z_OK) {
+    out("ZFinishing data compression failed: ");
+    if (stream.msg) out(stream.msg); else out("unknown error");
+    if (flagcritical) out(". Possible duplicate!");
+    out(" #(4.3.0)\n");
+    zerodie();
+  }
+}
+#endif
+
 int saferead(fd,buf,len) int fd; char *buf; int len;
 {
   int r;
 #ifdef TLS_REMOTE
-  r = ssl_timeoutread(timeout,smtpfd,buf,len);
-#else
+  if (ssl)
+    r = ssl_timeoutread(timeout,smtpfd,buf,len);
+  else
+#endif
   r = timeoutread(timeout,smtpfd,buf,len);
 #endif
   if (r <= 0) dropped();
@@ -179,9 +254,41 @@ int saferead(fd,buf,len) int fd; char *buf; int len;
 int safewrite(fd,buf,len) int fd; char *buf; int len;
 {
   int r;
+#ifdef DATA_COMPRESS
+  if (compdata == 1) {
+    stream.avail_in = len;
+    stream.next_in = buf;
+    do {
+      r = deflate(&stream, 0);
+      switch (r) {
+      case Z_OK:
+	if (stream.avail_out == 0) {
 #ifdef TLS_REMOTE
-  r = ssl_timeoutwrite(timeout,smtpfd,buf,len);
-#else
+	  if (ssl)
+	    r = ssl_timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf));
+	  else
+#endif
+	  r = timeoutwrite(timeout,smtpfd,zbuf,sizeof(zbuf));
+	  if (r <= 0) dropped();
+	  stream.avail_out = sizeof(zbuf);
+	  stream.next_out = zbuf;
+	}
+	break;
+      default:
+	out("ZSending compressed data to "); outhost();
+	out("but compression failed: ");
+	out(stream.msg); out(" (#4.4.2)\n");
+	zerodie();
+      }
+    } while (stream.avail_in != 0);
+    return len;
+  }
+#endif
+#ifdef TLS_REMOTE
+  if (ssl)
+    r = ssl_timeoutwrite(timeout,smtpfd,buf,len);
+  else
+#endif
   r = timeoutwrite(timeout,smtpfd,buf,len);
 #endif
   if (r <= 0) dropped();
@@ -245,6 +352,10 @@ void quit(prepend,append)
 char *prepend;
 char *append;
 {
+#ifdef DATA_COMPRESS
+  int r;
+  char num[FMT_ULONG];
+#endif
 /* TAG */
 #if defined(TLS_REMOTE) && defined(TLSDEBUG)
 #define ONELINE_NAME(X) X509_NAME_oneline(X,NULL,0)
@@ -278,6 +389,16 @@ char *append;
   outhost();
   out(append);
   out(".\n");
+  if (wantcomp == 1) {
+	  r = 100 - (int)(100.0*stream.total_out/stream.total_in);
+	  if (r < 0) {
+	    num[0] = '-'; r*= -1;
+	  } else
+	    num[0] = ' ';
+	  num[fmt_ulong(num+1,r)+1] = 0;
+	  out("Dynamic data compression saved ");
+	  out(num); out("%.\n");
+  }
   outsmtptext();
   zerodie();
 }
@@ -325,26 +446,18 @@ void smtp()
   char num[FMT_ULONG];
 #ifdef TLS_REMOTE
   int flagtls;
-  int needtlsauth = 0;
   SSL_CTX *ctx;
   int saveerrno, r;
 #ifdef TLSDEBUG
   char buf[1024];
 #endif
-  stralloc servercert = {0};
 
-  if( fqdn && *fqdn ) {
-    if(!stralloc_copys(&servercert, "control/tlshosts/")) temp_nomem();
-    if(!stralloc_cats(&servercert, fqdn)) temp_nomem();
-    if(!stralloc_cats(&servercert, ".pem")) temp_nomem();
-    if(!stralloc_0(&servercert)) temp_nomem();
-    if (stat(servercert.s,&st) == 0)  needtlsauth = 1;
-  }
   flagtls = 0;
 #endif
 
   code = smtpcode();
   if (code >= 500) quit("DConnected to "," but greeting failed");
+  if (code >= 400) return;
   if (code != 220) quit("ZConnected to "," but greeting failed");
  
   flagsize = 0;
@@ -361,6 +474,7 @@ void smtp()
    substdio_flush(&smtpto);
    code = smtpcode();
    if (code >= 500) quit("DConnected to "," but my name was rejected");
+   if (code >= 400) return;
    if (code != 250) quit("ZConnected to "," but my name was rejected");
   }
 
@@ -368,6 +482,10 @@ void smtp()
   for (i = 0; i < smtptext.len; i += str_chr(smtptext.s+i,'\n') + 1) {
     if (i+8 < smtptext.len && !case_diffb("SIZE", 4, smtptext.s+i+4) )
       flagsize = 1;
+#ifdef DATA_COMPRESS
+    else if (i+9 < smtptext.len && !case_diffb("DATAZ", 5, smtptext.s+i+4))
+            wantcomp = 1;
+#endif
 #ifdef TLS_REMOTE
     else if (i+12 < smtptext.len && !case_diffb("STARTTLS", 8, smtptext.s+i+4) )
       flagtls = 1;
@@ -401,13 +519,6 @@ void smtp()
       SSL_CTX_use_certificate_file(ctx, "control/cert.pem", SSL_FILETYPE_PEM);
       /*SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);*/
 
-      if (needtlsauth){
-        if (!SSL_CTX_load_verify_locations(ctx, servercert.s, NULL))
-          {out("ZTLS unable to load "); out(servercert.s); out("\n");
-           zerodie();}
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-      }
- 
       if(!(ssl=SSL_new(ctx)))
 #ifdef TLSDEBUG
         {out("ZTLS not available: error initializing ssl");
@@ -427,12 +538,7 @@ void smtp()
        {out("ZTLS not available: connect timed out\n");
         zerodie();}
       errno = saveerrno;
-      if (r<=0)
-       {if (needtlsauth && (r=SSL_get_verify_result(ssl)) != X509_V_OK)
-         {out("ZTLS unable to verify server with ");
-          out(servercert.s); out(": ");
-          out(X509_verify_cert_error_string(r)); out("\n");}
-        else
+      if (r<=0) {
 #ifdef TLSDEBUG
          {out("ZTLS not available: connect failed");
           out(": ");
@@ -442,18 +548,6 @@ void smtp()
          out("ZTLS not available: connect failed\n");
 #endif
          zerodie();}
-      if (needtlsauth)
-       /* should also check alternate names */
-       {char commonName[256];
-        X509_NAME_get_text_by_NID(X509_get_subject_name(
-                                   SSL_get_peer_certificate(ssl)),
-                                   NID_commonName, commonName, 256);
-        if (case_diffs(fqdn,commonName)){
-         out("ZTLS connection to "); out(fqdn);
-         out(" wanted, certificate for "); out(commonName);
-         out(" received\n");
-         zerodie();}
-        }
 
       substdio_puts(&smtpto,"EHLO ");
       substdio_put(&smtpto,helohost.s,helohost.len);
@@ -466,9 +560,6 @@ void smtp()
        }
      }
    }
-  if ((!ssl) && needtlsauth)
-   {out("ZNo TLS achieved while "); out(servercert.s); out(" exists.\n");
-    zerodie();}
 #endif
 
   substdio_puts(&smtpto,"MAIL FROM:<");
@@ -509,12 +600,31 @@ void smtp()
   }
   if (!flagbother) quit("DGiving up on ","");
  
+#ifdef DATA_COMPRESS
+  if (wantcomp == 1) {
+    substdio_putsflush(&smtpto,"DATAZ\r\n");
+    compression_init();
+  } else
+#endif
   substdio_putsflush(&smtpto,"DATA\r\n");
   code = smtpcode();
+#ifdef DATA_COMPRESS
+  if (wantcomp == 1) {
+    if (code >= 500) quit("D"," failed on DATAZ command");
+    if (code >= 400) quit("Z"," failed on DATAZ command");
+  } else {
+#endif
   if (code >= 500) quit("D"," failed on DATA command");
   if (code >= 400) quit("Z"," failed on DATA command");
+#ifdef DATA_COMPRESS
+  }
+#endif
  
   blast();
+#ifdef DATA_COMPRESS
+  if (wantcomp == 1)
+    compression_done();
+#endif
   code = smtpcode();
   flagcritical = 0;
   if (code >= 500) quit("D"," failed after I sent the message");
@@ -539,8 +649,9 @@ void qmtp()
   int i;
   int n;
   unsigned char ch;
+  unsigned char rv;
   char num[FMT_ULONG];
-  int flagallok;
+  int flagbother;
 
   if (fstat(0,&st) == -1) quit("Z", " unable to fstat stdin");
   len = st.st_size;
@@ -550,7 +661,7 @@ void qmtp()
   substdio_put(&smtpto,":\n",2);
   while (len > 0) {
     n = substdio_feed(&ssin);
-    if (n <= 0) _exit(32); /* wise guy again */
+    if (n <= 0) temp_read(); /* wise guy again */
     x = substdio_PEEK(&ssin);
     substdio_put(&smtpto,x,n);
     substdio_SEEK(&ssin,n);
@@ -578,7 +689,7 @@ void qmtp()
   substdio_put(&smtpto,",",1);
   substdio_flush(&smtpto);
 
-  flagallok = 1;
+  flagbother = 0;
 
   for (i = 0;i < reciplist.len;++i) {
     len = 0;
@@ -593,38 +704,37 @@ void qmtp()
     get(&ch); --len;
     if ((ch != 'Z') && (ch != 'D') && (ch != 'K')) temp_proto();
 
-    if (!stralloc_copyb(&smtptext,&ch,1)) temp_proto();
-    if (!stralloc_cats(&smtptext,"qmtp: ")) temp_nomem();
+    rv = ch;
+    if (!stralloc_copys(&smtptext,"qmtp: ")) temp_nomem();
 
+    /* read message */
     while (len > 0) {
       get(&ch);
       --len;
-    }
-
-    for (len = 0;len < smtptext.len;++len) {
-      ch = smtptext.s[len];
-      if ((ch < 32) || (ch > 126)) smtptext.s[len] = '?';
     }
     get(&ch);
     if (ch != ',') temp_proto();
     smtptext.s[smtptext.len-1] = '\n';
 
-    if (smtptext.s[0] == 'K') out("r");
-    else if (smtptext.s[0] == 'D') {
-      out("h");
-      flagallok = 0;
+    switch (rv) {
+      case 'K':
+        out("r"); zero();
+	flagbother = 1;
+	break;
+      case 'D':
+        out("h"); outhost(); out("  does not like recipient.\n");
+	outsmtptext(); zero();
+	break;
+      case 'Z':
+        out("h"); outhost(); out("  does not like recipient.\n");
+	outsmtptext(); zero();
+	break;
     }
-    else { /* if (smtptext.s[0] == 'Z') */
-      out("s");
-      flagallok = 0;
-    }
-    if (substdio_put(subfdoutsmall,smtptext.s+1,smtptext.len-1) == -1) temp_noconn();
-    zero();
   }
-  if (!flagallok) {
-    out("DGiving up on ");outhost();out("\n");
+  if (!flagbother) {
+    out("DGiving up on "); outhost(); out(".\n"); outsmtptext();
   } else {
-    out("KAll received okay by ");outhost();out("\n");
+    out("K");outhost();out(" accepted message.\n"); outsmtptext();
   }
   zerodie();
 }
@@ -791,11 +901,8 @@ char **argv;
     if (timeoutconn(smtpfd,&ip.ix[i].ip,&outip,(unsigned int) smtp_port,timeoutconnect) == 0) {
       tcpto_err(&ip.ix[i].ip,0);
       partner = ip.ix[i].ip;
-#ifdef TLS_REMOTE
-	  fqdn = ip.ix[i].fqdn;
-#endif
-      smtp(); /* does not return */
-#endif
+      smtp(); /* should not return unless the start code or the HELO code
+	         returns a temporary failure. */
     }
     tcpto_err(&ip.ix[i].ip,errno == error_timeout);
     close(smtpfd);

@@ -1,4 +1,4 @@
-/MAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
+QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
 (c) 1998,1999,2000,2001,2002 Internet Business Solutions Ltd.
 
@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: current ($Date: 2003/03/26 21:10:53 $)
+RELEASE: current ($Date: 2003/07/31 09:27:42 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -25,7 +25,11 @@ NEWS:
 
 IMPORTANT NEWS:
 
- - new ldap fields mailQuotaSize, mailQuotaCount and mailSizeMax
+ - added experimental on the fly smtp data compression
+
+ - added qmailqueue patch, turn on with -DALTQUEUE
+
+ - new delivery mode noforward
 
  - and as always a lot of smaller patches see QLDAPNEWS
 
@@ -65,9 +69,16 @@ INSTALL:
                -DLDAP_ESCAPE_BUG (see NOTE) +
                -DCLEARTEXTPASSWD (for cleartext passwords in ldap, bad idea)
                -DDASH_EXT (turn on dash_ext support see 5.3)
-               -DEXTERNAL_TODO to use the external high-performance todo processing
+               -DEXTERNAL_TODO to use the external high-performancer
+                todo processing
                -DBIGTODO to enable the big todo patch
                -DBIGBROTHER (turn on per address queue extra feature see NEWS)
+               -DALTQUEUE to enable alternate queue selection via environment
+                variable QMAILQUEUE. Also known as qmailqueue patch.
+               -DDATA_COMPRESS to enable smtp on the fly data compression.
+                It is needed to set ZLIB accordingly.
+               -DSMTPEXECCHECK to enable Russell Nelsons antivirus patch
+	        for qmail-smtpd. To turn it on set the REJECTEXEC env-var.
      NOTE: at the moment -DLDAP_ESCAPE_BUG is not defined, this should be
            added if your ldap server has problems with the escapeing of
            LDAP filters (fixed as of OpenLDAP 1.2.8 and higher)
@@ -82,6 +93,8 @@ INSTALL:
      NOTE: if you need this you may run into shared library problems
            see http://www.lifewithqmail.org/ldap/.
 
+   - ZLIB is used when DATA_COMPRESS is defined. Normaly -lz should work,
+     if libz is installed in a different location use -L/path/to/zlibdir -lz
    - MNW=-DMAKE_NETSCAPE_WORK (turns on the patch that fixes the problem
      with the Netscape download progress bar and qmail-pop3d)
 
@@ -401,7 +414,7 @@ CONFIG FILES:
 ~control/rbllist
 
  Rbllist contains a number of RBL's to check for the given senders IP address.
- The file consists of four TAB separated fields.
+ The file consists of four tab or space separated fields.
    basedomain: base domain address to lookup (e.g. relays.ordb.org)
    action: one of addheader or reject.
            addheader will just create a X-RBL: header whereas
@@ -411,15 +424,16 @@ CONFIG FILES:
             IP-Address. With any all returned IP-Address will match.
    message: message to be included in X-RBL: headers and 553 errors.
 
- Example:
-   basedomain            action     matchon    message
-   ========================================================================
-   relays.ordb.org       reject     any        see http://ordb.org
-   spamguard.leadmon.net addheader  127.0.0.2  address is a dialup address
+ Possible example:
+  # baseaddress    action    matchon      Message
+  #========================================================================
+       sbl.spamhaus.org reject    127.0.0.2 See http://www.spamhaus.org/SBL
+        relays.ordb.org addheader 127.0.0.2 See http://www.ordb.org/faq/
+          list.dsbl.org addheader 127.0.0.2 See http://dsbl.org/main
+         bl.spamcop.net addheader 127.0.0.2 See http://spamcop.net/
+        relays.ordb.org reject    any       see http://ordb.org
+  spamguard.leadmon.net addheader 127.0.0.2 address is a dialup address
 
- NOTE: for readability we replaced the tabs between the four fields basedoamin,
-       action, matchon and message with spaces (so you can not copy paste the
-       example. (Also the first two lines are not part of the file)
  Default: none
  Note: Multiline. To activate RBL checks you have to set RBL in qmail-smtpd's
        environment (with tcpserver). See this website for more information on
@@ -568,6 +582,28 @@ BLOCKRELAYPROBE
        hack and double-"@" a sendwhale bug.
        Beware if you actually use the qmail percent-hack! Then this can't
        be used obviously!
+
+QMAILQUEUE
+
+ Use this queueing program instead of the default qmail-queue program.
+ Default: off
+ Affects: qmail-smtpd, qmail-qmtpd, qmail-qmqpd, qmail-inject,
+          but also qmail-local, qmail-reply, qmail-send, qreceipt,
+          condredirect, forward
+ Example: /var/scanner/bin/qmail-scanner-queue.pl
+ Note: Using this for something different than the mail incomming daemons
+       is dissuaded.
+
+REJECTEXEC
+
+ Reject DOS/Windows executables in mail attachements.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: This patch does not distinguish between valid applications and
+       evil viruses and trojans so handle with care. It is not a 100%
+       guaranteed protection but it handles a lot of unwanted stuff.
+       See also: http://www.qmail.org/qmail-smtpd-viruscan-1.1.patch
 
 LOGLEVEL
 
@@ -756,6 +792,7 @@ LDAP_MODE (default: "deliveryMode")
            (Maildir/box delivery only if no forwards or programs are executed)
  - forwardonly: is equal to set the execute bit of .qmail
                 so only forwards are allowed
+ - noforward: ignore all forwarding entries in ldap (LDAP_FORWARDS) and .qmail
  - nombox: ignore all maildir/mbox deliveries
  - localdelivery: forces maildir/mbox delivery (into $HOME/$ALIASEMPTY)
  - reply: send also an auto_reply mail with text from mailReplyText
@@ -765,11 +802,11 @@ LDAP_MODE (default: "deliveryMode")
  Note: echo exits immediatly after the "echoing" (only useful for testing
        purposes). reply is executed directly and does not interfere with
        the other settings.
-       "normal", "nombox", "localdelivery" and "forwardonly" are set one after
-       the other (i.e. "nombox,localdelivery,normal" resets to a "normal"
-       delivery).
+       "normal", "nombox", "localdelivery" "forwardonly" and "noforward" are
+       set one after the other (i.e. "nombox,localdelivery,normal" resets to
+       a "normal" delivery).
        There are some strange behavior when localdelivery and nombox or
-       forwardonly are set, so handle them with care.
+       forwardonly and noforward are set, so handle them with care.
 
 
 LDAP_REPLYTEXT (default: "mailReplyText")

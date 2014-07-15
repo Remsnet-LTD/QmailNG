@@ -1,16 +1,27 @@
+#include "alloc.h"
+#include "control.h"
 #include "dns.h"
 #include "env.h"
 #include "ipalloc.h"
 #include "qmail.h"
-#include "rbl.h"
+#include "str.h"
 #include "stralloc.h"
+
+#include "rbl.h"
 
 static stralloc rblmessage = {0};
 int rblprintheader;
 char *rblonlyheader;
 char *rblenabled;
 
+/* functions borrowed from qmail-smtpd.c */
 extern void safeput();
+extern void die_nomem();
+
+extern void logpid();
+extern void logline();
+extern void logstring();
+extern void logflush();
 
 void rblheader(struct qmail *qqt)
 {
@@ -117,26 +128,27 @@ int rblcheck(char *remoteip, char** rblname)
   if(!rbl_start(remoteip)) return 0;
 
   for (i=0; i < numrbl; i++) {
-    logpid(2); logstring(2,"RBL check with '"); logstring(2,rbl[i].baseaddr); logstring(2,"':");
+    logpid(2); logstring(2,"RBL check with '");
+    logstring(2,rbl[i].baseaddr); logstring(2,"': ");
 
     r = rbl_lookup(rbl[i].baseaddr, rbl[i].matchon);
     if (r == 2) {
-      logstring(2,"temporary DNS error, ignored."); logflush(2);
+      logstring(2,"temporary DNS error, ignored"); logflush(2);
     } else if (r == 1) {
-      logstring(2,"found match,");
+      logstring(2,"found match, ");
       *rblname = rbl[i].message;
       if (rblonlyheader) {
-	logstring(2,"only tagging header."); logflush(2);
+	logstring(2,"tag header"); logflush(2);
 	rbladdheader(rbl[i].baseaddr, rbl[i].matchon, rbl[i].message);
 	continue;
       }
       if (!str_diff("addheader", rbl[i].action)) {
-	logstring(2,"would tag header."); logflush(2);
+	logstring(2,"tag header"); logflush(2);
 	rbladdheader(rbl[i].baseaddr, rbl[i].matchon, rbl[i].message);
 	continue;
       } else {
 	/* default reject */
-	logstring(2,"sender is rejected."); logflush(2);
+	logstring(2,"reject sender"); logflush(2);
 	rblprintheader = 0;
 	return 1;
       }
@@ -156,48 +168,67 @@ int rblinit(void)
   int i;
   int j;
   int k;
+  int n;
 
   rblonlyheader = 0;
   rblenabled = 0;
+
+  rblenabled = env_get("RBL");
+  if (!rblenabled) return 0;
 
   on = control_readfile(&rbldata,"control/rbllist",0);
   if (on == -1) return on;
   if (!on) return on;
 
-  rblenabled = env_get("RBL");
-  if (!rblenabled) return 0;
+  for(i=0, numrbl=0; i < rbldata.len; ++i)
+    if (rbldata.s[i] == '\0')
+	++numrbl;
 
-  for(i=0, numrbl=0; i < rbldata.len; ++i) {
-    if (rbldata.s[i] == '\0') ++numrbl;
-  }
   rbl = (struct rbl*)alloc(numrbl*sizeof(struct rbl));
   if (!rbl) return -1;
 
-  x = (char **)&rbl[0]; x[0] = rbldata.s;
-  for(i=0, j=0, k=0; i < rbldata.len; ++i) {
-    if (rbldata.s[i] == '\t') {
-      rbldata.s[i] = '\0';
-      x[++j] = rbldata.s + i + 1;
-    } else if (rbldata.s[i] == '\0')
-    if (j == 3) {
-      if (++k >= numrbl) break;
-      x = (char**)&rbl[k];
-      x[0] = rbldata.s + i + 1;
-      j = 0;
+  /* line format is "basedomain action matchon message"
+     message may have spaces */
+  x = (char **)&rbl[0];
+  for (i=0, j=0, k=0, n=0; i < rbldata.len; ++i) {
+    while (1) {
+      /* hop over spaces */
+      if (rbldata.s[i] != ' ' && rbldata.s[i] != '\t') break;
+      if (rbldata.s[i] == '\0') {
+	logline(1, "parse error in rbllist, unexpected end of line");
+	return -1;
+      }
+      i++;
+    }
+    j = i;
+    if (n == 3) {
+      /* message */
+      x[n] = rbldata.s + j;
+      n = 0;
+      x = (char **)&rbl[++k];
+      while (rbldata.s[i] != '\0') i++;
     } else {
-      logline(2,"parse error in rbllist");
-      return -1;
+      while (1) {
+        /* hop over argument */
+        if (rbldata.s[i] == ' ' || rbldata.s[i] == '\t') break;
+        if (rbldata.s[i] == '\0') {
+	  logline(1, "parse error in rbllist, unexpected end of line");
+	  return -1;
+        }
+        i++;
+      }
+      rbldata.s[i] = '\0';
+      x[n++] = rbldata.s + j;
     }
   }
   if (k != numrbl) {
-    logline(2,"parse error in rbllist");
+    logline(1,"parse error in rbllist, unexpected end of file");
     return -1;
   }
 
   on = control_readint(&rblonlyheader,"control/rblonlyheader",0);
   if (on == -1) return on;
   rblonlyheader = env_get("RBLONLYHEADER");
-  if (rblonlyheader) logline(2,"Note RBL match only in header, will not reject message");
 
   return 1;
 }

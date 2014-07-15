@@ -434,3 +434,4 @@ qmail-todo.o
 qmail-todo
 byte_repl.o
 rbl.o
+execcheck.o
