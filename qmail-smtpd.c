@@ -171,7 +171,7 @@ void err_bmfunknown(void) { out("553 sorry, your mail from a host ["); out(remot
 void err_maxrcpt(void) { out("553 sorry, too many recipients (#5.7.1)\r\n"); }
 void err_nogateway(void) { out("553 sorry, relaying denied from your location ["); out(remoteip); out("] (#5.7.1)\r\n"); }
 void err_badbounce(void) { out("550 sorry, I don't accept bounce messages with more than one recipient. Go read RFC2821. (#5.7.1)\r\n"); }
-void err_unimpl(char *arg) { out("502 unimplemented (#5.5.1)\r\n"); logline2(3,"unrecognized command: ",arg); }
+void err_unimpl(const char *arg) { out("502 unimplemented (#5.5.1)\r\n"); logline2(3,"unrecognized command: ",arg); }
 void err_size(void) { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); logline(3,"message denied because: 'SMTP SIZE' too big"); }
 void err_syntax(void) { out("555 syntax error (#5.5.4)\r\n"); }
 void err_relay(void) { out("553 sorry, we don't relay for ["); out(remoteip); out("] (#5.7.1)\r\n"); }
@@ -336,10 +336,12 @@ void setup(void)
 
 #ifdef TLS_SMTPD
   sslpath = env_get("SSLCERT");
-  if (!sslpath)
+  if (!sslpath) {
     sslpath = (char *)"control/smtpcert";
-  if (control_rldef(&sslcert, sslpath, 0, "") == -1)
-    die_control();
+    if (control_readline(&sslcert, sslpath) == -1)
+      die_control();
+  } else
+    if (!stralloc_copys(&sslcert, sslpath)) die_nomem();
   if (!stralloc_0(&sslcert)) die_nomem();
 #endif
 
@@ -1596,7 +1598,7 @@ void smtp_auth(char *arg)
   const char *status;
 
   if (!flagauth) {
-    err_unimpl((char *)0);
+    err_unimpl("AUTH without STARTTLS");
     return;
   }
   if (flagauthok) {
@@ -1628,11 +1630,11 @@ void smtp_auth(char *arg)
       call_puts(&cct, arg); call_put(&cct, "", 1);
     } else {
       out("334 VXNlcm5hbWU6\r\n"); flush(); /* base64 for 'Username:' */
-      if (call_getln(&ssin, &line) <= 0) die_read();
+      if (call_getln(&ssin, &line) == -1) die_read();
       call_puts(&cct, line.s); call_put(&cct, "", 1);
     }
     out("334 UGFzc3dvcmQ6\r\n"); flush(); /* base64 for 'Password:' */
-    if (call_getln(&ssin, &line) <= 0) die_read();
+    if (call_getln(&ssin, &line) == -1) die_read();
     call_puts(&cct, line.s); call_putflush(&cct, "", 1);
   } else if (case_diffs(type, "plain") == 0) {
     logline(4,"auth plain");
@@ -1642,7 +1644,7 @@ void smtp_auth(char *arg)
       call_puts(&cct, arg); call_putflush(&cct, "", 1);
     } else {
       out("334 \r\n"); flush();
-      if (call_getln(&ssin, &line) <= 0) die_read();
+      if (call_getln(&ssin, &line) == -1) die_read();
       call_puts(&cct, line.s); call_putflush(&cct, "", 1);
     }
   } else {
@@ -1692,8 +1694,8 @@ void smtp_tls(char *arg)
 {
   SSL_CTX *ctx;
 
-  if (sslcert.s && *sslcert.s) {
-    err_unimpl((char *)0);
+  if (sslcert.s == 0 || *sslcert.s == '\0') {
+    err_unimpl("STARTTLS");
     return;
   }
 
@@ -1715,15 +1717,15 @@ void smtp_tls(char *arg)
   if(!SSL_CTX_use_RSAPrivateKey_file(ctx, sslcert.s, SSL_FILETYPE_PEM))
   {
     out("454 TLS not available: missing RSA private key (#4.3.0)\r\n");
-    logline(3,"aborting TLS negotiations, "
-      "RSA private key invalid or unable to read ~control/cert.pem");
+    logline2(3,"aborting TLS negotiations, "
+      "RSA private key invalid or unable to read ", sslcert.s);
     return;
   }
   if(!SSL_CTX_use_certificate_file(ctx, sslcert.s, SSL_FILETYPE_PEM))
   {
     out("454 TLS not available: missing certificate (#4.3.0)\r\n");
-    logline(3,"aborting TLS negotiations, "
-      "local cert invalid or unable to read ~control/cert.pem");
+    logline2(3,"aborting TLS negotiations, "
+      "local cert invalid or unable to read ", sslcert.s);
     return;
   }
   SSL_CTX_set_tmp_rsa_callback(ctx, tmp_rsa_cb);
@@ -1735,7 +1737,8 @@ void smtp_tls(char *arg)
     logline(3,"aborting TLS connection, unable to set up SSL session");
     die_read();
   }
-  SSL_set_fd(ssl,0);
+  SSL_set_rfd(ssl,substdio_fileno(&ssin));
+  SSL_set_wfd(ssl,substdio_fileno(&ssout));
   if(SSL_accept(ssl)<=0)
   {
     logline(3,"aborting TLS connection, unable to finish SSL accept");
