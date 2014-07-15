@@ -216,7 +216,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.1 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.02 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -1322,6 +1322,31 @@ int authenticate_cl(void)
   return 0; /* yes */
 }
 
+void addvars(s)
+char *s;
+{
+  char *n;
+  char *v;
+  int x;
+
+  n = s;
+
+  while (*n)
+  {
+    if (','==*n) n++ ;
+    x = str_chr(n,'=');
+    if (!n[x]) return ;
+    n[x]=0;
+    if (n[x+1]!='\"') return ;
+    v = n+x+2 ;
+    x = str_chr(v,'\"');
+    if (!v[x]) return ;
+    v[x]=0;
+    env_put2(n,v);
+    n = v+x+1;
+  }
+}
+
 int authenticate_cdb(void)
 {
   int r,x;
@@ -1344,11 +1369,17 @@ int authenticate_cdb(void)
   if (-1 == cdb_bread(auth_cdb_fd,epw.s,epw.len)) die_auth_cdb() ;
   if (!stralloc_0(&epw)) die_nomem();
 
+  x = str_chr(epw.s,',') ;
+  epw.s[x] = 0 ;
+
   if ( str_diff ( crypt ( pass.s , epw.s ) , epw.s ) ) {
     strerr_warn5(title.s,"AUTH failed (bad password) [",
       remoteip,"] ",user.s,0);
     return 1 ;
   }
+
+  if ( x < dlen )
+    addvars(epw.s+x+1,dlen-x-1) ;
 
   strerr_warn5(title.s,"AUTH successful [",remoteip,"] ",user.s,0);
   return 0 ;
