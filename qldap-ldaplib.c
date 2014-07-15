@@ -283,7 +283,18 @@ int ldap_lookup(searchinfo *search, char **attrs, userinfo *info,
 		   LDAP_UNWILLING_TO_PERFORM,
 		   LDAP_TIMEOUT
 		*/
-		qldap_errno = LDAP_SEARCH;
+
+		switch(rc)
+		{
+		case LDAP_TIMEOUT:
+		case LDAP_TIMELIMIT_EXCEEDED:
+		case LDAP_BUSY:
+		  qldap_errno = LDAP_SEARCH_TIMEOUT;
+
+		default:
+		  qldap_errno = LDAP_SEARCH;
+		}
+
 		return -1;
 	}
 #else /* USE_CLDAP */
@@ -419,7 +430,7 @@ static int ldap_get_userinfo(LDAP *ld, LDAPMessage *msg, userinfo *info)
 			qldap_errno = LDAP_ERRNO;
 			return -1;
 		}
-		debug(64, "%s (default)\n", qldap_uid.s);
+		debug(64, "%s (default)\n", qldap_gid.s);
 		str_copy( info->gid, qldap_gid.s );
 	}
 	ldap_value_free(vals);

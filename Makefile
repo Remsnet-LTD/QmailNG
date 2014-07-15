@@ -6,12 +6,14 @@
 # -DQLDAP_CLUSTER for enabling cluster support
 # to use cleartext passwords (a bad idea on production systems) add
 # -DCLEARTEXTPASSWD to the LDAPFLAGS
-#LDAPFLAGS=-DQLDAP_CLUSTER
+LDAPFLAGS=-DQLDAP_CLUSTER
 
 # Perhaps you have different ldap libraries, change them here
 LDAPLIBS=-L/usr/local/lib -lldap -llber
 # and change the location of the include files here
 LDAPINCLUDES=-I/usr/local/include
+# on Slowaris you need -lresolv added like this:
+#LDAPLIBS=-L/opt/OpenLDAP/lib -lldap -llber -lresolv
 # for example on my Linux box I use:
 #LDAPLIBS=-L/opt/OpenLDAP/lib -lldap -llber
 # if you need a special include-directory for ldap headers enable this
@@ -20,23 +22,23 @@ LDAPINCLUDES=-I/usr/local/include
 # TLS (SMTP encryption) in qmail-smtpd and qmail-remote, see TLS.readme
 # You need OpenSSL for this
 # TLS enable
-#TLSON=-DTLS
+TLSON=-DTLS
 # Path to OpenSSL includes
-#TLSINCLUDES=-I/usr/local/include
+TLSINCLUDES=-I/usr/local/include
 # Path to OpenSSL libraries
-#TLSLIBS=-L/usr/local/lib -lssl -lcrypto
+TLSLIBS=-L/usr/local/lib -lssl -lcrypto
 # Path to OpenSSL binary
-#OPENSSLBIN=/usr/local/bin/openssl
+OPENSSLBIN=/usr/local/bin/openssl
 
 # to make the Netscape download progress bar work with qmail-pop3d
 # uncomment the next line (allready done)
 MNW=-DMAKE_NETSCAPE_WORK
 
 # to enable the auto-maildir-make feature uncomment the next line
-#MDIRMAKE=-DAUTOMAILDIRMAKE
+MDIRMAKE=-DAUTOMAILDIRMAKE
 
 # to enable the auto-homedir-make feature uncomment the next line
-#HDIRMAKE=-DAUTOHOMEDIRMAKE
+HDIRMAKE=-DAUTOHOMEDIRMAKE
 
 # on most systems we need this to make checkpassword
 SHADOWLIBS=-lcrypt
