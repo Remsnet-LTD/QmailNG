@@ -7,7 +7,7 @@
 #     from a specified account to another (swiss bigbrother law)
 # -DBIGTODO to enable the big todo patch (this can be used together with
 #     EXTERNAL_TODO). Useful for servers with very many non-preprocessed mails
-# -DBIND_8_COMPAT need if your compile fails building dns.c because of
+# -DBIND_8_COMPAT need if the compile fails building dns.c because of
 #     undeclared defines. This is necessary on MacOS X 10.3.
 # -DCLEARTEXTPASSWD to use cleartext passwords (bad idea on production systems)
 # -DDASH_EXT to enable the dash_ext patch for extended mail addresses
@@ -34,7 +34,7 @@ LDAPINCLUDES=-I/usr/local/include
 
 # ZLIB needed for -DDATA_COMPRESS and -DQMQP_COMPRESS
 #ZLIB=-lz
-# of you installed zlib in a different path you can use something like this
+# or you installed zlib in a different path you can use something like this
 #ZLIB=-L/opt/zlib/lib -lz
 #ZINCLUDES=-I/opt/zlib/include
 
@@ -94,7 +94,8 @@ ldap: qmail-quotawarn qmail-reply auth_pop auth_imap auth_smtp digest \
 qmail-ldaplookup pbsadd pbscheck pbsdbd qmail-todo qmail-forward \
 qmail-secretary qmail-group qmail-verify condwrite qmail-cdb \
 qmail-imapd.run qmail-pbsdbd.run qmail-pop3d.run qmail-qmqpd.run \
-qmail-smtpd.run qmail.run Makefile.cdb-p
+qmail-smtpd.run qmail.run qmail-imapd-ssl.run qmail-pop3d-ssl.run \
+Makefile.cdb-p
 
 addresses.0: \
 addresses.5
@@ -1569,6 +1570,13 @@ qmail-header.0: \
 qmail-header.5
 	nroff -man qmail-header.5 > qmail-header.0
 
+qmail-imapd-ssl.run: \
+qmail-imapd-ssl.sh conf-qmail
+	cat qmail-imapd-ssl.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-imapd-ssl.run
+	chmod 755 qmail-imapd-ssl.run
+
 qmail-imapd.run: \
 qmail-imapd.sh conf-qmail
 	cat qmail-imapd.sh \
@@ -1764,6 +1772,13 @@ str.h exit.h maildir.h strerr.h readwrite.h timeoutread.h \
 timeoutwrite.h maildir++.h
 	./compile $(LDAPFLAGS) $(MNW) qmail-pop3d.c
 
+qmail-pop3d-ssl.run: \
+qmail-pop3d-ssl.sh conf-qmail
+	cat qmail-pop3d-ssl.sh \
+	| sed s}%QMAIL%}"`head -1 conf-qmail`"}g \
+	> qmail-pop3d-ssl.run
+	chmod 755 qmail-pop3d-ssl.run
+
 qmail-pop3d.run: \
 qmail-pop3d.sh conf-qmail
 	cat qmail-pop3d.sh \
@@ -1951,15 +1966,15 @@ wait.h lock.h
 
 qmail-remote: \
 load qmail-remote.o control.o constmap.o timeoutread.o timeoutwrite.o \
-timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o strsalloc.o ipme.o quote.o \
+timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o ipme.o quote.o base64.o \
 ndelay.a case.a sig.a open.a lock.a seek.a getln.a stralloc.a alloc.a \
-substdio.a error.a str.a fs.a auto_qmail.o dns.lib socket.lib
+strerr.a substdio.a error.a str.a fs.a auto_qmail.o dns.lib socket.lib
 	./load qmail-remote control.o constmap.o timeoutread.o \
 	timeoutwrite.o timeoutconn.o tcpto.o now.o dns.o ip.o \
-	ipalloc.o strsalloc.o ipme.o quote.o ndelay.a case.a sig.a open.a \
-	lock.a seek.a getln.a stralloc.a alloc.a substdio.a error.a \
-	str.a fs.a auto_qmail.o  `cat dns.lib` `cat socket.lib` \
-	$(TLSLIBS) $(ZLIB)
+	ipalloc.o ipme.o quote.o base64.o ndelay.a case.a sig.a \
+	open.a lock.a seek.a getln.a stralloc.a alloc.a strerr.a \
+	substdio.a error.a str.a fs.a auto_qmail.o \
+	`cat dns.lib` `cat socket.lib` $(TLSLIBS) $(ZLIB)
 
 qmail-remote.0: \
 qmail-remote.8

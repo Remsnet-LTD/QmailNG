@@ -143,6 +143,8 @@ void logflush(int level)
 
 void cleanup(void);
 
+const char *remoteip;
+
 void die_read(void) { logline(1,"read error or connection closed"); cleanup(); _exit(1); }
 void die_write(void) { logline(1,"write error, connection closed"); cleanup(); _exit(1); }
 void die_alarm(void) { out("451 timeout (#4.4.2)\r\n"); logline(1,"connection timed out, closing connection"); flush(); cleanup(); _exit(1); }
@@ -155,22 +157,22 @@ void err_qqt(void) { out("451 qqt failure (#4.3.0)\r\n"); }
 void err_dns(void) { out("421 DNS temporary failure at return MX check, try again later (#4.3.0)\r\n"); }
 void err_ldapsoft(void) { out("451 temporary ldap lookup failure, try again later\r\n"); logline(1,"temporary ldap lookup failure"); }
 void err_bmf(void) { out("553 sorry, your mail was administratively denied. (#5.7.1)\r\n"); }
-void err_bmfunknown(void) { out("553 sorry, your mail from a host without valid reverse DNS was administratively denied (#5.7.1)\r\n"); }
+void err_bmfunknown(void) { out("553 sorry, your mail from a host ["); out(remoteip); out("] without valid reverse DNS was administratively denied (#5.7.1)\r\n"); }
 void err_maxrcpt(void) { out("553 sorry, too many recipients (#5.7.1)\r\n"); }
-void err_nogateway(const char *arg) { out("553 sorry, relaying denied from your location ["); out(arg); out("] (#5.7.1)\r\n"); }
+void err_nogateway(void) { out("553 sorry, relaying denied from your location ["); out(remoteip); out("] (#5.7.1)\r\n"); }
 void err_badbounce(void) { out("550 sorry, I don't accept bounce messages with more than one recipient. Go read RFC2821. (#5.7.1)\r\n"); }
 void err_unimpl(char *arg) { out("502 unimplemented (#5.5.1)\r\n"); logpid(3); logstring(3,"unrecognized command: "); logstring(3,arg); logflush(3); }
 void err_size(void) { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); logline(3,"message denied because: 'SMTP SIZE' too big"); }
 void err_syntax(void) { out("555 syntax error (#5.5.4)\r\n"); }
-void err_relay(void) { out("553 we don't relay (#5.7.1)\r\n"); }
+void err_relay(void) { out("553 sorry, we don't relay for ["); out(remoteip); out("] (#5.7.1)\r\n"); }
 void err_wantmail(void) { out("503 MAIL first (#5.5.1)\r\n"); logline(3,"'mail from' first"); }
 void err_wantrcpt(void) { out("503 RCPT first (#5.5.1)\r\n"); logline(3,"'rcpt to' first"); }
 
 void err_noop(char *arg) { out("250 ok\r\n"); logline(3,"'noop'"); }
 void err_vrfy(char *arg) { out("252 send some mail, i'll try my best\r\n"); logpid(3); logstring(3,"vrfy for: "); logstring(3,arg); logflush(3); }
 
-void err_rbl(char *arg) { out("553 sorry, your mailserver is rejected by "); out(arg); out("\r\n"); }
-void err_deny(void) { out("553 sorry, mail from your location is administratively denied (#5.7.1)\r\n"); }
+void err_rbl(char *arg) { out("553 sorry, your mailserver ["); out(remoteip); out("] is rejected by "); out(arg); out("\r\n"); }
+void err_deny(void) { out("553 sorry, mail from your location ["); out(remoteip); out("] is administratively denied (#5.7.1)\r\n"); }
 void err_badrcptto(void) { out("553 sorry, mail to that recipient is not accepted (#5.7.1)\r\n"); }
 void err_554msg(const char *arg)
 {
@@ -180,8 +182,6 @@ void err_554msg(const char *arg)
 	logflush(3);
 }
 
-void err_noop() { out("250 ok\r\n"); logline(3,"'noop'"); }
-void err_vrfy(arg) char *arg; { out("252 send some mail, i'll try my best\r\n"); logpid(3); logstring(3,"vrfy for: "); logstring(3,arg); logflush(3); }
 
 stralloc me = {0};
 stralloc greeting = {0};
@@ -221,6 +221,8 @@ void smtp_help(char *arg)
 }
 void smtp_quit(char *arg)
 {
+  if (!stralloc_copys(&greeting,"Goodbye."))
+    die_nomem();
   smtp_line("221 ");
   logline(3,"quit, closing connection");
   flush();
@@ -235,13 +237,13 @@ void err_quit(void)
   _exit(0);
 }
 
-const char *remoteip;
 const char *remotehost;
 const char *remoteinfo;
 const char *local;
 const char *relayclient;
 const char *relayok;
 const char *greeting550;
+const char *greeting421;
 int  spamflag = 0;
 
 stralloc helohost = {0};
@@ -379,6 +381,7 @@ void setup(void)
   if (env_get("RCPTCHECK")) rcptcheck = 1;
   if (env_get("LDAPSOFTOK")) ldapsoftok = 1;
   greeting550 = env_get("550GREETING");
+  greeting421 = env_get("421GREETING");
   relayok = relayclient = env_get("RELAYCLIENT");
 
   if (env_get("SMTPAUTH")) {
@@ -1135,7 +1138,7 @@ void smtp_rcpt(char *arg)
   } else {
     if (!addrallowed())
     {
-      err_nogateway(remoteip);
+      err_nogateway();
       logpid(2); logstring(2,"no mail relay for 'rcpt to': ");
       logstring(2,arg); logflush(2);
       if (errdisconnect) err_quit();
@@ -1717,6 +1720,19 @@ void cleanup(void)
 	ldaplookupdone();
 }
 
+void err_503or421(char *arg)
+{
+  if (greeting421)
+    out("421 Service temporarily not available (#4.3.2)\r\n");
+  else
+    out("503 bad sequence of commands (#5.5.1)\r\n");
+  if (errdisconnect) err_quit();
+}
+void err_badcommand(char *arg)
+{
+  out("503 bad sequence of commands (#5.5.1)\r\n");
+}
+
 struct commands smtpcommands[] = {
   { "rcpt", smtp_rcpt, 0 }
 , { "mail", smtp_mail, 0 }
@@ -1738,6 +1754,13 @@ struct commands smtpcommands[] = {
 , { 0, err_unimpl, flush }
 } ;
 
+struct commands smtprestricted[] = {
+  { "quit", smtp_quit, flush }
+, { "helo", err_503or421, flush }
+, { "ehlo", err_503or421, flush }
+, { 0, err_badcommand, flush }
+};
+
 int main(int argc, char **argv)
 {
 #ifdef TLS_SMTPD
@@ -1747,12 +1770,21 @@ int main(int argc, char **argv)
   if (chdir(auto_qmail) == -1) die_control();
   setup();
   if (ipme_init() != 1) die_ipme();
-  if (greeting550) {
-    stralloc_copys(&greeting,greeting550);
-    if (greeting.len == 0)
-      stralloc_copys(&greeting,"sorry, your mail was administratively denied. (#5.7.1)");
-    smtp_line("554 ");
-    err_quit();
+  if (greeting550 || greeting421) {
+    if (!stralloc_copys(&greeting,greeting550 ? greeting550 : greeting421))
+      die_nomem();
+    timeout = 20; /* reduce timeout so the abuser is kicked out faster */
+    if (greeting.len == 0 && greeting550)
+      stralloc_copys(&greeting,
+	  "Sorry, your mail was administratively denied. (#5.7.1)");
+    else if (greeting.len == 0 && greeting421)
+      stralloc_copys(&greeting,
+	  "Service temporarily not available (#4.3.2)");
+
+    smtp_line(greeting550 ? "554 " : "421 ");
+    if (errdisconnect) err_quit();
+    if (commands(&ssin,smtprestricted) == 0) die_read();
+    die_nomem();
   }
   smtp_greet("220 ");
   if (commands(&ssin,smtpcommands) == 0) die_read();

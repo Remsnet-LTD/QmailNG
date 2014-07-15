@@ -81,6 +81,7 @@ call_flush(struct call *cc)
 	return 0;
 
 }
+
 int
 call_putflush(struct call *cc, const char *s, unsigned int len)
 {
@@ -190,7 +191,8 @@ auth_close(struct call *cc, stralloc *user, const char *pre)
 
 	if (!cc->flagerr && !cc->flagabort) {
 		if (call_getc(cc, &c) == -1) {
-			s = "501 authentication exchange failed\r\n";
+			s = "454 authentication process read failure. "
+			    "(#4.3.0)\r\n";
 		} else
 		switch (c) {
 		case 'K':

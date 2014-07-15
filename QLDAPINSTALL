@@ -1,12 +1,12 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001,2002,2003 Internet Business Solutions AG
+(c) 1998,1999,2000,2001,2002,2003,2004 Internet Business Solutions AG
 
-This LDAP patches for qmail come with NO WARRANTY.
+The qmail-ldap patch for qmail comes with NO WARRANTY.
 
-These patches are under the BSD license. See LICENSE.
+This patch is under the BSD license. See LICENSE.
 
-RELEASE: current ($Date: 2004/02/17 12:52:02 $)
+RELEASE: current ($Date: 2004/04/05 08:36:40 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -893,17 +893,34 @@ TARPITDELAY
        that this ties up the available qmail-smtpd slots. Raise connection
        limits with tcpserver if neccessary.
 
+421GREETING
+
+ Rejects a connection right away with a 421 in the greeting line and
+ starts in a dummy mode where only QUIT works unless 421GREETING is set -- in
+ that case the connection will closed immediatly after printing the greeting.
+ Default: off
+ Affects: qmail-smtpd
+ Example: ""
+ Example: "Go away!"
+ Note: You can set this in tcpserver if you want to reject messages from
+       an ip address temporarily. If no string is given it will default
+       to "Service temporarily not available (#4.3.2)".
+       The timeout is reduced to 20 seconds to prevent starvation.
+
 550GREETING
 
- Rejects a connection right away with an 550 in the greeting line and
- closes the connection.
+ Rejects a connection right away with a 550 in the greeting line and
+ starts in a dummy mode where only QUIT works unless 421GREETING is set -- in
+ that case the connection will closed immediatly after printing the greeting.
  Default: off
  Affects: qmail-smtpd
  Example: ""
  Example: "Go away!"
  Note: You can set this in tcpserver if you want to reject messages from
        an ip address permanently. If no string is given it will default
-       to "your message has been administratively denied".
+       to "Sorry, your message has been administratively denied. (#5.7.1)".
+       The timeout is reduced to 20 seconds to prevent starvation.
+       550GREETING has precedence over 421GREETING.
 
 
 ================================================================================
@@ -993,8 +1010,9 @@ LDAP_QUOTA_COUNT (default: "mailQuotaCount")
  Example: max 1000000 bytes size and max 1000 Mails
             mailQuotaSize: 1000000
             mailQuotaCount: 1000
- Note: overrides defaultquotasize and defaultquotacount per user.
-       the old string forma (1000000S,1000C) is no longer supported.
+ Note:  a value of 0 means unlimited quota for that limit (count or size).
+ Note2: overrides defaultquotasize and defaultquotacount per user.
+        the old string forma (1000000S,1000C) is no longer supported.
 
 LDAP_MAXMSIZE (default: "mailSizeMax")
 
@@ -1184,8 +1202,8 @@ to your slapd.conf:
 
 MAILINGLIST, BUGS & PROBLEMS
 
-There is a qmail-ldap specific mailinglist at qmail-ldap@argus.pipeline.ch.
-To subscribe just write a mail to qmail-ldap-subscribe@argus.pipeline.ch.
+There is a qmail-ldap specific mailinglist at qmail-ldap@qmail-ldap.org.
+To subscribe just write a mail to qmail-ldap-subscribe@qmail-ldap.org.
 
 The qmail-ldap mailinglist archive can be found at
 http://www.suares.com/qmail-ldap/archive

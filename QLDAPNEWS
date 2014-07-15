@@ -1,12 +1,8 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001,2002,2003 Internet Business Solutions AG
+(c) 1998,1999,2000,2001,2002,2003,2004 Internet Business Solutions AG
 
-This LDAP patches for qmail come with NO WARRANTY.
-
-These patches are under the BSD license. See LICENSE.
-
-RELEASE: $Date: 2004/03/04 13:31:46 $ ($Revision: 1.182 $)
+RELEASE: $Date: 2004/04/05 08:36:40 $ ($Revision: 1.190 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -20,6 +16,28 @@ WARNING: If you are upgrading from 20030801a or earlier make sure that
          you have read the news section for 20030901.
 
 NEWS for current stuff:
+
+ Added some qmail-group docu. See QLDAPGROUP.
+
+ Better 550GREETING support and added an additional 421GREETING mode to
+ qmail-smtpd.
+
+ Qmail-secretary should ignore mails with precedence set to list, junk or bulk.
+
+ Added Bruce Guenters qmail-qmqpc connect timeout patch.
+
+ Add SMTP AUTH support to qmail-remote. A user can be specified via
+ ~control/smtproutes. To authenticate all mails to inside.af.mil with
+ user joe-user something like this can be used.
+   inside.af.mil:firewall.af.mil joe-user eat@joe's
+
+ Don't let qmail-group or qmail-secretary inject mails with no recipients.
+
+ Print remote IP address in error messages for RBL rejects and denied
+ relaying attempts to make debugging based on the bounce messages far
+ easier.  Requested by Jason Eggleston.
+
+NEWS for 20040301 stuff:
 
  Fix buffer overflow noticed by Georgi Guninski in qmail-qmtpd.c.
  There is no easy way to exploit it. Additionally the same issue is
@@ -759,7 +777,7 @@ NEWS for 20020501 stuff:
 NEWS for 20011001 stuff:
 
  added a variation of Henning Brauer's alternate mailhost patch.
- For more info: mailto:<qmail-ldap-get.5350@argus.pipeline.ch>
+ For more info: mailto:<qmail-ldap-get.5350@qmail-ldap.org>
 
  added a variation of Henning Brauer's dash-ext patch. The main
  difference is the way it handels the extensions.

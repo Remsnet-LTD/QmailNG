@@ -229,10 +229,20 @@ char **argv;
  ch = auto_spawn; substdio_put(&ssout,&ch,1);
  ch = auto_spawn >> 8; substdio_putflush(&ssout,&ch,1);
 
- for (i = 0;i < auto_spawn;++i) { d[i].used = 0; d[i].output.s = 0; }
+ for (i = 0;i < auto_spawn;++i) {
+   d[i].used = 0;
+   d[i].output.s = 0;
+#ifdef DEBUG
+   d[i].log.s = 0;
+#endif
+ }
 
  for (;;)
   {
+   if (flagreinit) {
+     initialize(argc,argv);
+     flagreinit = 0;
+   }
    if (!flagreading)
     {
      for (i = 0;i < auto_spawn;++i) if (d[i].used) break;

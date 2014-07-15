@@ -61,9 +61,15 @@ void hier()
   d(auto_qmail,"boot/qmail-pop3d",auto_uido,auto_gidq,0755);
   d(auto_qmail,"boot/qmail-pop3d/env",auto_uido,auto_gidq,0755);
   d(auto_qmail,"boot/qmail-pop3d/log",auto_uido,auto_gidq,0755);
-  d(auto_qmail,"boot/qmail-imap4",auto_uido,auto_gidq,0755);
-  d(auto_qmail,"boot/qmail-imap4/env",auto_uido,auto_gidq,0755);
-  d(auto_qmail,"boot/qmail-imap4/log",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd/env",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd/log",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-pop3d-ssl",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-pop3d-ssl/env",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-pop3d-ssl/log",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd-ssl",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd-ssl/env",auto_uido,auto_gidq,0755);
+  d(auto_qmail,"boot/qmail-imapd-ssl/log",auto_uido,auto_gidq,0755);
   d(auto_qmail,"boot/qmail-pbsdbd",auto_uido,auto_gidq,0755);
   d(auto_qmail,"boot/qmail-pbsdbd/env",auto_uido,auto_gidq,0755);
   d(auto_qmail,"boot/qmail-pbsdbd/log",auto_uido,auto_gidq,0755);
@@ -130,6 +136,8 @@ void hier()
   C(auto_qmail,"boot/qmail-qmqpd", "run", "qmail-qmqpd.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-pop3d", "run", "qmail-pop3d.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-imapd", "run", "qmail-imapd.run",auto_uido,auto_gidq,0755);
+  C(auto_qmail,"boot/qmail-pop3d", "run", "qmail-pop3d-ssl.run",auto_uido,auto_gidq,0755);
+  C(auto_qmail,"boot/qmail-imapd", "run", "qmail-imapd-ssl.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-pbsdbd", "run", "qmail-pbsdbd.run",auto_uido,auto_gidq,0755);
 
   /* run files for logging process */
@@ -163,6 +171,7 @@ void hier()
   c(auto_qmail,"doc","PIC.relaybad",auto_uido,auto_gidq,0644);
   c(auto_qmail,"doc","PIC.relaygood",auto_uido,auto_gidq,0644);
   c(auto_qmail,"doc","PIC.rem2local",auto_uido,auto_gidq,0644);
+  c(auto_qmail,"doc","QLDAPGROUP",auto_uido,auto_gidq,0644);
   c(auto_qmail,"doc","QLDAPINSTALL",auto_uido,auto_gidq,0644);
   c(auto_qmail,"doc","QLDAPNEWS",auto_uido,auto_gidq,0644);
   c(auto_qmail,"doc","QLDAPTODO",auto_uido,auto_gidq,0644);
