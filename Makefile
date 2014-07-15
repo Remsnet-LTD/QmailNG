@@ -1445,13 +1445,14 @@ qmail-qstat.8
 	nroff -man qmail-qstat.8 > qmail-qstat.0
 
 qmail-queue: \
-load qmail-queue.o triggerpull.o fmtqfn.o now.o date822fmt.o \
-datetime.a seek.a ndelay.a open.a sig.a alloc.a substdio.a error.a \
-str.a fs.a auto_qmail.o auto_split.o auto_uids.o
+load qmail-queue.o triggerpull.o fmtqfn.o now.o date822fmt.o qregex.o \
+datetime.a seek.a case.a ndelay.a open.a sig.a getln.a stralloc.a alloc.a \
+substdio.a error.a control.o constmap.o str.a fs.a auto_qmail.o \
+auto_split.o auto_uids.o
 	./load qmail-queue triggerpull.o fmtqfn.o now.o \
-	date822fmt.o datetime.a seek.a ndelay.a open.a sig.a \
-	alloc.a substdio.a error.a str.a fs.a auto_qmail.o \
-	auto_split.o auto_uids.o 
+	date822fmt.o qregex.o control.o constmap.o datetime.a case.a seek.a \
+	ndelay.a open.a sig.a getln.a stralloc.a alloc.a substdio.a error.a \
+	str.a fs.a auto_qmail.o auto_split.o auto_uids.o
 
 qmail-queue.0: \
 qmail-queue.8

@@ -216,7 +216,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.1 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
