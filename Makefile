@@ -1937,17 +1937,17 @@ tcpto.h readwrite.h timeoutconn.h timeoutread.h timeoutwrite.h
 qmail-reply: \
 load qmail-reply.o mailmagic.o case.a control.o constmap.o getln.a \
 sig.a newfield.o now.o date822fmt.o datetime.a open.a seek.a env.a \
-qmail.o getopt.a fd.a wait.a stralloc.a alloc.a strerr.a substdio.a \
-error.a str.a fs.a auto_qmail.o
-	./load qmail-reply mailmagic.o case.a control.o constmap.o getln.a sig.a \
-	newfield.o now.o date822fmt.o datetime.a open.a seek.a env.a \
-	qmail.o getopt.a fd.a wait.a stralloc.a alloc.a strerr.a \
-	substdio.a error.a str.a fs.a auto_qmail.o
+qmail.o getopt.a fd.a wait.a digest_md5.o base64.o stralloc.a alloc.a \
+strerr.a substdio.a error.a str.a fs.a auto_qmail.o
+	./load qmail-reply mailmagic.o case.a control.o constmap.o \
+	getln.a sig.a newfield.o now.o date822fmt.o datetime.a open.a \
+	seek.a env.a qmail.o getopt.a fd.a wait.a digest_md5.o base64.o \
+	stralloc.a alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o
 
 qmail-reply.o: \
 compile qmail-reply.c byte.h case.h control.h constmap.h direntry.h env.h \
 error.h exit.h getln.h newfield.h now.h open.h qmail.h qmail-ldap.h \
-readwrite.h seek.h sgetopt.h strerr.h stralloc.h substdio.h
+readwrite.h seek.h sgetopt.h strerr.h stralloc.h substdio.h uint32.h
 	./compile $(LDAPFLAGS) qmail-reply.c
 
 qmail-rspawn: \

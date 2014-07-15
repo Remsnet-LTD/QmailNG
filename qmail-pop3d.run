@@ -12,8 +12,12 @@ fi
 
 PATH=$PATH:"$QMAIL/bin"
 
+/* source the environemt in ./env */
+eval `env - envdir ./env env`
+
 exec envdir ./env \
-	tcpserver -v -HRl $ME -x$QMAIL/control/qmail-pop3d.cdb 0 pop3 \
+	tcpserver -v -HRl $ME -x$QMAIL/control/qmail-pop3d.cdb \
+	    ${CONCURRENCY+"-c$CONCURRENCY"} ${BACKLOG+"-b$BACKLOG"} 0 pop3 \
 	$QMAIL/bin/qmail-popup $ME \
 	$QMAIL/bin/auth_pop \
 	$QMAIL/bin/pbsadd \

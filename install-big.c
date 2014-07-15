@@ -113,10 +113,10 @@ void hier()
   p(auto_qmail,"queue/lock/trigger",auto_uids,auto_gidq,0622);
 
   /* rules file for tcpserver */
-  c(auto_qmail,"control","qmail-smtpd.rules",auto_uido,auto_gidq,0644);
-  c(auto_qmail,"control","qmail-qmqpd.rules",auto_uido,auto_gidq,0644);
-  c(auto_qmail,"control","qmail-pop3d.rules",auto_uido,auto_gidq,0644);
-  c(auto_qmail,"control","qmail-imapd.rules",auto_uido,auto_gidq,0644);
+  C(auto_qmail,"control","qmail-smtpd.rules","qmail-smtpd.rules",auto_uido,auto_gidq,0644);
+  C(auto_qmail,"control","qmail-qmqpd.rules","qmail-qmqpd.rules",auto_uido,auto_gidq,0644);
+  C(auto_qmail,"control","qmail-pop3d.rules","qmail-pop3d.rules",auto_uido,auto_gidq,0644);
+  C(auto_qmail,"control","qmail-imapd.rules","qmail-imapd.rules",auto_uido,auto_gidq,0644);
 
   /* Makefile for cdb creation */
   C(auto_qmail,"control","Makefile","Makefile.cdb",auto_uido,auto_gidq,0644);
@@ -128,9 +128,6 @@ void hier()
   C(auto_qmail,"boot/qmail-pop3d", "run", "qmail-pop3d.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-imapd", "run", "qmail-imapd.run",auto_uido,auto_gidq,0755);
   C(auto_qmail,"boot/qmail-pbsdbd", "run", "qmail-pbsdbd.run",auto_uido,auto_gidq,0755);
-  C(auto_qmail,"boot/qmail-imapd", "down", "/dev/null",auto_uido,auto_gidq,0644);
-  C(auto_qmail,"boot/qmail-qmqpd", "down", "/dev/null",auto_uido,auto_gidq,0644);
-  C(auto_qmail,"boot/qmail-pbsdbd", "down", "/dev/null",auto_uido,auto_gidq,0644);
 
   /* run files for logging process */
   l(auto_qmail,"boot/qmail/log","log/qmail",auto_userl,auto_uido,auto_gidq,0755);
@@ -224,7 +221,7 @@ void hier()
   c(auto_qmail,"bin","auth_imap",auto_uido,auto_gidq,0700);
   c(auto_qmail,"bin","auth_smtp",auto_uido,auto_gidq,0755);
   c(auto_qmail,"bin","qmail-verify",auto_uido,auto_gidq,0755);
-  c(auto_qmail,"bin","qmail-ldaplookup",auto_uido,auto_gidq,0700);
+  c(auto_qmail,"bin","qmail-ldaplookup",auto_uido,0,0750);
   c(auto_qmail,"bin","qmail-cdb",auto_uido,auto_gidq,0700);
   c(auto_qmail,"bin","digest",auto_uido,auto_gidq,0755);
   c(auto_qmail,"bin","pbsadd",auto_uido,auto_gidq,0755);

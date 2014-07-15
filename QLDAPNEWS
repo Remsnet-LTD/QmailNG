@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license. See LICENSE.
 
-RELEASE: $Date: 2003/11/11 22:08:35 $ ($Revision: 1.147 $)
+RELEASE: $Date: 2003/11/27 20:02:11 $ ($Revision: 1.157 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -20,6 +20,41 @@ WARNING: If you are upgrading from 20030801a or earlier make sure that
          you have read the news section for 20030901.
 
 NEWS for current stuff:
+
+ Do not overwrite rules file on new install (make setup check).
+
+ Make it possible to specify the number of concurrent connection of tcpserver
+ controlled daemons (qmail-smtpd, qmail-qmqpd, qmail-pop3d, qmail-imapd).
+ This can be achived by setting the CONCURRENCY environment variable.
+
+ qmail-reply does no longer reply to messages tagged with a spamassassin
+ "X-Spam-Status: Yes" header.
+
+ The dynamic data compression done in qmail-qmqpd can be explicitly disabled.
+ If the environment variable NOCOMPRESS is set the feature is disabled.
+
+ Sending a SIGHUP reloads now also the qmail-lspawn config. Sending a
+ SIGHUP directly to qmail-lspawn is no longer supported. qmail-send sends
+ upon receipt of a SIGHUP a empty message with delivery number 0xBEEF (48879)
+ to the qmail-lspawn process. This may cause trouble if you have a concurrency
+ bigger than this. The code should work even with higher values but I'm not
+ able to test this.
+
+ qmail-reply should clear the database if the reply text changes. So that
+ you get a new message after the change.
+
+ Fix in check.c:sanitypathcheckb(). Until now .. where not allowed in a
+ path. Now we check for the real thing(tm) "/../" and "^../".
+
+ Case sensitivity bug fix when using locals.cdb. While constmap uses case
+ insensitive compares cdb doesn't, this will cause trouble when using local.cdb
+ and the envelope recipient has uppercase letters in the domain part.
+ Thanks to Doug Council for the report.
+
+ Do not touch "down" files in service dirs on install else we would disable a
+ already enabled service without the knowledge of the user.
+
+NEWS for 20031101a stuff:
 
  Nasty bugfix in qmail-qmqpd with compression turned on. On slow links large
  mails could cause a transmission error.

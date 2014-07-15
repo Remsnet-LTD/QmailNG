@@ -9,7 +9,11 @@ ME=$(head -1 $QMAIL/control/me)
 
 PATH=$PATH:"$QMAIL/bin"
 
+/* source the environemt in ./env */
+eval `env - envdir ./env env`
+
 exec envdir ./env \
 	envuidgid $USER \
-	tcpserver -v -URl $ME -x$QMAIL/control/qmail-qmqpd.cdb 0 628 \
+	tcpserver -v -URl $ME -x$QMAIL/control/qmail-qmqpd.cdb \
+	    ${CONCURRENCY+"-c$CONCURRENCY"} ${BACKLOG+"-b$BACKLOG"} 0 628 \
 	$QMAIL/bin/qmail-qmqpd
