@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2003/03/01 14:10:37 $ ($Revision: 1.84 $)
+RELEASE: $Date: 2003/04/01 13:56:44 $ ($Revision: 1.90 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,21 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ Added big todo patch. Enable with -DBIGTODO in Makefile.
+
+ qmail-remote has a better look at the return codes of the helo/ehlo command.
+ This gives a better error handling in case of server that refuse the
+ connection with a >500 error in the begining.
+
+ qmail-local bug fix in .qmail parser (missing () around a ||).
+
+ Be more careful with closedir(). It is possible that the dirp is NULL.
+
+ Nasty bug fix in qmail-qmqpc.c. Due to this it was impossible to use
+ qmail-qmqpc.
+
+NEWS for 20030301 stuff:
 
  qmail-showctl updated so that all new control files are listed.
 
