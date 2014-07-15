@@ -339,54 +339,6 @@ Number of seconds
 will wait for each new buffer of data from the remote SMTP client.
 Default: 1200.
 .TP 5
-.I validrcptto.cdb
-If this file is present, qmail-smtpd will check the argument of every RCPT
-command against this file. It searches the file for a key which matches
-the RCPT command. If a key is not found, the RCPT command will be rejected.
-If a key is found, the RCPT command may be accepted or rejected, depending
-on the value (if any) attached to that key.
-
-qmail-smtpd searches first for a key which matches the argument to the
-RCPT command. If the address sent by the client is not found, and if the
-mailbox portion of the address (the part to the left of the "@" sign)
-contains one or more of qmail's "ext" character (usually "-", ASCII 45)
-it will search for any appropriate entries of the form
-.B user-default@domain
-going from more to less specific, with
-.B @domain
-as a final resort.
-
-For example, if the address sent is
-.B user-one-two-three@domain,
-it will search for the following items:
-
-.EX
-   user-one-two-three@domain
-   user-one-two-default@domain
-   user-one-default@domain
-   user-default@domain
-   @domain
-.EE
-
-The first key key it finds while searching is what will be used.
-
-Once an appropriate key is found, the value (if any) attached to that key
-is checked. If the key has no value (as will be the case if you are using
-an older version of the validrcptto.cdb patch) then the address will be
-accepted. If there is a value attached, and if the first byte of that
-value is a hyphen (i.e. "-", ASCII 45) then the address will be rejected.
-Values other than "-" are reserved for future versions of this patch and
-should not be used.
-
-In order to prevent "harvesting" attacks,
-.B qmail-smtpd
-counts how many invalid recipients have been attempted in each connection,
-and when a certain limit is reached,
-.B qmail-smtpd
-will forcibly disconnect the client. This limit has a default 10, and can be
-changed or disabled with the
-.B VALIDRCPTTO_LIMIT
-environment variable.
 .SH "ENVIRONMENT VARIABLES"
 There are several environment variables which may be set in order to
 modify how qmail-smtpd works.
@@ -655,6 +607,24 @@ can be tested by any scripts called through the
 mechanism to determine whether or not the remote SMTP client has sent a
 successful AUTH command or not.
 .TP 5
+.I QMAILSMTPD_HELP_VERSION
+If this variable is set to a non-zero value, the output of the HELP command
+will include the version and URL of the jms1 combined patch you are using.
+
+Note that this variable is re-checked after a successful AUTH command,
+which makes it possible to change its value using an
+AUTH_SET_QMAILSMTPD_HELP_VERSION environment variable.
+.TP 5
+.I QMAILSMTPD_LOG_MAIL
+If this variable is set to a non-zero value, qmail-smtpd will log the sender
+addresses specified in all successful MAIL FROM commands received from the
+client.
+.TP 5
+.I QMAILSMTPD_LOG_RCPT
+If this variable is set to a non-zero value, qmail-smtpd will log the
+recipient addresses specified in all successful RCPT TO commands received
+from the client.
+.TP 5
 .I SMTPGREETING
 This variable overrides the value stored in the
 .B smtpgreeting
@@ -724,6 +694,60 @@ STARTTLS command at all, you may either remove whatever file this variable
 .B DENY_TLS
 environment variable with a non-zero value.
 .TP 5
+.I VALIDRCPTTO_CDB
+If this variable is present and not empty, qmail-smtpd will expect it to
+contain the name of a cdb file. qmail-smtpd will check the argument of every
+RCPT command against this file. It searches the file for a key which matches
+the RCPT command. If a key is not found, the RCPT command will be rejected.
+If a key is found, the RCPT command may be accepted or rejected, depending
+on the value (if any) attached to that key.
+
+qmail-smtpd searches first for a key which matches the argument to the
+RCPT command. If the address sent by the client is not found, and if the
+mailbox portion of the address (the part to the left of the "@" sign)
+contains one or more of qmail's "ext" character (usually "-", ASCII 45)
+it will search for any appropriate entries of the form
+.B user-default@domain
+going from more to less specific, with
+.B @domain
+as a final resort.
+
+For example, if the address sent is
+.B user-one-two-three@domain,
+it will search for the following items:
+
+.EX
+   user-one-two-three@domain
+   user-one-two-default@domain
+   user-one-default@domain
+   user-default@domain
+   @domain
+.EE
+
+The first key key it finds while searching is what will be used.
+
+Once an appropriate key is found, the value (if any) attached to that key
+is checked. If the key has no value (as will be the case if you are using
+an older version of the validrcptto.cdb patch) then the address will be
+accepted. If there is a value attached, and if the first byte of that
+value is a hyphen (i.e. "-", ASCII 45) then the address will be rejected.
+Values other than "-" are reserved for future versions of this patch and
+should not be used.
+
+In order to prevent "harvesting" attacks,
+.B qmail-smtpd
+counts how many invalid recipients have been attempted in each connection,
+and when a certain limit is reached,
+.B qmail-smtpd
+will forcibly disconnect the client. This limit has a default 10, and can be
+changed or disabled with the
+.B VALIDRCPTTO_LIMIT
+environment variable.
+
+This variable is re-checked after a successful AUTH command, which makes
+it possible to change its value using an AUTH_SET_VALIDRCPTTO_CDB
+or AUTH_UNSET_VALIDRCPTTO_CDB environment variable.
+.TP 5
 .I VALIDRCPTTO_LIMIT
 This variable sets the limit of how many invalid RCPT TO commands will be
 treated as "soft errors". When this limit is reached,
@@ -769,5 +793,5 @@ See
 .B http://qmail.jms1.net/patches/combined-details.shtml
 for more detailed information about the differences between this instance
 of qmail and the stock qmail. This man page is current as of the
-.B 6cf
+.B 6cg
 version of the combined patch file.

@@ -84,6 +84,8 @@ unsigned int allow_insecure_auth = 0;
 unsigned int require_auth = 0;
 char pid_buf[FMT_ULONG];
 stralloc title = {0};
+int log_mail = 0;
+int log_rcpt = 0;
 
 #ifdef TLS
 unsigned int force_tls = 0;
@@ -157,7 +159,10 @@ void die_cannot_cram() { out("421 ALLOW_CRAM not available\r\n"); flush(); _exit
 void die_auth_cdb() { out("421 cannot read AUTH_CDB file\r\n"); flush(); _exit(1); }
 void die_pre_greet() { out("554 SMTP protocol violation\r\n"); flush(); _exit(1); }
 
-void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
+void err_size() {
+  out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n");
+  strerr_warn4(title.s,"DATABYTES exceeded [",remoteip,"]",0);
+}
 void err_bmf() { out("553 sorry, your envelope sender has been denied (#5.7.1)\r\n"); }
 void err_brt() { out("553 sorry, your envelope recipient has been denied (#5.7.1)\r\n"); }
 void err_bhelo() { out("553 sorry, your HELO host name has been denied (#5.7.1)\r\n"); }
@@ -200,6 +205,7 @@ stralloc spflocal = {0};
 stralloc spfguess = {0};
 stralloc spfexp = {0};
 int spf_log = 0;
+int help_version = 0;
 
 void smtp_greet(code) char *code;
 {
@@ -208,7 +214,9 @@ void smtp_greet(code) char *code;
 }
 void smtp_help()
 {
-  out("214 netqmail home page: http://qmail.org/netqmail\r\n");
+    out("214 netqmail home page: http://qmail.org/netqmail\r\n");
+  if(help_version)
+    out("214 jms1 combined patch v6cg http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -291,6 +299,25 @@ void readenv()
 
   x = env_get("RELAYREJ");
   if(x) { scan_ulong(x,&u); relayrej = (int) u; }
+
+  x = env_get("VALIDRCPTTO_CDB");
+  if(x) {
+    if (-1 != vrtfd) { close(vrtfd); vrtfd = -1; }
+    if(*x) {
+      vrtfd = open_read(x);
+      if (-1 == vrtfd) die_control();
+    }
+  }
+  else if (-1 != vrtfd) { close(vrtfd); vrtfd = -1; }
+
+  x = env_get("QMAILSMTPD_LOG_MAIL");
+  if(x) { scan_ulong(x,&u); log_mail = (int) u; }
+
+  x = env_get("QMAILSMTPD_LOG_RCPT");
+  if(x) { scan_ulong(x,&u); log_rcpt = (int) u; }
+
+  x = env_get("QMAILSMTPD_HELP_VERSION");
+  if(x) { scan_ulong(x,&u); help_version = (int) u; }
 }
 
 int logregex = 0;
@@ -336,9 +363,6 @@ void setup()
   if(env_get("NOBADHELO")) bhelook = 0;
 
   if(env_get("LOGREGEX")) logregex = 1;
-
-  vrtfd = open_read("control/validrcptto.cdb");
-  if (-1 == vrtfd) if (errno != error_noent) die_control();
 
   if (useauth_cdb) {
     auth_cdb_fd = open_read(auth_cdb_file);
@@ -602,7 +626,7 @@ int vrtcheck()
   if (!stralloc_copy(&laddr,&addr)) die_nomem() ;
   case_lowerb(laddr.s,laddr.len);
 
-  vrtlog ( 1 , rcptto , laddr.s );
+  if ( !log_rcpt ) vrtlog ( 1 , rcptto , laddr.s );
 
   /* exact match? */
   vrtlog ( 2 , trying , laddr.s );
@@ -813,6 +837,7 @@ void smtp_mail(arg) char *arg;
   if (!stralloc_copys(&rcptto,"")) die_nomem();
   if (!stralloc_copys(&mailfrom,addr.s)) die_nomem();
   if (!stralloc_0(&mailfrom)) die_nomem();
+  if (log_mail) { strerr_warn4(title.s,"MAIL FROM:<",mailfrom.s,">",0); }
   rcptcounter = 0 ;
   out("250 ok\r\n");
 }
@@ -849,6 +874,7 @@ void smtp_rcpt(arg) char *arg; {
   if (checkrcptcount() == 1) { err_syntax(); return; }
   if (!addrparse(arg)) { err_syntax(); return; }
   if (addrrelay()) { err_relay(); return; }
+  if (log_rcpt) { strerr_warn4(title.s,"RCPT TO:<",addr.s,">",0); }
   if (flagbarfbhelo) {
     if (logregex) {
       strerr_warn7(title.s,"badhelo: <",helohost.s,"> at ",remoteip," matches pattern: ",matchedregex.s,0);
