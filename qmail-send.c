@@ -1504,8 +1504,9 @@ fd_set *rfds;
 datetime_sec *wakeup;
 {
   if (flagexitasap) {
-    if (flagtodoalive)
+    if (flagtodoalive) {
       write(todofdout, "X", 1);
+    }
   }
   if (flagtodoalive) {
     FD_SET(todofdin,rfds);
@@ -1520,7 +1521,6 @@ void todo_del(char* s)
  struct prioq_elt pe;
  unsigned long id;
  unsigned int len;
- char ch;
  int c;
 
  for (c = 0;c < CHANNELS;++c) flagchan[c] = 0;
@@ -1594,6 +1594,12 @@ fd_set *rfds;
 	case 'L':
 	  log1(todoline.s + 1);
 	  break;
+	case 'X':
+	  if (flagexitasap)
+	    flagtodoalive = 0;
+	  else
+	    tododied();
+	  break;
 	default:
 	  log1("warning: qmail-send unable to understand qmail-todo: report mangled\n");
 	  break;
@@ -1641,10 +1647,20 @@ int getcontrols() { if (control_init() == -1) return 0;
 
 stralloc newlocals = {0};
 stralloc newvdoms = {0};
+stralloc newcbtext = {0};
 
 void regetcontrols()
 {
  int r;
+
+ if (control_readint(&bouncemaxbytes,"control/bouncemaxbytes") == -1)
+  { log1("alert: unable to reread control/bouncemaxbytes\n"); return; }
+
+ if (control_readfile(&newcbtext,"control/custombouncetext",0) == -1)
+  { log1("alert: unable to reread control/custombouncetext\n"); return; }
+ byte_repl(newcbtext.s, newcbtext.len, '\0', '\n');
+ while (!stralloc_0(&newcbtext)) nomem();
+ while (!stralloc_copy(&custombouncetext,&newcbtext)) nomem();
 
  if (control_readfile(&newlocals,"control/locals",1) != 1)
   { wlog1("alert: unable to reread control/locals\n"); return; }

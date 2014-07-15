@@ -51,7 +51,7 @@ static void init(void)
   l = ip_scan(addr.s, &ip);
   if ( l == 0 && l > 15 ) die_control();
 
-  if (control_rldef(&secret,"control/pbssecret",0, 0) != 1) die_control();
+  if (control_rldef(&secret,"control/pbssecret",0,"") != 1) die_control();
 
   if (control_readint(&port,"control/pbsport") == -1) die_control();
   if (port > 65000) die_control();
@@ -243,6 +243,30 @@ int checkaddr(const unsigned char *key,unsigned int keylen,
   return 0;
 }
 
+
+/*
+ * pbs packets have following format:
+ *   header:
+ *   1-byte type, 1-byte address-size, address-size-byte
+ *
+ *   secret used in type add packets:
+ *   1-byte secret-size, secret-size-bytes secret
+ *
+ *   may-relay byte used in respnse packets:
+ *   1-byte may-relay ('R' for may-relay and 'N' for may-not-relay)
+ *
+ *   optional environment vars for type add and result:
+ *   1-byte #-of-entries
+ *   environment vars entries
+ *   1-byte size, n-byte env-name, 1-byte '"', m-byte env-var
+ *   where n + m + 1 = size.
+ *
+ *   Allowed types are 'A' for add, 'Q' for query, 'R' response.
+ *   Type 'A' uses the header and secret plus optional environment vars.
+ *   Type 'Q' does only need the header.
+ *   Type 'R' needs the header and the may-relay byte and
+ *   optional environment vars.
+ */
 
 static int doit(void)
 {
