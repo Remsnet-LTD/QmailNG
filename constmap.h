@@ -7,8 +7,8 @@ struct constmap {
   unsigned int num;
   constmap_hash mask;
   constmap_hash *hash;
-  unsigned int *first;
-  unsigned int *next;
+  int *first;
+  int *next;
   const char **input;
   unsigned int *inputlen;
 } ;
