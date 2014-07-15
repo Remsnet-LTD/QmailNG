@@ -155,6 +155,9 @@ void die_alarm() { out("451 timeout (#4.4.2)\r\n"); flush(); _exit(1); }
 void die_nomem() { out("421 out of memory (#4.3.0)\r\n"); flush(); _exit(1); }
 void die_control() { out("421 unable to read controls (#4.3.0)\r\n"); flush(); _exit(1); }
 void die_ipme() { out("421 unable to figure out my IP addresses (#4.3.0)\r\n"); flush(); _exit(1); }
+void die_fork() { out("421 unable to fork (#4.3.0)\r\n"); flush(); _exit(1); }
+void die_rcpt() { out("421 unable to verify recipient (#4.3.0)\r\n"); flush(); _exit(1); }
+void die_rcpt2() { out("421 unable to execute recipient check (#4.3.0)\r\n"); flush(); _exit(1); }
 void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n"); flush(); _exit(1); }
 void die_cannot_auth() { out("421 REQUIRE_AUTH set without valid AUTH program.\r\n"); flush(); _exit(1); }
 void die_cannot_cram() { out("421 ALLOW_CRAM not available\r\n"); flush(); _exit(1); }
@@ -185,6 +188,7 @@ void err_wantrcpt() { out("503 RCPT first (#5.5.1)\r\n"); }
 void err_noop() { out("250 ok\r\n"); }
 void err_vrfy() { out("252 send some mail, i'll try my best\r\n"); }
 void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
+void err_badrcpt() { out("553 sorry, no mailbox here by that name. (#5.1.1)\r\n"); }
 
 int err_child() { out("454 oops, problem with child and I can't auth (#4.3.0)\r\n"); return -1; }
 int err_fork() { out("454 oops, child won't start and I can't auth (#4.3.0)\r\n"); return -1; }
@@ -218,7 +222,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.06 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.07 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -230,6 +234,7 @@ char *remotehost;
 char *remoteinfo;
 char *local;
 char *relayclient;
+static char *rcptcheck[2] = { 0, 0 };
 #ifdef TLS
 char *tlsciphers;
 #endif
@@ -320,6 +325,8 @@ void readenv()
 
   x = env_get("QMAILSMTPD_HELP_VERSION");
   if(x) { scan_ulong(x,&u); help_version = (int) u; }
+
+  rcptcheck[0] = env_get("RCPTCHECK");
 }
 
 int logregex = 0;
@@ -728,6 +735,34 @@ stralloc spfbarfmsg = {0};
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
 
+int addrvalid()
+{
+  int pid;
+  int wstat;
+
+  if (!rcptcheck[0]) return 1;
+
+  switch(pid = fork()) {
+    case -1: die_fork();
+    case 0:
+      if (!env_put2("SENDER",mailfrom.s)) die_nomem();
+      if (!env_put2("RECIPIENT",addr.s)) die_nomem();
+      if (!env_put2("HELO",helohost.s)) die_nomem();
+      close(1);
+      dup2(2,1);
+      execv(*rcptcheck,rcptcheck);
+      _exit(120);
+  }
+  if (wait_pid(&wstat,pid) == -1) die_rcpt2();
+  if (wait_crashed(wstat)) die_rcpt2();
+  switch(wait_exitcode(wstat)) {
+    case 100: return 0;
+    case 111: die_rcpt();
+    case 120: die_rcpt2();
+  }
+  return 1;
+}
+
 void smtp_helo(arg) char *arg;
 {
   smtp_greet("250 "); out("\r\n");
@@ -983,6 +1018,8 @@ void smtp_rcpt(arg) char *arg; {
     err_vrt();
     return;
   }
+
+  if (!addrvalid()) { err_badrcpt(); return; }
 
   if (!stralloc_cats(&rcptto,"T")) die_nomem();
   if (!stralloc_cats(&rcptto,addr.s)) die_nomem();

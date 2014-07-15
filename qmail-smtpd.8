@@ -559,6 +559,73 @@ to show up in the remote server's log (instead of the standard "mail
 server permanently rejected message" caused by return value 31.)
 .RE
 .TP 5
+.I RCPTCHECK
+If this variable exists, it should contain the full pathname to a
+program which
+.B qmail-smtpd
+will run after receiving each
+.B RCPT
+command.
+
+No arguments are passed on the command line; before running the program,
+.B qmail-smtpd
+will store the recipient address sent by the client in the
+.B RECIPIENT
+environment variable, and the sender address (from the
+.B MAIL
+command) in the
+.B SENDER
+variable. Any other environment variables which were present when
+.B qmail-smtpd
+started, as possibly modified by the
+.B AUTH_SET
+mechanism, will be present as well. Note that this includes the
+.B TCPREMOTEIP
+variable, set by tcpserver, which will contain the client's IP address.
+
+The exit code of the program determines whether or not
+.B qmail-smtpd
+will accept the command. The possible values are:
+.RS 5
+.TP 5
+.B 100
+The recipient is not valid. The client receives a 553 error.
+.TP 5
+.B 111
+Temporary problem verifying the recipient. The client receives a 421
+error code and the connection is closed.
+.TP 5
+.B 120
+The program could not execute correctly. The client receives a 421 error
+code and the connection is closed.
+.TP 5
+.B anything else
+The recipient is valid.
+
+.RE
+.RS 5
+Anything the program may send to its standard out or standard error
+channel will be sent to the SMTP service's logs, just as if
+.B qmail-smtpd
+had printed it. This allows your program to log what it's doing.
+
+This variable may be modified using the
+.B AUTH_SET
+mechanism if you want to bypass recipient checking, or use a different
+program, for clients who have sent a valid AUTH command. However, I
+recommend you write your program to check the
+.B SMTP_AUTH_USER
+variable instead- if a valid AUTH command has been sent, this variable
+will contain the userid from that command.
+
+This functionality (calling an external program in response to an AUTH
+command) comes from Jay Soffian's RCPTCHECK patch, and is more fully
+documented on his web site:
+.IP
+http://www.soffian.org/downloads/qmail/qmail-smtpd-doc.html
+
+.RE
+.TP 5
 .I RELAYCLIENT
 If this variable exists when
 .B qmail-smtpd
@@ -804,5 +871,5 @@ See
 .B http://qmail.jms1.net/patches/combined-details.shtml
 for more detailed information about the differences between this instance
 of qmail and the stock qmail. This man page is current as of the
-.B 7.06
+.B 7.07
 version of the combined patch file.
