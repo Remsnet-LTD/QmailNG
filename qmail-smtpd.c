@@ -497,7 +497,6 @@ int rmfcheck()
 }
 
 int seenmail = 0;
-int flagbarf; /* defined if seenmail */
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
 int rcptcount;
@@ -822,20 +821,19 @@ void smtp_rcpt(arg) char *arg; {
       return;
     }
   }
-
+  if (rcptdenied())
+  {
+    err_badrcptto();
+    logpid(2); logstring(2,"'rcpt to' denied ="); logstring(2,arg); logflush(2);
+    if (errdisconnect) err_quit();
+    return;
+  }
   if (relayclient)
   {
     --addr.len;
     if (!stralloc_cats(&addr,relayclient)) die_nomem();
     if (!stralloc_0(&addr)) die_nomem();
   } else {
-    if (rcptdenied())
-    {
-      err_badrcptto();
-      logpid(2); logstring(2,"'rcpt to' denied ="); logstring(2,arg); logflush(2);
-      if (errdisconnect) err_quit();
-      return;
-    }
 #ifndef TLS
     if (!addrallowed())
     {
