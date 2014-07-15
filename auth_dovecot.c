@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2004 Claudio Jeker,
+ * Copyright (c) 2008 Claudio Jeker,
  *      Internet Business Solutions AG, CH-8005 Zürich, Switzerland
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,11 +37,14 @@
 #include "env.h"
 #include "error.h"
 #include "exit.h"
+#include "fmt.h"
+#include "ip.h"
 #include "pbsexec.h"
 #include "qldap-debug.h"
 #include "qldap-errno.h"
 #include "qmail-ldap.h"
 #include "readwrite.h"
+#include "scan.h"
 #include "sgetopt.h"
 #include "str.h"
 #include "stralloc.h"
@@ -51,26 +54,95 @@
 #include "checkpassword.h"
 #include "auth_mod.h"
 
-#ifndef PORT_POP3 /* this is for testing purposes */
-#define PORT_POP3	110
-#endif
-
 #define UP_LEN 513
 static char auth_up[UP_LEN];
 static int auth_argc;
 static char **auth_argv;
+static char *aliasempty;
+
+void
+auth_setup(struct credentials *c)
+{
+	static stralloc qenv = {0};
+	static stralloc ext = {0};
+	char num[FMT_ULONG];
+	unsigned long size;
+
+	if (c->size != 0 || c->count != 0) {
+		/*
+		 * uid and gid are already set. Need to add extra stuff like
+		 * quota settings.
+		 */
+		if (!stralloc_copys(&qenv,"maildir"))
+			auth_error(ERRNO);
+		if (c->size != 0) {
+			if (!stralloc_cats(&qenv,":storage="))
+				auth_error(ERRNO);
+			size = c->size / 1024;
+			if (!stralloc_catb(&qenv, num, fmt_ulong(num, c->size)))
+				auth_error(ERRNO);
+		}
+		if (c->count != 0) {
+			if (!stralloc_cats(&qenv, ":messages="))
+				auth_error(ERRNO);
+			if (!stralloc_catb(&qenv, num,
+			    fmt_ulong(num, c->count)))
+				auth_error(ERRNO);
+		}
+		if (!stralloc_0(&qenv))
+			auth_error(ERRNO);
+		if (!env_put2("userdb_quota_rule", qenv.s))
+			auth_error(ERRNO);
+		if (!stralloc_copys(&ext,"userdb_quota_rule"))
+			auth_error(ERRNO);
+		logit(32, "dovecot environment set: userdb_quota_rule %s\n",
+		    qenv.s);
+	}
+
+	if (c->maildir.s != 0 && c->maildir.s[0] && c->maildir.len > 0) {
+		if (ext.s != 0 && ext.len > 0) {
+			if (!stralloc_cats(&ext," userdb_mail"))
+				auth_error(ERRNO);
+		} else {
+			if (!stralloc_copys(&ext,"userdb_mail"))
+				auth_error(ERRNO);
+		}
+		if (!stralloc_copys(&qenv,"maildir:"))
+			auth_error(ERRNO);
+		if (!stralloc_cats(&qenv, c->maildir.s))
+			auth_error(ERRNO);
+		if (!stralloc_0(&qenv))
+			auth_error(ERRNO);
+		if (!env_put2("userdb_mail", qenv.s))
+			auth_error(ERRNO);
+	}
+
+	if (!stralloc_0(&ext))
+		auth_error(ERRNO);
+	if (!env_put2("EXTRA", ext.s))
+		auth_error(ERRNO);
+	logit(32, "dovecot environment set: userdb_mail %s\n", qenv.s);
+}
 
 void
 auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 {
+	extern unsigned long loglevel;
 	char		*l, *p;
 	unsigned int	uplen, u;
 	int		n, opt;
 
-	while ((opt = getopt(argc, argv, "d:")) != opteof) {
+	while ((opt = getopt(argc, argv, "a:d:D:")) != opteof) {
 		switch (opt) {
+		case 'a':
+			aliasempty = optarg;
+			break;
 		case 'd':
 			pbstool = optarg;
+			break;
+		case 'D':
+			scan_ulong(optarg, &loglevel);
+			loglevel &= ~256;	/* see auth_mod.c */
 			break;
 		default:
 			auth_error(AUTH_CONF);
@@ -134,11 +206,6 @@ auth_fail(const char *login, int reason)
 }
 
 void
-auth_setup(struct credentials *c)
-{
-}
-
-void
 auth_success(const char *login)
 {
 	/* pop befor smtp */
@@ -176,74 +243,24 @@ void auth_error(int errnum)
 char *
 auth_aliasempty(void)
 {
-	if (auth_argc > 0)
-		return auth_argv[auth_argc-1];
-	return (char *)0;
+	return aliasempty;
 }
 
 #ifdef QLDAP_CLUSTER
-static void get_ok(int);
-
-static void get_ok(int fd)
-/* get the ok for the next command, wait for "+OK.*\r\n" */
-/* This should be a mostly correct solution (adapted from fetchmail) */
-{
-#define AUTH_TIMEOUT 10 /* 10 sec timeout */
-#define OK_LEN 512      /* max length of response (RFC1939) */
-	char ok[OK_LEN];
-	char *c;
-	int  len;
-	int  i;
-
-	/* first get one single line from the other pop server */
-	len = timeoutread(AUTH_TIMEOUT, fd, ok, OK_LEN);
-	if (len == -1)
-		auth_error(ERRNO);
-	if (len != 0) {
-		c = ok;
-		if (*c == '+' || *c == '-')
-			c++;
-		else
-			auth_error(BADCLUSTER);
-		for (i = 1; i < len /* paranoia */ &&
-				('A' < *c && *c < 'Z') ; ) { i++; c++; }
-
-		if (i < len) {
-			*c = '\0';
-			if (str_diff(ok, "+OK") == 0)
-				return;
-			else if (str_diffn(ok, "-ERR", 4))
-				/* other server is not happy */
-				auth_error(BADCLUSTER);
-		}
-	}
-	/* ARRG, very strange POP3 answer */
-	auth_error(BADCLUSTER);
-}
 
 int
 auth_forward(stralloc *host, char *login, char *passwd)
 {
-	char buf[512];
-	substdio ss;
-	int fd;
+	if (!stralloc_0(host)) auth_error(ERRNO);
 
-	/* does not return on failure */
-	fd = forward_establish(host, PORT_POP3);
+	/* not to be userdb_ prefixed */
+	if (!env_put2("proxy", "1")) auth_error(ERRNO);
+	if (!env_put2("host", host->s)) auth_error(ERRNO);
+	if (!env_put2("EXTRA", "proxy host")) auth_error(ERRNO);
 
-	substdio_fdbuf(&ss,subwrite,fd,buf,sizeof(buf));
-	get_ok(fd);
-	substdio_puts(&ss, "user ");
-	substdio_puts(&ss, login);
-	substdio_puts(&ss, "\r\n");
-	substdio_flush(&ss);
-	get_ok(fd);
-	substdio_puts(&ss, "pass ");
-	substdio_puts(&ss, passwd);
-	substdio_puts(&ss, "\r\n");
-	substdio_flush(&ss);
+	auth_success(login);
 
-	return fd;
+	return -1;
 }
 
 #endif /* QLDAP_CLUSTER */

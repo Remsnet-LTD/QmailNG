@@ -2,7 +2,7 @@ QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
 (c) 1999-2004 Internet Business Solutions AG
 
-RELEASE: $Date: 2006/02/01 15:59:19 $ ($Revision: 1.220 $)
+RELEASE: $Date: 2012/02/21 20:24:32 $ ($Revision: 1.230 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -15,7 +15,53 @@ TODO:
 WARNING: If you are upgrading from 20030801a or earlier make sure that
          you have read the news section for 20030901.
 
+
 NEWS for current stuff:
+
+ Add ~control/goodmailfrom, a list of addresses which will bypass any
+ checks that would happen on the sender address. This also includes the
+ RBL checks.
+
+ Removed the TLD length check from SANITYCHECK since TLDs are on sale now.
+
+ Implemented AUTHORIZED environment variable which is respected by qmail-smtpd.
+ This is useful together with AUTHREQUIRED and external tools like pbscheck.
+
+ qmail-smtpd and qmail-qmtpd respect the NOLOCAL environment variable. If set
+ ~control/locals or ~control/locals.cdb is not considered to check if a
+ recipient is a local address or not. Only the rcpthosts files are searched.
+
+ It is now possible to use @domain-tld in ~control/bigbrother to capture all
+ mails to the specified domain.
+
+ Support user@ syntax in badrcptto and badmailfromunknown.
+
+ Try to minimize stat()'s by parsing the filename. If that fails a stat is
+ still done. This can reduce the amount of time spent on quota recalculation
+ and opening maildirs in qmail-pop3d massivly.
+
+ Implement a dovecot auth module installed as auth_dovecot.
+
+ Add the custom error message qmail-queue patch which is useful for e.g.
+ simscan.
+
+ BADRCPTDELAY support added. Diff originally from
+ http://kristof.bajnok.hu/qmail/qldap-badrcptdelay.patch
+
+ Add GREETDELAY and DROPRUSHGREET to annoy spammers. This delays the
+ the initial greeting by stuttering with 1 char per second and if
+ DROPRUSHGREET is set all clients rushing for the ehlo will be disconnected
+ because of a protocol violation. Idea somewhat stolen by OpenBSD's spamd.
+
+ Implemented the aliasdomain map to remap domains in the LDAP queries.
+ This allows to transparently alias domains in such a way that RCPTCHECK
+ works as well.
+ Idea from http://kristof.bajnok.hu/qmail/qldap-domainalias.patch
+
+ The username of authenticated smtp users is now exported in the SMTPAUTHUSER
+ environment variable. Idea by Nicolas de Bari Embriz Garcia Rojas.
+
+NEWS for 20060201 stuff:
 
  Rewritten forwarding code in auth_pop and auth_imap. The copyloop is now
  using stdin and stdout for communicating with the client. This should fix

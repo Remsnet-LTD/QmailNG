@@ -209,10 +209,34 @@ unsigned int numm;
 
 unsigned int last = 0;
 
+unsigned long
+getsize(char *name)
+{
+	char *s = name;
+	unsigned long size;
+	struct stat st;
+
+	while (*s) {
+		if (*s != ',' || s[1] != 'S' || s[2] != '=')
+			s++;
+		else {
+			s += 3;
+			size = 0;
+			while (*s >= '0' && *s <= '9')
+				size = size * 10 + (*s++ - '0');
+			return size;
+		}
+	}
+	/* bummer no ,S=size so stat the file */
+	if (stat(name, &st) == -1)
+		return 0;
+	else
+		return (unsigned long)st.st_size;
+}
+
 void getlist(void)
 {
   struct prioq_elt pe;
-  struct stat st;
   unsigned int i;
  
   maildir_clean(&line);
@@ -227,10 +251,7 @@ void getlist(void)
     prioq_delmin(&pq);
     m[i].fn = filenames.s + pe.id;
     m[i].flagdeleted = 0;
-    if (stat(m[i].fn,&st) == -1)
-      m[i].size = 0;
-    else
-      m[i].size = st.st_size;
+    m[i].size = getsize(m[i].fn);
   }
 }
 
@@ -395,7 +416,7 @@ void pop3_top(char *arg)
   foo[fmt_uint(foo,m[i].size)] = 0;
   putstr(foo);
 
-  putstr(" octets \r\n");
+  putstr(" octets\r\n");
   flush();
 #else
   okay();
@@ -428,7 +449,7 @@ int main(int argc, char **argv)
   sig_alarmcatch(die);
   sig_pipeignore();
 
-  /* if MAILDIR is defined us this as Maildir and not the argument */
+  /* if MAILDIR is defined use this as Maildir and not the argument */
   if ( (env = env_get("MAILDIR") ) && *env ) argv[1] = env;
 
   if (!argv[1]) die_nomaildir();

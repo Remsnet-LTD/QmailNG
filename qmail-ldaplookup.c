@@ -228,12 +228,13 @@ int main(int argc, char **argv)
 			break;
 		case uid:
 			f = filter_uid(value);
-			done = 1;
 			if (value == 0)
 				strerr_die2sys(1, FATAL, "building filter: ");
+			done = 1;
 			break;
 		case filter:
 			f = value;
+			done = 1;
 			break;
 		default:
 			usage();
@@ -249,15 +250,14 @@ int main(int argc, char **argv)
 			fail(q, "qldap_count", FAILED);
 		case 0:
 			output(subfdout, "No entries found.\n");
-			qldap_free(q);
 			/* TODO hook for local lookups. */
-			return 0;
+			break;
 		case 1:
 			output(subfdout, "Found %i entry:\n", r);
 			break;
 		default:
 			output(subfdout, "Found %i entries:\n", r);
-			if (mode == uid || mode == uid) {
+			if (mode == mail || mode == uid) {
 				output(subfdout,
 				    "Uh-oh: multiple entries found but "
 				    "should be unique!\n");

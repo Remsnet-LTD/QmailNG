@@ -263,6 +263,7 @@ int main()
   substdio_puts(subfdout,"\n\n");
 
 
+  do_lst("goodmailfrom","No MAIL FROM will bypass additional checks.",""," bypasses additional checks in MAIL FROM.");
   do_lst("badmailfrom","Any MAIL FROM is allowed.",""," not accepted in MAIL FROM.");
   do_lst("badmailfrom-unknown","Any MAIL FROM from hosts without PTR is allowed.","",
 	 " not accepted in MAIL FROM from host without PTR.");
@@ -358,6 +359,7 @@ int main()
   do_int("ldapcluster","0","Clustering is "," (1 = on, 0 = off)");
   do_lst("ldapclusterhosts","Messages for me are not redirected.",
 	 "Messages for "," are not redirected.");
+  do_lst("aliasdomains","No LDAP alias domains.","LDAP alias domain: ","");
 
   substdio_puts(subfdout,"\n");
 
@@ -365,6 +367,7 @@ int main()
   while ((d = readdir(dir))) {
     if (str_equal(d->d_name,".")) continue;
     if (str_equal(d->d_name,"..")) continue;
+    if (str_equal(d->d_name,"aliasdomains")) continue;
     if (str_equal(d->d_name,"badmailfrom")) continue;
     if (str_equal(d->d_name,"badmailfrom-unknown")) continue;
     if (str_equal(d->d_name,"badrcptto")) continue;
@@ -386,6 +389,7 @@ int main()
     if (str_equal(d->d_name,"envnoathost")) continue;
     if (str_equal(d->d_name,"helohost")) continue;
     if (str_equal(d->d_name,"goodmailaddr")) continue;
+    if (str_equal(d->d_name,"goodmailfrom")) continue;
     if (str_equal(d->d_name,"idhost")) continue;
     if (str_equal(d->d_name,"ldapbasedn")) continue;
     if (str_equal(d->d_name,"ldapcluster")) continue;

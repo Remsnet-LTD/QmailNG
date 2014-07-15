@@ -6,7 +6,7 @@ The qmail-ldap patch for qmail comes with NO WARRANTY.
 
 This patch is under the BSD license. See LICENSE.
 
-RELEASE: current ($Date: 2006/01/30 14:53:05 $)
+RELEASE: current ($Date: 2012/02/21 20:08:45 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -248,6 +248,16 @@ INSTALL:
 ================================================================================
 
 CONFIG FILES:
+
+~control/aliasdomains
+
+ Alias listed domains to an other domain in LDAP queries. All LDAP queries
+ on mail address are modified so that the alias domain is replaced by the
+ real domain. This options allows to map two domains in such a way that
+ RCPTCHECK still works.
+ Default: NULL
+ Example: mail.qmail-ldap.org:qmail-ldap.org
+ Note: The aliased domain must be listed at least in ~control/locals.
 
 ~control/aliasempty
 OR
@@ -536,6 +546,15 @@ OR
        and SENDERCHECK. Accounts mapped via the alias user (~alias/.qmail-*)
        can be added here so that RCPTCHECK can be endabled by default.
 
+~control/goodmailfrom
+
+ This file contains accepted MAIL FROM addresses which will always bypass
+ any other checks done. For example the RBL checks or the matching against
+ badmailfrom.
+ Default: none
+ Example: user@domain or @domain or user@
+ Note: This can be useful if to accept important mails from RBL listed hosts.
+
 ~control/badrcptto
 
  This file contains local recipient addresses that are rejected.
@@ -597,11 +616,12 @@ OR
 
  This file is only used if BIGBROTHER was defined in the Makefile.
  For ISP that need to implement some surveillance method because of some
- beloved authoroties (like here in switzerland), you can enable a per
+ beloved authorities (like here in switzerland), you can enable a per
  address queue extra feature. To automatically forward all mail to and from
  badguy@badplace.ch to bigbrother@admin.ch you need to add followong line to
  ~control/bigbrother: badguy@badplace.ch:bigbrother@admin.ch.
  bigbrother@admin.ch can be a local, ldap or remote address.
+ To intercept all mails to and from a domain @badplace.ch can be used.
  Default: none (off)
  Example: badguy@badplace.ch:bigbrother@admin.ch
  Note: An extra recipient will be added in qmail-send. If the bigbrother
@@ -659,6 +679,17 @@ OR
 
 Environment variables setable via tcpserver, envdir or plain old env/sh:
 
+AUTHORIZED
+
+ If set tells qmail-smtpd that the user was authorized by a external helper,
+ most probably pbscheck. Useful together with AUTHREQUIRED.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: pbsadd will not automatically add AUTHORIZED so it needs to be added to
+       ~control/pbsenv. AUTHORIZED does not imply RELAYCLIENT both need to be
+       set to allow authorized users to send mails to everybody.
+
 AUTHPREPEND
 
  String that is prepended to the login in the received line.
@@ -680,6 +711,15 @@ AUTHREQUIRED
        if you want to restrict certain IP ranges (for example you dial-up or
        other customers) to be able to send only as existing and valid users.
 
+BADRCPTDELAY
+
+ Add a delay when peer issues an RCPT TO command on a non-existing local
+ address to prevent Directory Harvest Attacks. Only works when RCPTCHECK
+ is set as well.
+ Default: off (0)
+ Affects: qmail-smtpd
+ Example: "5"
+
 BLOCKRELAYPROBE
 
  Rejects recipients with and "!", "%" or double-"@"
@@ -694,6 +734,27 @@ BLOCKRELAYPROBE
        hack and double-"@" a sendwhale bug.
        Beware if you actually use the qmail percent-hack! Then this can't
        be used obviously!
+
+DROPRUSHGREET
+
+ Close the connection with a 5xx fatal error when a client is sending
+ commands before the initial greeting message is sent. Only works if
+ GREETDELAY is set to a value bigger then 1.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: This is quite useful to stop spammers since their always in a rush.
+
+GREETDELAY
+
+ In the initial greeting message stutter for the specified time with one
+ character per second. This simulates OpenBSD's spamd and many spammers
+ disconnect if the banner is sent that way.
+ Default: off
+ Affects: qmail-smtpd
+ Example: "10"
+ Note: Only the 220 <me> EHLO parts are stuttered so using to large values
+       will not work.
 
 LDAPSOFTOK
 
@@ -793,6 +854,15 @@ NOCOMPRESS
  Affects: qmail-qmqpd
  Example: "" (any value will do)
 
+NOLOCAL
+
+ Disables the rcpthost lookup in ~control/locals or ~control/locals.cdb.
+ This restors old behaviour where qmail-smtpd only checks for rcpthosts
+ ignoring the locals file.
+ Default: off
+ Affects: qmail-smtpd / qmail-qmtpd
+ Example: "" (any value will do)
+
 NOPBS
 
  Disable adding of pbs data. NOPBS disables the execution of pbsadd in auth_*.
@@ -873,7 +943,7 @@ RETURNMXCHECK
 
 SANITYCHECK
 
- Rejects senders without an @, no . in domain part or too long/short TLD
+ Rejects senders without an @ or no '.' in domain part
  Default: off
  Affects: qmail-smtpd
  Example: "" (any value will do)
@@ -920,6 +990,12 @@ SMTPAUTH
        base64 encoding. With TLSREQUIRED enabled SMTP-AUTH is only accepted
        when the SMTP session is TLS encrypted to prevent password sniffing.
        TLSREQUIRED requires TLS option to be compiled into qmail-ldap.
+
+SMTPAUTHUSER
+
+ Set by qmail-smptd when a user sucessfully authenticates.
+ Example: "johndoe"
+ Note: This variable is only useable in alternate queue runners.
 
 SMTP550DISCONNECT
 

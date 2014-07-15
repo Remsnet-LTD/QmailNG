@@ -192,6 +192,8 @@ void err_554msg(const char *arg)
 	logline2(3,"message denied: ",arg);
 }
 
+void err_noop(char *arg) { out("250 ok\r\n"); logline(4,"'noop'"); }
+void err_vrfy(char *arg) { out("252 send some mail, i'll try my best\r\n"); logline2(4,"vrfy for: ",arg); }
 
 stralloc me = {0};
 stralloc greeting = {0};
@@ -203,11 +205,13 @@ stralloc brt = {0};
 struct constmap mapbadrcptto;
 stralloc cookie = {0};
 
+void stutter(const char *);
+
 void smtp_greet(const char *code)
 {
-  substdio_puts(&ssout,code);
-  substdio_puts(&ssout,me.s);
-  substdio_puts(&ssout," ESMTP ");
+  stutter(code);
+  stutter(me.s);
+  stutter(" ESMTP ");
   substdio_put(&ssout,greeting.s,greeting.len);
   if (cookie.len > 0) {
     substdio_puts(&ssout," ");
@@ -268,6 +272,9 @@ void dohelo(const char *arg)
 
 int liphostok = 0;
 stralloc liphost = {0};
+int gmfok = 0;
+stralloc gmf = {0};
+struct constmap mapgmf;
 int bmfok = 0;
 stralloc bmf = {0};
 struct constmap mapbmf;
@@ -293,6 +300,7 @@ int blockrelayprobe = 0;
 unsigned int tarpitcount = 0;
 unsigned int tarpitdelay = 5;
 unsigned int maxrcptcount = 0;
+unsigned int badrcptdelay = 0;
 int sendercheck = 0;
 int rcptcheck = 0;
 int ldapsoftok = 0;
@@ -300,11 +308,15 @@ int flagauth = 0;
 int needauth = 0;
 int needssl = 0;
 int flagauthok = 0;
+int flagextauth = 0;
+int flagnolocal = 0;
 const char *authprepend;
 #ifdef TLS_SMTPD
 stralloc sslcert = {0};
 #endif
 char smtpsize[FMT_ULONG];
+unsigned int stutterdelay = 0;
+int droprushgreet = 0;
 
 void setup(void)
 {
@@ -312,6 +324,7 @@ void setup(void)
   char *sslpath;
 #endif
   char *x, *l;
+  char ulbuf[FMT_ULONG];
   unsigned long u;
 
   l = env_get("LOGLEVEL");
@@ -356,7 +369,20 @@ void setup(void)
   x = env_get("MAXRCPTCOUNT");
   if (x) { scan_ulong(x,&u); maxrcptcount = u >= UINT_MAX ? UINT_MAX - 1 : u; };
 
+  x = env_get("BADRCPTDELAY");
+  if (x) { scan_ulong(x,&u); badrcptdelay = u > INT_MAX ? INT_MAX : u; }
+
+  x = env_get("GREETDELAY");
+  if (x) { scan_ulong(x,&u); stutterdelay = u > INT_MAX ? INT_MAX : u; }
+
+  if (env_get("DROPRUSHGREET")) droprushgreet = 1;
+
   if (rcpthosts_init() == -1) die_control();
+
+  gmfok = control_readfile(&gmf,"control/goodmailfrom",0);
+  if (gmfok == -1) die_control();
+  if (gmfok)
+    if (!constmap_init(&mapgmf,gmf.s,gmf.len,0)) die_nomem();
 
   bmfok = control_readfile(&bmf,"control/badmailfrom",0);
   if (bmfok == -1) die_control();
@@ -411,7 +437,9 @@ void setup(void)
     if (!case_diffs("TLSREQUIRED", env_get("SMTPAUTH"))) needssl = 1;
   }
   if (env_get("AUTHREQUIRED")) needauth = 1;
+  if (env_get("AUTHORIZED")) flagextauth = 1;
   authprepend = env_get("AUTHPREPEND");
+  if (env_get("NOLOCAL")) flagnolocal = 1;
 
 #ifdef SMTPEXECCHECK
   execcheck_setup();
@@ -462,9 +490,18 @@ void setup(void)
     logstring(3," ");
   }
   if (greeting550) logstring(3,"greeting550 ");
+  if (greeting421) logstring(3,"greeting421 ");
+  if (stutterdelay != 0) {
+    ulbuf[fmt_ulong(ulbuf, stutterdelay)] = 0;
+    logstring(3, "GREETDELAY ");
+    logstring(3,ulbuf);
+    logstring(3," ");
+  }
+  if (droprushgreet) logstring(3,"droprushgreet ");
 #ifdef TLS_SMTPD
   if (sslcert.s && *sslcert.s) logstring(3, "starttls ");
 #endif
+  if (flagnolocal) logstring(3, "nolocal ");
   if (relayclient) logstring(3,"relayclient ");
   if (sanitycheck) logstring(3,"sanitycheck ");
   if (returnmxcheck) logstring(3,"returnmxcheck ");
@@ -477,11 +514,23 @@ void setup(void)
   if (sendercheck == 2) logstring(3,"-loose ");
   if (sendercheck == 3) logstring(3,"-strict ");
   if (rcptcheck) logstring(3,"rcptcheck ");
+  if (badrcptdelay) {
+    ulbuf[fmt_ulong(ulbuf, badrcptdelay)] = 0;
+    logstring(3, "badrcptdelay ");
+    logstring(3,ulbuf);
+    logstring(3," ");
+  }
   if (ldapsoftok) logstring(3,"ldapsoftok ");
   if (flagauth) logstring(3, "smtp-auth");
   if (needssl) logstring(3, "-tls-required ");
   else logstring(3, " ");
   if (needauth) logstring(3, "authrequired ");
+  if (flagextauth) logstring(3, "authorized ");
+  if (authprepend) {
+    logstring(3, "authprepend: ");
+    logstring(3,authprepend);
+    logstring(3," ");
+  }
 #ifdef SMTPEXECCHECK
   if (execcheck_on()) logstring(3, "rejectexecutables ");
 #endif
@@ -656,6 +705,21 @@ int sizelimit(char *arg)
 }
 
 
+int gmfcheck(void)
+{
+  unsigned int j;
+
+  if (!gmfok) return 0;
+  if (constmap(&mapgmf,addr.s,addr.len - 1)) return 1;
+  j = byte_rchr(addr.s,addr.len,'@');
+  if (j < addr.len)
+  {
+    if (constmap(&mapgmf,addr.s + j,addr.len - j - 1)) return 1;
+    if (constmap(&mapgmf,addr.s, j + 1)) return 1;
+  }
+  return 0;
+}
+
 int bmfcheck(void)
 {
   unsigned int j;
@@ -679,8 +743,10 @@ int bmfunknowncheck(void)
   if (case_diffs(remotehost,"unknown")) return 0;
   if (constmap(&mapbmfunknown,addr.s,addr.len - 1)) return 1;
   j = byte_rchr(addr.s,addr.len,'@');
-  if (j < addr.len)
-    if (constmap(&mapbmfunknown,addr.s + j,addr.len - j - 1)) return 1;
+  if (j < addr.len) {
+    if (constmap(&mapbmfunknown,addr.s + j, addr.len - j - 1)) return 1;
+    if (constmap(&mapbmfunknown,addr.s, j + 1)) return 1;
+  }
   return 0;
 }
 
@@ -705,7 +771,7 @@ int addrallowed(void)
 {
   int r;
 
-  r = rcpthosts(addr.s,addr.len - 1);
+  r = rcpthosts(addr.s,addr.len - 1, flagnolocal);
   if (r == -1) die_control();
   return r;
 }
@@ -734,9 +800,12 @@ int rcptdenied(void)
   if (!brtok) return 0;
   if (constmap(&mapbadrcptto, addr.s, addr.len - 1)) return 1;
   j = byte_rchr(addr.s,addr.len,'@');
-  if (j < addr.len)
+  if (j < addr.len) {
     if (constmap(&mapbadrcptto, addr.s + j, addr.len - j - 1))
       return 1;
+    if (constmap(&mapbadrcptto, addr.s, j + 1))
+      return 1;
+  }
   return 0;
 }
 
@@ -950,8 +1019,10 @@ void smtp_mail(char *arg)
   else
    env_unset("SPFRESULT");
 
+  unsigned int i;
   char *rblname;
   int bounceflag = 0;
+  int isgmf = 0;
 
   /* address syntax check */
   if (!addrparse(arg))
@@ -964,7 +1035,7 @@ void smtp_mail(char *arg)
 
   logline2(4,"mail from: ",addr.s);
 
-  if (needauth && !flagauthok) {
+  if (needauth && !(flagauthok || flagextauth)) {
     out("530 authentication needed\r\n");
     logline(3, "auth needed");
     if (errdisconnect) err_quit();
@@ -985,8 +1056,12 @@ void smtp_mail(char *arg)
     return;
   }
 
+  /* good mailfrom check */
+  if (gmfcheck())
+    isgmf = 1;
+
   /* bad mailfrom check */
-  if (bmfcheck())
+  if (!isgmf && bmfcheck())
   {
     err_bmf();
     logline2(3,"bad mailfrom: ",addr.s);
@@ -994,7 +1069,7 @@ void smtp_mail(char *arg)
     return;
   }
   /* bad mailfrom unknown check */
-  if (bmfunknowncheck())
+  if (!isgmf && bmfunknowncheck())
   {
     err_bmfunknown();
     logline2(3,"bad mailfrom unknown: ",addr.s);
@@ -1015,7 +1090,7 @@ void smtp_mail(char *arg)
   }
 
   /* Sanity checks */
-  if (sanitycheck && !bounceflag)
+  if (!isgmf && sanitycheck && !bounceflag)
   {
     /* Invalid Mailfrom */
     if ((i=byte_rchr(addr.s,addr.len,'@')) >= addr.len)
@@ -1031,25 +1106,12 @@ void smtp_mail(char *arg)
       return;
     }
     /* No '.' in domain.TLD */
-    if ((j = byte_rchr(addr.s+i, addr.len-i, '.')) >= addr.len-i) {
+    if (byte_rchr(addr.s+i, addr.len-i, '.') >= addr.len-i) {
       err_554msg("mailfrom without . in domain part is "
         "administratively denied");
       if (errdisconnect) err_quit();
       return;
     }
-    /* check tld length */
-    j = addr.len-(i+1+j+1);
-    if (j < 2 || j > 6)
-    {
-      /* XXX: This needs adjustment when new TLD's are constituded.
-       * OK, now after the candidates are nominated we know new TLD's
-       * may contain up to six characters.
-       */
-      err_554msg("mailfrom without country or top level domain is "
-        "administratively denied");
-      if (errdisconnect) err_quit();
-      return;
-     }
   }
 
   /* relay mail from check (allow relaying based on evelope sender address) */
@@ -1062,7 +1124,7 @@ void smtp_mail(char *arg)
   }
 
   /* Check RBL only if relayclient is not set */
-  if (rblok && !relayclient)
+  if (!isgmf && rblok && !relayclient)
   {
     switch(rblcheck(remoteip, &rblname, rbloh))
     {
@@ -1085,7 +1147,7 @@ void smtp_mail(char *arg)
   }
 
   /* return MX check */
-  if (returnmxcheck && !bounceflag)
+  if (!isgmf && returnmxcheck && !bounceflag)
   {
     if ((i=byte_rchr(addr.s,addr.len,'@')) < addr.len)
       switch (badmxcheck(&addr.s[i+1]))
@@ -1107,7 +1169,7 @@ void smtp_mail(char *arg)
   }
 
   /* check if sender exists in ldap */
-  if (sendercheck && !bounceflag) {
+  if (!isgmf && sendercheck && !bounceflag) {
     if (!goodmailaddr()) { /* good mail addrs go through anyway */
       logline(4,"sender verify, sender not in goodmailaddr");
       if (addrlocals()) {
@@ -1256,6 +1318,7 @@ void smtp_rcpt(char *arg)
             break;
           case 0: /* invalid */
 	    logline2(2, "bad recipient: ", addr.s);
+	    if (badrcptdelay) sleep(badrcptdelay);
             err_554msg(s);
             if (errdisconnect) err_quit();
             return;
@@ -1278,7 +1341,7 @@ void smtp_rcpt(char *arg)
   if (!stralloc_0(&rcptto)) die_nomem();
   if (tarpitcount && tarpitdelay && rcptcount >= tarpitcount) {
     logline(3,"tarpitting");
-    while (sleep(tarpitdelay));
+    sleep(tarpitdelay);
   }
   out("250 ok\r\n");
 }
@@ -1404,6 +1467,31 @@ void put(const char *ch)
       qmail_fail(&qqt);
   qmail_put(&qqt,ch,1);
   ++bytesreceived;
+}
+
+void stutter(const char *str)
+{
+	int x;
+
+	if (stutterdelay) {
+		for (; *str && stutterdelay > 0; stutterdelay--) {
+			substdio_bput(&ssout, str++, 1);
+			flush();
+			if (droprushgreet) {
+				x = timeoutread(1,0,ssinbuf,sizeof ssinbuf);
+				if (x > 0) {
+					err_554msg("SMTP protocol violation");
+					flush();
+					cleanup();
+					_exit(1);
+				} else if (x == 0 || (x == -1 &&
+				    errno != error_timeout))
+					die_read();
+			} else
+				sleep(1);
+		}
+	}
+	substdio_puts(&ssout,str);
 }
 
 void blast(unsigned int *hops)
@@ -1640,7 +1728,7 @@ void smtp_auth(char *arg)
   const char *status;
 
   if (!flagauth) {
-    err_unimpl("AUTH without STARTTLS");
+    err_unimpl("AUTH");
     return;
   }
   if (flagauthok) {
@@ -1706,6 +1794,7 @@ fail:
     remoteinfo = line.s;
     out(status);
     logline2(2,"authentication success, user ", remoteinfo);
+    if (!env_put2("SMTPAUTHUSER", remoteinfo)) die_nomem();
     break;
   case '4':
   case '5':
