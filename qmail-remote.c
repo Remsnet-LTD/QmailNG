@@ -338,6 +338,32 @@ void blast()
 }
 
 stralloc recip = {0};
+stralloc xuser = {0} ;
+
+int xtext(sa,s,len)
+stralloc *sa;
+char *s;
+int len;
+{
+  int i;
+
+  if(!stralloc_copys(sa,"")) temp_nomem();
+
+  for (i = 0; i < len; i++) {
+    if (s[i] == '=') {
+      if (!stralloc_cats(sa,"+3D")) temp_nomem();
+    } else if (s[i] == '+') {
+        if (!stralloc_cats(sa,"+2B")) temp_nomem();
+    } else if ((int) s[i] < 33 || (int) s[i] > 126) {
+        if (!stralloc_cats(sa,"+3F")) temp_nomem(); /* ok. not correct */
+    } else if (!stralloc_catb(sa,s+i,1)) {
+        temp_nomem();
+    }
+  }
+
+  return sa->len;
+}
+
 
 #ifdef TLS
 void smtp(fqdn)
@@ -529,11 +555,12 @@ void smtp()
     authd=1;
   }
   if (authd) {
+    if (!xtext(&xuser,auth_smtp_user.s,auth_smtp_user.len)) temp_nomem();
     substdio_puts(&smtpto,"MAIL FROM:<");
     substdio_put(&smtpto,sender.s,sender.len);
-    substdio_puts(&smtpto,"> AUTH=<");
-    substdio_put(&smtpto,auth_smtp_user.s,auth_smtp_user.len);
-    substdio_puts(&smtpto,">\r\n");
+    substdio_puts(&smtpto,"> AUTH=");
+    substdio_put(&smtpto,xuser.s,xuser.len);
+    substdio_puts(&smtpto,"\r\n");
     substdio_flush(&smtpto);
   } else {
     substdio_puts(&smtpto,"MAIL FROM:<");

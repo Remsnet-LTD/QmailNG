@@ -223,7 +223,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.08 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.10 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -791,12 +791,12 @@ int addrvalid()
   switch(wait_exitcode(wstat)) {
     case 100:
       if (!len) {
-        len = str_copy(rcptcheck_err,"553 no mailbox here by that name");
+        len = str_copy(rcptcheck_err,"553 sorry, no mailbox here by that name. (#5.1.1)\r\n");
         rcptcheck_err[len] = '\0' ;
       }
     case 111:
       if (!len) {
-        len = str_copy(rcptcheck_err,"450 unable to verify recipient");
+        len = str_copy(rcptcheck_err,"421 unable to verify recipient (#4.3.0)\r\n");
         rcptcheck_err[len] = '\0' ;
       }
       return 0;
