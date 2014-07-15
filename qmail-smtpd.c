@@ -1329,7 +1329,7 @@ int saferead(int fd,void *buf,int len)
 	flush();
 	die_read();
       }
-      if (stream.avail_out == len) continue;
+      if (stream.avail_out == (unsigned int)len) continue;
       return len - stream.avail_out;
     } while (1);
   }
@@ -1721,7 +1721,7 @@ void smtp_tls(char *arg)
       "RSA private key invalid or unable to read ", sslcert.s);
     return;
   }
-  if(!SSL_CTX_use_certificate_file(ctx, sslcert.s, SSL_FILETYPE_PEM))
+  if(!SSL_CTX_use_certificate_chain_file(ctx, sslcert.s))
   {
     out("454 TLS not available: missing certificate (#4.3.0)\r\n");
     logline2(3,"aborting TLS negotiations, "

@@ -534,3 +534,5 @@ readwrite.c
 signatures
 smtpcall.c
 smtpcall.h
+xtext.c
+xtext.h

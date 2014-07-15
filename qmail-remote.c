@@ -34,6 +34,7 @@
 #include "timeoutread.h"
 #include "timeoutwrite.h"
 #include "base64.h"
+#include "xtext.h"
 #ifdef TLS_REMOTE /* openssl/ssh.h needs to be included befor zlib.h else ... */
 #include <sys/stat.h>
 #include <openssl/ssl.h>
@@ -81,7 +82,7 @@ struct ip_address outip;
 void out(const char *s) { if (substdio_puts(subfdoutsmall,s) == -1) _exit(0); }
 void zero(void) { if (substdio_put(subfdoutsmall,"\0",1) == -1) _exit(0); }
 void zerodie(void) { zero(); substdio_flush(subfdoutsmall); _exit(0); }
-void outsafe(stralloc *sa) { int i; char ch;
+void outsafe(stralloc *sa) { unsigned int i; char ch;
 for (i = 0;i < sa->len;++i) {
 ch = sa->s[i]; if (ch < 33) ch = '?'; if (ch > 126) ch = '?';
 if (substdio_put(subfdoutsmall,&ch,1) == -1) _exit(0); } }
@@ -440,6 +441,7 @@ stralloc recip = {0};
 #ifdef TLS_REMOTE
 stralloc sslcert = {0};
 #endif
+stralloc xtext = {0};
 
 void smtp(void)
 {
@@ -506,7 +508,7 @@ void smtp(void)
 #endif
     else if (i+9 < smtptext.len && !case_diffb("AUTH ", 5, smtptext.s+i+4)) {
       for (j = i+4; j < smtptext.len; j++)
-	if (j == ' ')
+	if (smtptext.s[j] == ' ')
 	  if (j + 6 < smtptext.len && !case_diffb("LOGIN", 5, smtptext.s+j+1))
 	    flagauth = 1;
     }
@@ -643,7 +645,9 @@ void smtp(void)
   }
   if (flagauth && auth_login.len && auth_passwd.len) {
     substdio_puts(&smtpto, " AUTH=<");
-    substdio_put(&smtpto,sender.s,sender.len);
+    if (!xtext_quote(&xtext, &sender))
+	    temp_nomem();
+    substdio_put(&smtpto,xtext.s,xtext.len);
     substdio_puts(&smtpto,">");
   }
   substdio_puts(&smtpto,"\r\n");
@@ -888,7 +892,7 @@ int main(int argc, char **argv)
   unsigned int i, j;
   unsigned long randm;
   char **recips;
-  unsigned long prefme;
+  int prefme;
   int flagallaliases;
   int flagalias;
   const char *relayhost;

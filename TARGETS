@@ -469,3 +469,4 @@ rbl.o
 read-ctrl.o
 readwrite.o
 smtpcall.o
+xtext.o

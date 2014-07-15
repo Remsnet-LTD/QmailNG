@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2004 Claudio Jeker,
+ * Copyright (c) 2005 Claudio Jeker,
  *      Internet Business Solutions AG, CH-8005 Zürich, Switzerland
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,25 +31,54 @@
  * SUCH DAMAGE.
  *
  */
-#ifndef __CHECKPASSWORD_H__
-#define __CHECKPASSWORD_H__
 
 #include "stralloc.h"
+#include "xtext.h"
 
-struct credentials {
-	unsigned int	uid;
-	unsigned int	gid;
-	stralloc	home;
-	stralloc	maildir;
-	stralloc	forwarder;
-};
+static int xtext_doit(stralloc *, stralloc *);
+static const char ioHexArray[] = "0123456789abcdef";
 
-typedef int (*checkfunc)(stralloc *, stralloc *, struct credentials *, int);
+static int
+xtext_doit(stralloc *saout, stralloc *sain)
+{
+	unsigned int	n;
+	char		x[3];
+	unsigned char	c;
 
-int check(checkfunc *, stralloc *, stralloc *, struct credentials *, int);
-int check_ldap(stralloc *, stralloc *, struct credentials *, int);
-void check_credentials(struct credentials *);
-void change_uid(unsigned int, unsigned int);
-void setup_env(char *, struct credentials *);
+	if (!stralloc_ready(saout,sain->len))
+		return (0);
+	x[0] = '+';
+	for (n = 0; n < sain->len; n++) {
+		c = sain->s[n];
+		if (c < 33 || c > 126 || c == '=' || c == '+') {
+			x[1] = ioHexArray[(c >> 4) & 0x0f];
+			x[2] = ioHexArray[c & 0x0f];
+			if (!stralloc_catb(saout, x, sizeof(x)))
+				return (0);
+		} else
+			if (!stralloc_append(saout, &c))
+				return (0);
+	}
+	return (1);
+}
 
-#endif
+int
+xtext_needed(const char *s, unsigned int n)
+{
+	unsigned char	c;
+
+	for (; n > 0; n--) {
+		c = *s++;
+		if (c < 33 || c > 126 || c == '=' || c == '+')
+			return (1);
+	}
+	return (0);
+}
+
+int
+xtext_quote(stralloc *saout, stralloc *sain)
+{
+	if (xtext_needed(sain->s, sain->len))
+		return (xtext_doit(saout, sain));
+	return (stralloc_copy(saout,sain));
+}

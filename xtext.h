@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2004 Claudio Jeker,
+ * Copyright (c) 2005 Claudio Jeker,
  *      Internet Business Solutions AG, CH-8005 Zürich, Switzerland
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,25 +31,10 @@
  * SUCH DAMAGE.
  *
  */
-#ifndef __CHECKPASSWORD_H__
-#define __CHECKPASSWORD_H__
+#ifndef _XTEXT_H_
+#define _XTEXT_H_
 
-#include "stralloc.h"
-
-struct credentials {
-	unsigned int	uid;
-	unsigned int	gid;
-	stralloc	home;
-	stralloc	maildir;
-	stralloc	forwarder;
-};
-
-typedef int (*checkfunc)(stralloc *, stralloc *, struct credentials *, int);
-
-int check(checkfunc *, stralloc *, stralloc *, struct credentials *, int);
-int check_ldap(stralloc *, stralloc *, struct credentials *, int);
-void check_credentials(struct credentials *);
-void change_uid(unsigned int, unsigned int);
-void setup_env(char *, struct credentials *);
+int xtext_needed(const char *, unsigned int);
+int xtext_quote(stralloc *, stralloc *);
 
 #endif

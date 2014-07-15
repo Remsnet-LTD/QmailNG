@@ -52,6 +52,7 @@
 #include "now.h"
 #include "open.h"
 #include "qmail.h"
+#include "quote.h"
 #include "readwrite.h"
 #include "seek.h"
 #include "sgetopt.h"
@@ -163,8 +164,10 @@ stralloc moderators = {0};
 stralloc hashid = {0};
 stralloc action = {0};
 stralloc dtline = {0};
+stralloc rpline = {0};
 stralloc confirmtext = {0};
 stralloc approvetext = {0};
+stralloc foo = {0};
 
 int flagconfirm = 0;
 int flagezmlm = 0;
@@ -183,7 +186,7 @@ char *moderatoraddr(void);
 void sendconfirm(stralloc *, int);
 void sendmoderator(stralloc *, int);
 int sendmail(struct qmail *, int, int, stralloc *, stralloc *, stralloc *);
-void attachmail(struct qmail *, int, int);
+void attachmail(struct qmail *, int, unsigned int);
 void bouncefx(void);
 void createhash(int, stralloc *);
 char *createname(stralloc *, const char *, const char *, stralloc *);
@@ -191,6 +194,7 @@ void checkmessage(stralloc *, const char *, const char *);
 void delmessage(stralloc *, const char *, const char *);
 int mvmessage(stralloc *, stralloc *, const char *);
 void savemessage(stralloc *, const char *, const char *);
+void reset_sender(void);
 void clean(const char *);
 
 int
@@ -256,6 +260,14 @@ main(int argc, char **argv)
 		if (!stralloc_cat(&moderators, &messline)) temp_nomem();
 		if (!stralloc_copys(&messline, "")) temp_nomem();
 	}
+
+	if (!quote2(&foo,sender)) temp_nomem();
+	if (!stralloc_copys(&rpline,"Return-Path: <")) temp_nomem();
+	if (!stralloc_cat(&rpline,&foo)) temp_nomem();
+	for (i = 0;i < rpline.len;++i)
+		if (rpline.s[i] == '\n')
+			rpline.s[i] = '_';
+	if (!stralloc_cats(&rpline,">\n")) temp_nomem();
 
 	if (!stralloc_copys(&dtline, "Delivered-To: secretary for "))
 		temp_nomem();
@@ -732,10 +744,10 @@ sendmail(struct qmail *qq, int fd, int maxsize,
 char buf[4096];
 
 void
-attachmail(struct qmail *qq, int fd, int maxsize)
+attachmail(struct qmail *qq, int fd, unsigned int maxsize)
 {
-	substdio ss;
-	int match;
+	substdio	ss;
+	int		match;
 
 	if (seek_begin(fd) == -1) {
 		qmail_fail(qq);
@@ -771,8 +783,7 @@ bouncefx(void)
 
 	if (seek_begin(0) == -1) temp_rewind();
 	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
-	for (;;)
-	{
+	for (;;) {
 		if (getln(&ss, &messline, &match, '\n') != 0) temp_read();
 		if (!match) break;
 		if (messline.len <= 1) break;
@@ -967,6 +978,7 @@ savemessage(stralloc *hash, const char *maildir, const char *subdir)
 	if (seek_begin(0) == -1) temp_rewind();
 	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
 	substdio_fdbuf(&ssout, subwrite, fd, outbuf, sizeof(outbuf));
+	if (substdio_put(&ssout, rpline.s, rpline.len) == -1) goto fail;
 	if (substdio_put(&ssout, dtline.s, dtline.len) == -1) goto fail;
 
 	switch(substdio_copy(&ssout, &ss)) {
@@ -1017,6 +1029,7 @@ blast(stralloc *hash, const char *maildir, const char *subdir, char **args)
 			if (fd_move(0,fd) == -1)
 				strerr_die2sys(111, FATAL,
 				    "Unable to move fd: ");
+			reset_sender();
 			if (seek_begin(0) == -1) temp_rewind();
 
 			sig_pipedefault();
@@ -1055,6 +1068,35 @@ blast(stralloc *hash, const char *maildir, const char *subdir, char **args)
 		return;
 fail:
 		strerr_die2x(111, FATAL, "Unable to write to stdout: ");
+	}
+}
+
+void
+reset_sender(void)
+{
+	substdio	 ss;
+	char		*s;
+	unsigned int	 i;
+	int		 match;
+
+	if (seek_begin(0) == -1) temp_rewind();
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
+	for (;;) {
+		if (getln(&ss, &messline, &match, '\n') != 0) temp_read();
+		if (!match) break;
+		if (messline.len <= 1) break;
+		if (case_startb(messline.s, messline.len, "Return-Path:")) {
+			i = byte_chr(messline.s, messline.len, '<');
+			if (i >= messline.len)
+				continue;
+			s = messline.s + i + 1;
+			i = byte_rchr(messline.s, messline.len, '>');
+			if (i >= messline.len)
+				continue;
+			messline.s[i] = '\0';
+			if (!env_put2("SENDER",s)) temp_nomem();
+			break;
+		}
 	}
 }
 

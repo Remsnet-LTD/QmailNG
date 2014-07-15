@@ -1948,14 +1948,15 @@ wait.h lock.h
 
 qmail-remote: \
 load qmail-remote.o control.o constmap.o timeoutread.o timeoutwrite.o \
-timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o ipme.o quote.o base64.o \
-ndelay.a case.a sig.a open.a lock.a seek.a getln.a stralloc.a alloc.a \
-strerr.a substdio.a error.a str.a fs.a auto_qmail.o dns.lib socket.lib
+timeoutconn.o tcpto.o now.o dns.o ip.o ipalloc.o ipme.o quote.o xtext.o \
+base64.o ndelay.a case.a sig.a open.a lock.a seek.a getln.a stralloc.a \
+alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o \
+dns.lib socket.lib
 	./load qmail-remote control.o constmap.o timeoutread.o \
 	timeoutwrite.o timeoutconn.o tcpto.o now.o dns.o ip.o \
-	ipalloc.o ipme.o quote.o base64.o ndelay.a case.a sig.a \
-	open.a lock.a seek.a getln.a stralloc.a alloc.a strerr.a \
-	substdio.a error.a str.a fs.a auto_qmail.o \
+	ipalloc.o ipme.o quote.o xtext.o base64.o ndelay.a case.a \
+	sig.a open.a lock.a seek.a getln.a stralloc.a alloc.a \
+	strerr.a substdio.a error.a str.a fs.a auto_qmail.o \
 	`cat dns.lib` `cat socket.lib` $(TLSLIBS) $(ZLIB)
 
 qmail-remote.0: \
@@ -2008,17 +2009,18 @@ tcpto.h
 qmail-secretary: \
 load qmail-secretary.o base64.o digest_sha1.o control.o newfield.o now.o \
 date822fmt.o datetime.a mailmaker.o mailmagic.o case.a getln.a qmail.o \
-getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a alloc.a strerr.a \
-substdio.a error.a str.a fs.a auto_qmail.o
+quote.o getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a alloc.a \
+strerr.a substdio.a error.a str.a fs.a auto_qmail.o
 	./load qmail-secretary base64.o digest_sha1.o control.o newfield.o \
 	now.o date822fmt.o datetime.a mailmaker.o mailmagic.o case.a getln.a \
-	qmail.o getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a env.a \
-	alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o
+	qmail.o quote.o getopt.a seek.a fd.a wait.a sig.a open.a stralloc.a \
+	env.a alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o
 
 qmail-secretary.o: \
 compile qmail-secretary.c uint32.h base64.h byte.h case.h digest_sha1.h \
-env.h error.h fmt.h getln.h mailmagic.h now.h open.h seek.h sgetopt.h \
-sig.h str.h stralloc.h strerr.h substdio.h qldap-errno.h mailmaker.h
+direntry.h env.h error.h fd.h fmt.h getln.h mailmagic.h newfield.h now.h \
+open.h qmail.h quote.h readwrite.h seek.h sgetopt.h sig.h str.h stralloc.h \
+strerr.h substdio.h wait.h qldap-errno.h mailmaker.h
 	./compile $(LDAPFLAGS) $(MDIRMAKE) qmail-secretary.c
 
 qmail-send: \
@@ -2203,8 +2205,9 @@ auto_qmail.o
 	str.a timeoutread.o auto_qmail.o $(LDAPLIBS)
 
 qmail-verify.o: \
-compile qmail-verify.c error.h getln.h qldap.h qldap-errno.h qmail-ldap.h \
-read-ctrl.h stralloc.h subfd.h substdio.h timeoutread.h
+compile qmail-verify.c error.h getln.h output.h qldap.h qldap-debug.h \
+qldap-errno.h qmail-ldap.h read-ctrl.h stralloc.h subfd.h substdio.h \
+timeoutread.h
 	./compile $(LDAPFLAGS) $(DEBUG) qmail-verify.c
 
 qmail.0: \
@@ -2769,6 +2772,10 @@ compile wait_nohang.c haswaitp.h
 wait_pid.o: \
 compile wait_pid.c error.h haswaitp.h
 	./compile wait_pid.c
+
+xtext.o: \
+compile xtext.c xtext.h stralloc.h
+	./compile xtext.c
 
 cert:
 	$(OPENSSLBIN) req -new -x509 -nodes \

@@ -12,14 +12,14 @@ extern void hier();
 #define WARNING "instcheck: warning: "
 
 void perm(prefix1,prefix2,prefix3,file,type,uid,gid,mode)
-char *prefix1;
-char *prefix2;
-char *prefix3;
-char *file;
-int type;
+const char *prefix1;
+const char *prefix2;
+const char *prefix3;
+const char *file;
+unsigned int type;
 int uid;
 int gid;
-int mode;
+unsigned int mode;
 {
   struct stat st;
 
@@ -31,9 +31,9 @@ int mode;
     return;
   }
 
-  if ((uid != -1) && (st.st_uid != uid))
+  if ((uid != -1) && (st.st_uid != (unsigned int)uid))
     strerr_warn6(WARNING,prefix1,prefix2,prefix3,file," has wrong owner",0);
-  if ((gid != -1) && (st.st_gid != gid))
+  if ((gid != -1) && (st.st_gid != (unsigned int)gid))
     strerr_warn6(WARNING,prefix1,prefix2,prefix3,file," has wrong group",0);
   if ((st.st_mode & 07777) != mode)
     strerr_warn6(WARNING,prefix1,prefix2,prefix3,file," has wrong permissions",0);
@@ -42,7 +42,7 @@ int mode;
 }
 
 void h(home,uid,gid,mode)
-char *home;
+const char *home;
 int uid;
 int gid;
 int mode;

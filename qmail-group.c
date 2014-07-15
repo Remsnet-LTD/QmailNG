@@ -95,6 +95,7 @@ void usage(void)
 
 void init(void);
 void bouncefx(void);
+void reset_sender(void);
 void blast(stralloc *, int);
 void reopen(void);
 void trydelete(void);
@@ -145,7 +146,7 @@ main(int argc, char **argv)
 		    !case_diffs(action.s, "moderators") && !(ext && *ext)) {
 			/* mail to moderators */
 			blast(&moderators, 0);
-		} else if (!case_diffs(action.s, "return") && ext && *ext) {
+		} else if (!case_diffs(action.s, "return")) {
 			/* bounce form subscribed user */
 			blast(&bounceadmin, 0);
 		} else if (!case_diffs(action.s, "bounce") && ext && *ext) {
@@ -261,8 +262,7 @@ bouncefx(void)
 
 	if (seek_begin(0) == -1) temp_rewind();
 	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
-	for (;;)
-	{
+	for (;;) {
 		if (getln(&ss, &line, &match, '\n') != 0) temp_read();
 		if (!match) break;
 		if (line.len <= 1) break;
@@ -274,6 +274,39 @@ bouncefx(void)
 				    "(#5.4.6)");
 	}
 }
+
+void
+reset_sender(void)
+{
+	substdio	 ss;
+	char		*s;
+	int		 match;
+	unsigned int	 i;
+
+	if (seek_begin(0) == -1) temp_rewind();
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
+	for (;;) {
+		if (getln(&ss, &line, &match, '\n') != 0) temp_read();
+		if (!match) break;
+		if (line.len <= 1) break;
+		if (case_startb(line.s, line.len, "Return-Path:")) {
+			i = byte_chr(line.s, line.len, '<');
+			if (i >= line.len)
+				continue;
+			s = line.s + i + 1;
+			i = byte_rchr(line.s, line.len, '>');
+			if (i >= line.len)
+				continue;
+			line.s[i] = '\0';
+			if (!env_put2("SENDER",s)) temp_nomem();
+			break;
+		}
+	}
+	/* reget sender as it was possibly overwritten */
+	sender = env_get("SENDER");
+	if (!sender) strerr_die2x(100, FATAL, "SENDER not set");
+}
+
 
 char strnum1[FMT_ULONG];
 char strnum2[FMT_ULONG];
@@ -349,6 +382,7 @@ reopen(void)
 	if (fd_move(0,fd) == -1)
 		strerr_die2sys(111, FATAL,
 		    "Unable to reopen old message: fd_move: ");
+	reset_sender();
 }
 
 void
@@ -366,7 +400,7 @@ secretary(char *maildir, int flagcheck)
 	int child, wstat;
 	unsigned int i, numargs;
 	int pi[2];
-	int r;
+	int r, j;
 
 	if (!stralloc_copys(&fname, "")) temp_nomem();
 
@@ -422,22 +456,22 @@ secretary(char *maildir, int flagcheck)
 		_exit(100);
 	case 0: case 99:
 		/* XXX a for(;;) loop would be great */
-		r = read(pi[0], sbuf, sizeof(sbuf));
+		r = subread(pi[0], sbuf, sizeof(sbuf));
 		if (r == -1) /* read error on a readable pipe, be serious */
 			strerr_die2sys(111, FATAL,
 			    "Unable to read secretary result: ");
 		if (r == 0)
 			/* need to wait for confirmation */
 			_exit(0);
-		for (i = 0; i < r; i++) {
-			if (i == 0) {
-				if (sbuf[i] != 'K')
+		for (j = 0; j < r; i++) {
+			if (j == 0) {
+				if (sbuf[j] != 'K')
 					strerr_die2x(111, FATAL,
 					    "Strange secretary dialect");
 				else
 					continue;
 			}
-			if (!stralloc_append(&fname, &sbuf[i])) temp_nomem();
+			if (!stralloc_append(&fname, &sbuf[j])) temp_nomem();
 		}
 		close(pi[0]);
 		return;
