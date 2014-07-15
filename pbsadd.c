@@ -37,8 +37,8 @@ static void logs(char *s)
 
 void die_badenv() { log("pbsadd unable to read $TCPREMOTEIP"); die(); }
 void die_control() { log("pbsadd unable to read controls"); die(); }
-void die_dir() { log("pbsadd unable to open current directory: "); die(); }
-void die_dirback() { log("pbsadd unable to switch back to source directory: "); die(); }
+void die_dir() { log("pbsadd unable to open current directory"); die(); }
+void die_dirback() { log("pbsadd unable to switch back to source directory"); die(); }
 void die_secret() { log("pbsadd control/pbssecret is to long"); die(); }
 void die_envs() { log("pbsadd control/pbsenvs has to many entries"); die(); }
 void die_exec() { log("pbsadd unable to start pop3 daemon"); die(); }
@@ -93,8 +93,6 @@ void setup(void)
   if (fchdir(fdsourcedir) == -1)
     die_dirback();
 
-//  if (!stralloc_0(&addresses) ) log_nomem();
-
   for( i = 0; i < addresses.len; i++)
     if( addresses.s[i] == '\0' ) numservers++;
   if(numservers == 0) die_control();
@@ -119,12 +117,14 @@ void setup(void)
 int sendrequest(int fd, char* buf, int len, struct ip_address *ip)
 {
   struct sockaddr_in sin;
+  unsigned int port;
   char *x;
 
   byte_zero(&sin,sizeof(sin));
   byte_copy(&sin.sin_addr,4,ip);
   x = (char *) &sin.sin_port;
-  x[1] = serverport; serverport >>= 8; x[0] = serverport;
+  port = serverport;
+  x[1] = port; port >>= 8; x[0] = port;
   sin.sin_family = AF_INET;
 
   return sendto(fd, buf, len, 0, (struct sockaddr*)&sin, sizeof(sin));
