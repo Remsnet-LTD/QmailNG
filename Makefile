@@ -4,7 +4,9 @@
 # -DLDAP_ESCAPE_BUG should be added as long as the ldap servers have
 # problems with the escapeing of LDAP filters (fixed with OpenLDAP 1.2.7)
 # -DQLDAP_CLUSTER for enabling cluster support
-#LDAPFLAGS=-DQLDAP_CLUSTER
+# to use cleartext passwords (a bad idea on production systems) add
+# -DCLEARTEXTPASSWD to the LDAPFLAGS
+LDAPFLAGS=-DQLDAP_CLUSTER -DCLEARTEXTPASSWORD -DLDAP_ESCAPE_BUG
 
 # Perhaps you have different ldap libraries, change them here
 LDAPLIBS=-L/usr/local/lib -lldap -llber
@@ -18,23 +20,23 @@ LDAPINCLUDES=-I/usr/local/include
 # TLS (SMTP encryption) in qmail-smtpd and qmail-remote, see TLS.readme
 # You need OpenSSL for this
 # TLS enable
-#TLSON=-DTLS
+TLSON=-DTLS
 # Path to OpenSSL includes
-#TLSINCLUDES=-I/usr/local/include
+TLSINCLUDES=-I/usr/local/include
 # Path to OpenSSL libraries
-#TLSLIBS=-L/usr/local/lib -lssl -lcrypto
+TLSLIBS=-L/usr/local/lib -lssl -lcrypto
 # Path to OpenSSL binary
-#OPENSSLBIN=/usr/local/bin/openssl
+OPENSSLBIN=/usr/local/bin/openssl
 
 # to make the Netscape download progress bar work with qmail-pop3d
 # uncomment the next line (allready done)
 MNW=-DMAKE_NETSCAPE_WORK
 
 # to enable the auto-maildir-make feature uncomment the next line
-#MDIRMAKE=-DAUTOMAILDIRMAKE
+MDIRMAKE=-DAUTOMAILDIRMAKE
 
 # to enable the auto-homedir-make feature uncomment the next line
-#HDIRMAKE=-DAUTOHOMEDIRMAKE
+HDIRMAKE=-DAUTOHOMEDIRMAKE
 
 # on most systems we need this to make checkpassword
 SHADOWLIBS=-lcrypt
@@ -47,7 +49,7 @@ SHADOWLIBS=-lcrypt
 
 # to enable the possibility to log and debug imap and pop uncoment the
 # next line
-#DEBUG=-DDEBUG
+DEBUG=-DDEBUG
 # WARNING: you need NONE DEBUG auth_* to run with inetd
 
 # Just for me, make from time to time a backup
@@ -1255,7 +1257,7 @@ compile qldap-errno.c qldap-errno.h error.h
 
 qldap-ldaplib.o: \
 compile qmail-ldap.h qldap-errno.h qldap-ldaplib.h alloc.h stralloc.h \
-error.h control.h auto_qmail.h str.h qldap-ldaplib.c byte.h
+error.h control.h auto_qmail.h str.h qldap-ldaplib.c byte.h fmt.h
 	./compile $(LDAPFLAGS) $(LDAPINCLUDES) $(DEBUG) qldap-ldaplib.c
 
 qldap-mdm.o: \

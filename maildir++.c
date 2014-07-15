@@ -16,7 +16,7 @@
 #include "sig.h"
 #include "maildir++.h"
 
-static void temp_nomem() { strerr_die1x(111,"Out of memory. (QUOTA #)"); }
+static void temp_nomem() { strerr_die1x(111,"Out of memory. (QUOTA #1.0.1)"); }
 
 static int check_maxtime(char *dir, time_t time);
 static void calc_size(char *dir, long int *size, int *count, time_t *maxtime);
@@ -31,7 +31,7 @@ static char		buf[1024];
 
 /* alarm handler */
 static void sigalrm() { unlink(foo.s);
-	strerr_die1x(111,"Timeout while writing maildirsize. (QUOTA #)"); }
+	strerr_die1x(111,"Timeout while writing maildirsize. (QUOTA #1.0.2)"); }
 
 void quota_add(int fd, long int size, int count)
 /* add size and count to the quota (maildirsize) */
@@ -39,6 +39,8 @@ void quota_add(int fd, long int size, int count)
 	char		num[FMT_ULONG];
 	seek_pos	pos;
 	substdio	ss;
+
+	if ( fd == -1 ) return;
 
 	seek_end(fd);
 	pos = seek_cur(fd); /* for savety */
@@ -55,11 +57,11 @@ void quota_add(int fd, long int size, int count)
 	if (substdio_put(&ss, foo2.s, foo2.len) == -1) goto addfail;
 	if (substdio_flush(&ss) == -1) goto addfail;
 	if (fsync(fd) == -1) goto addfail;
-	if (close(fd) == -1) goto addfail;
 	return;
 
 addfail:
-	strerr_warn3("Unable to add quota: ", error_str(errno), ". (QUOTA #)",0);
+	strerr_warn3("Unable to add quota: ", error_str(errno),
+			". (QUOTA #1.2.1)",0);
 	seek_trunc(fd,pos); /* recover from error */
 	close(fd);
 	_exit(111);
@@ -72,6 +74,8 @@ void quota_rm(int fd, long int size, int count)
 	char		num[FMT_ULONG];
 	seek_pos	pos;
 	substdio	ss;
+
+	if ( fd == -1 ) return;
 
 	seek_end(fd);
 	pos = seek_cur(fd); /* again savety */
@@ -89,11 +93,11 @@ void quota_rm(int fd, long int size, int count)
 	if (substdio_put(&ss, foo2.s, foo2.len) == -1) goto rmfail;
 	if (substdio_flush(&ss) == -1) goto rmfail;
 	if (fsync(fd) == -1) goto rmfail;
-	if (close(fd) == -1) goto rmfail;
 	return;
 
 rmfail:
-	strerr_warn3("Unable to remove quota: ", error_str(errno), ". (QUOTA #)",0);
+	strerr_warn3("Unable to remove quota: ", error_str(errno),
+			". (QUOTA #1.3.1)",0);
 	seek_trunc(fd,pos); /* recover form error */
 	close(fd);
 	_exit(111);
@@ -124,6 +128,8 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 
 	tm = now();
 
+	/* first check if we are in a maildir subfolder, normaly this is impossible
+	 */
 	if ( ! stralloc_copys(&maildirsize, dir) ) temp_nomem();
 	if ( ! stralloc_cats(&maildirsize, "/maildirfolder") ) temp_nomem();
 	if ( ! stralloc_0(&maildirsize) ) temp_nomem();
@@ -140,7 +146,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 		}
 		return quota_maildir(dir, quota, fd, mailsize, mailcount);
 	}
-	/* we are not in a subdir, test if maildirsize is present */
+	/* we are not in a subfolder, test if maildirsize is present */
 	if ( ! stralloc_copys(&maildirsize, dir) ) temp_nomem();
 	if ( ! stralloc_cats(&maildirsize, "/maildirsize") ) temp_nomem();
 	if ( ! stralloc_0(&maildirsize) ) temp_nomem();
@@ -151,7 +157,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 	if (quota)
 		get_quota(quota, &q_size, &q_count);
 		/* if a quota was specified get the figures */
-	if ( errno == error_noent || st.st_size >= 5120 ) {
+	if ( errno == error_noent || (unsigned long) st.st_size >= 5120L ) {
 		/* get_quota dosn't change errno */
 		if ( !quota ) {
 			/* if no quota was specified, we can not calculate
@@ -187,9 +193,8 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 				get_quota(foo.s, &size, &count);
 				if ( quota ) {
 					/* compare if the settings have changed */
-					if ( size == q_size || count == q_count ) {
+					if ( size == q_size && count == q_count ) {
 						/* finaly parse the maildirsize */
-						size = 0; count = 0;
 						if ( parse_quota(&ss, &size, &count, &lines) == -1 ||
 								lines == 0 ) {
 							if ( unlink(maildirsize.s) == -1 &&
@@ -206,6 +211,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 						calc_size(dir, &size, &count, &maxtime);
 					}
 				} else {
+					q_count = count; q_size = size;
 					if ( parse_quota(&ss, &size, &count, &lines) == -1 ||
 							lines == 0 ) {
 						*fd = -1;
@@ -231,7 +237,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 				maxtime = now();
 				pid = getpid();
 				if ( ! stralloc_copys(&foo, dir) ) temp_nomem();
-				if ( ! stralloc_cats(&foo, "/tmp/maildirsize.") ) temp_nomem();
+				if ( ! stralloc_cats(&foo, "tmp/maildirsize.") ) temp_nomem();
 				if ( ! stralloc_readyplus(&foo, 2*FMT_ULONG+2) ) temp_nomem();
 				if ( ! stralloc_0(&foo) ) temp_nomem();
 				s = foo.s;
@@ -246,10 +252,17 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 
 			alarm(86400);
 
-			if ( ( *fd = open_excl(foo.s) ) == -1 ) goto fail;
+			if ( ( *fd = open_excl(foo.s) ) == -1 ) {
+				if ( errno == error_noent ) return 0;
+				goto fail;
+			}
 			substdio_fdbuf(&ss,write,*fd,buf,sizeof(buf));
-			if (substdio_puts(&ss,quota) == -1) goto fail;
-			if (substdio_puts(&ss,"\n") == -1) goto fail;
+			if (substdio_put(&ss, num, fmt_ulong(num, (long) q_size) ) == -1)
+				goto fail;
+			if (substdio_puts(&ss,"S,") == -1) goto fail;
+			if (substdio_put(&ss, num, fmt_ulong(num, (long) q_count) ) == -1)
+				goto fail;
+			if (substdio_puts(&ss,"C\n") == -1) goto fail;
 			if ( ! stralloc_ready(&foo2, 2*FMT_ULONG+2) ) temp_nomem();
 			if ( ! stralloc_copyb(&foo2, num, fmt_ulong(num, (long) size) ) )
 				temp_nomem();
@@ -296,7 +309,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 			return quota_maildir(dir, quota, fd, mailsize, mailcount);
 		}
 	}
-	/* release some buffers */
+	/* should release some buffers (but not possible) */
 	if ( ! stralloc_copys(&foo, "") ) temp_nomem();
 	if ( ! stralloc_copys(&foo2, "") ) temp_nomem();
 	if ( ! stralloc_copys(&maildirsize, "") ) temp_nomem();
@@ -306,7 +319,7 @@ int quota_maildir(char *dir, char *quota, int *fd, long int mailsize,
 
 	fail:
 		strerr_warn3("Problems while trying to get maildirsize: ",
-					 error_str(errno), ". (QUOTA #)", 0);
+			     error_str(errno), ". (QUOTA #1.1.1)", 0);
 		if ( match == -1 ) unlink(foo.s);
 		_exit(111);
 }
@@ -415,7 +428,7 @@ static void calc_curnew(char *dir, long int *size, int *count, time_t *maxtime)
 		/* get the file size */
 		if( get_file_size(foo.s, dp->d_name, &filest) == 0 ) {
 			(*count)++;
-			*size += filest.st_size;
+			*size += (long) filest.st_size;
 		}
 	}
 
@@ -444,7 +457,7 @@ static void calc_curnew(char *dir, long int *size, int *count, time_t *maxtime)
 
 		if( get_file_size(foo.s, dp->d_name, &filest) == 0 ) {
 			(*count)++;
-			*size += filest.st_size;
+			*size += (long) filest.st_size;
 		}
 	}
 
@@ -489,7 +502,7 @@ static int parse_quota(substdio *ss, long int *size, int *count, int *lines)
 
 	while (1) {
 		if (getln(ss,&foo,&match,'\n') != 0) {
-			strerr_warn1("Parse error in maildirsize: (QUOTA #)", 0 );
+			strerr_warn1("Parse error in maildirsize: (QUOTA #1.4.1)", 0 );
 			return -1; /* Uh oh we made a booboo */
 		}
 		/* test if at the end */
@@ -501,10 +514,10 @@ static int parse_quota(substdio *ss, long int *size, int *count, int *lines)
 		s[foo.len-1] = 0;
 		/* first the size */
 		if ( *s == '-' ) {
-			if (! scan_ulong(s++, &fig) ) continue;
+			if (! scan_ulong(++s, &fig) ) continue;
 			fig *= -1;
 		} else {
-			if (! scan_ulong(s++, &fig) ) continue;
+			if (! scan_ulong(s, &fig) ) continue;
 		}
 		*size += fig;
 		/* then the file count */
@@ -545,8 +558,8 @@ void get_quota(char *quota, long int *size, int *count)
 				*count = i;
 				break;
 			default: /* defaults to size */
-				*size = i;
-				break;
+				*size = i*1024; /* because in the old patch it was in kB */
+				break;			/* thanks to Aaron Nabil */
 		}
 	}
 }

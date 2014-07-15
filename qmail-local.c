@@ -121,19 +121,19 @@ char *dir;
    if (stat("new", &st) == -1) {
      if (errno == error_noent) {
        if (mkdir("new",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
-     } else if (error_temp(errno)) _exit(5); _exit(6);
+     } else if (error_temp(errno)) _exit(5); else _exit(6);
    } else if (! S_ISDIR(st.st_mode) ) _exit(7);
 
    if (stat("cur", &st) == -1) {
      if (errno == error_noent) {
        if (mkdir("cur",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
-     } else if (error_temp(errno)) _exit(5); _exit(6);
+     } else if (error_temp(errno)) _exit(5); else _exit(6);
    } else if (! S_ISDIR(st.st_mode) ) _exit(7);
 
    if (stat("tmp", &st) == -1) {
      if (errno == error_noent) {
        if (mkdir("tmp",0700) == -1) { if (error_temp(errno)) _exit(5); _exit(6); }
-     } else if (error_temp(errno)) _exit(5); _exit(6);
+     } else if (error_temp(errno)) _exit(5); else _exit(6);
    } else if (! S_ISDIR(st.st_mode) ) _exit(7);
  }
 #endif
@@ -194,7 +194,7 @@ char *dir;
 /* end child process */
 
 /* quota handling warning and bounce */
-void quota_bounce(void) { strerr_die1x(100, "The users mailbox is over the allowed quota (size)."); }
+void quota_bounce(char *type) { strerr_die3x(100, "The users ", type, " is over the allowed quota (size)."); }
 
 void quota_warning(char *fn)
 {
@@ -247,23 +247,25 @@ char *fn;
 
  if( quotastring && *quotastring ) {
    if (fstat(0, &mailst) != 0)
-       strerr_die3x(111,"Unable to open for quota mail: ",error_str(errno),". (LDAP-ERR #2.4.1)");
+       strerr_die3x(111,"Can not stat mail for quota: ",error_str(errno),". (LDAP-ERR #2.4.1)");
    mailsize = mailst.st_size;
    perc = quota_maildir(fn, quotastring, &fd, mailsize, 1);
    if ( perc == -1 ) {
      /* second chance */
      sleep(3);
      perc = quota_maildir(fn, quotastring, &fd, mailsize, 1);
+	 /* XXX fd can be -1 when perc = 0 quota_add/rm take care of that */
      if ( perc == -1 )
        strerr_die1x(111,"Temporary race condition while calculating quota. (LDAP-ERR #2.4.2)");
    }
    if ( perc == 100 )
-	 quota_bounce();
+	 quota_bounce("maildir");
    else if ( perc > QUOTA_WARNING_LEVEL )
 	 /* drop a warning when mailbox is around 80% full */
      quota_warning(fn);
 
    quota_add(fd, mailsize , 1);
+   close(fd);
  }
 
  /* end -- quota handling maildir */
@@ -315,7 +317,7 @@ char *fn;
 
  if (seek_begin(0) == -1) temp_rewind();
 
- if(quotastring != 0 ) {
+ if( quotastring && *quotastring ) {
    get_quota(quotastring, &quota, &dummy);
    if (stat(fn, &filest) == -1)
      if ( errno != error_noent) { /* FALSE if file doesn't exist */
@@ -325,9 +327,9 @@ char *fn;
    if (fstat(0, &mailst) != 0)
      strerr_die3x(111,"Unable to quota mail: ",error_str(errno), ". (LDAP-ERR #2.4.6)");
 
-   totalsize = filest.st_size + mailst.st_size;
+   totalsize = (long) filest.st_size + (long) mailst.st_size;
    if ( totalsize > quota ) {
-     quota_bounce();
+     quota_bounce("mailbox");
    } else if ( totalsize > (quota/100.0*QUOTA_WARNING_LEVEL) )
 	 /* drop a warning when mailbox is around 80% full */
      quota_warning(fn);
