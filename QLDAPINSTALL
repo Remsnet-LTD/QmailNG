@@ -1,12 +1,12 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001 Internet Business Solutions Ltd.
+(c) 1998,1999,2000,2001,2002 Internet Business Solutions Ltd.
 
 This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: current ($Date: 2001/09/29 21:48:32 $)
+RELEASE: current ($Date: 2002/04/30 15:32:46 $)
 
 TOC:
  INSTALL                        how to install the patch
@@ -25,14 +25,15 @@ NEWS:
 
 IMPORTANT NEWS:
 
- new commandline options for qmail-ldaplookup
+ rework of qmail-smtpd with more options for spam protection, etc.
 
- variation of Henning Brauer's dash_ext patch. See Section 5.3 and
- have a look at the QLDAPNEWS.
+ added pop-before-smtp tools (see POPBEFORESMTP for more info).
 
- new logging facilities for qmail-lspawn and auth_*
+ Add an external TODO processor program. This moves the queue todo processing
+ out of qmail-send to avoid the silly qmail syndrome with high injection rates
+ (see EXTTODO for more info). Enable with -DEXTERNAL_TODO in Makefile.
 
- new control file ldapclusterhosts. See Section CONFIG FILES.
+ a lot of smaller patches see QLDAPNEWS
 
 ================================================================================
 
@@ -43,6 +44,8 @@ INSTALL:
 
 2. Read this document. THIS IS IMPORTANT, this is no
    ./configure; make; make install software.
+   If you are not familiar with compiling software you should definitifly
+   read http://www.lifewithqmail.org/ldap/ first.
 
 3. You need the following compiled and installed
     - OpenLDAP 1.2.x/2.x or higher (others might also work)
@@ -76,8 +79,11 @@ INSTALL:
      NOTE: on Solaris Systems you probably need also -lnsl -lsocket
            newer OpenLDAP libs my need also -lresolv (DNS support).
            It is also good to set the ld runpath with the -R switch
-           for more info ld(1) or gcc(1).
+           for more info ld(1) or gcc(1) and
+           http://www.lifewithqmail.org/ldap/.
    - LDAPINCLUDES: perhaps you need a special include-path for ldap
+     NOTE: if you need this you may run into shared library problems
+           see http://www.lifewithqmail.org/ldap/.
 
    - MNW=-DMAKE_NETSCAPE_WORK (turns on the patch that fixes the problem
      with the Netscape download progress bar and qmail-pop3d)
@@ -90,7 +96,7 @@ INSTALL:
    - SHADOWLIBS=-lcrypt is needed on most systems (except my OpenBSD box :-) )
      SHADOWLIBS=-lcrypt -lshadow , SHADOWOPTS=-DPW_SHADOW are needed on some
      Systems (Solaris, Linux) for local password lookups
-     (just like the original djb-checkpassword)
+     (just like the original djb-checkpassword. See Makefile.)
    - DEBUG=-DDEBUG (compiles debugging into the auth modules and qmail-ldap,
      see also 10.)
    - TLS* stuff for TLS (SMTP encryption) mostly self explaining
@@ -116,7 +122,8 @@ INSTALL:
      path: [a-zA-Z0-9@_./:=][a-zA-Z0-9@_.-/:=]*
            (for LDAP_MAILSTORE and LDAP_HOMEDIR)
      prog: [a-zA-Z0-9@_./:=\\\t\n "'+,][a-zA-Z0-9@_.-/:=\\\t\n "'+,]*
-           (for LDAP_PROGRAM with RESTRICT_PROG on)
+           (for LDAP_PROGRAM with RESTRICT_PROG on, if RESTRICT_PROG is 0
+           then most shell escape characters are also allowed. e.g [$#!%&()*;])
      NOTE: have a look at QLDAPNEWS for more info
 
 5.3 Note on DASH_EXT:
@@ -135,7 +142,14 @@ INSTALL:
     install -> HINT: read the INSTALL and the FAQ file!!! :) ).
     Now everything should be installed with correct permissions.
 
-6.1 If using TLS you can use 'make cert' or 'make cert-req' to create TLS
+6.1 If "make setup check" fails with an error like this:
+       /usr/local/lib/libldap.so: undefined reference to `res_query'
+       /usr/local/lib/libldap.so: undefined reference to `dn_expand'
+       collect2: ld returned 1 exit status
+       make: *** [qmail-lspawn] Error 1
+    You have forgotten to add -lresolv to LDAPLIBS.
+
+6.2 If using TLS you can use 'make cert' or 'make cert-req' to create TLS
     certificates
 
 7.  Create the LDAP user database and start the LDAP server
@@ -386,13 +400,29 @@ CONFIG FILES:
 ~control/rbllist
 
  Rbllist contains a number of RBL's to check for the given senders IP address.
+ The file consists of four TAB separated fields.
+   basedomain: base domain address to lookup (e.g. relays.ordb.org)
+   action: one of addheader or reject.
+           addheader will just create a X-RBL: header whereas
+           reject will reject the smtp connection instantly with a 553 error.
+   matchon: any or IP-Address, if a IP-Address is specified the action is only
+            taken if the returned address form basedomain is equal to
+            IP-Address. With any all returned IP-Address will match.
+   message: message to be included in X-RBL: headers and 553 errors.
+
+ Example:
+   basedomain            action     matchon    message
+   ========================================================================
+   relays.ordb.org       reject     any        see http://ordb.org
+   spamguard.leadmon.net addheader  127.0.0.2  address is a dialup address
+
+ NOTE: for readability we replaced the tabs between the four fields basedoamin,
+       action, matchon and message with spaces (so you can not copy paste the
+       example. (Also the first two lines are not part of the file)
  Default: none
- Example: blackholes.mail-abuse.org
- Example: dialups.mail-abuse.org
- Example: relays.mail-abuse.org
- Example: spamsources.orbs.org
  Note: Multiline. To activate RBL checks you have to set RBL in qmail-smtpd's
-       environment (with tcpserver).
+       environment (with tcpserver). See this website for more information on
+       available RBLs: http://www.declude.com/JunkMail/Support/ip4r.htm
 
 ~control/rblonlyheader
 
@@ -400,9 +430,11 @@ CONFIG FILES:
  line with it's findings to the mail header.
  Default: none
  Example: 1
- Note: Add's a "X-RBL: IP[] is listed by RBL[]" header to the message for
-       later filtering. Can also be activated if you set RBLONLYHEADER in
-       qmail-smtpd's environment (with tcpserver).
+ Note: Add's a
+       "X-RBL: (relays.ordb.org) matches with 127.0.0.2 and tells us go home"
+       header to the message for later filtering. Can also be activated for
+       certain IP ranges if you set RBLONLYHEADER in qmail-smtpd's environment
+       (with tcpserver).
 
 ~control/badrcptto
 
@@ -412,6 +444,13 @@ CONFIG FILES:
  Note: This can be useful if a spammer sends lots of messages to a
        nonexistant user from an invalid address as otherwise postmaster
        will get lots of double bounces.
+
+~control/bouncemaxbytes
+
+ This file contains the maximal number of bytes to be included in a bounce
+ message.
+ Default: 0 (off)
+ Example: 102400 (equivalent to 10kB)
 
 ~control/dirmaker
 
@@ -436,7 +475,7 @@ CONFIG FILES:
 
 ~control/ldappasswdappend
  NO LONGER USED, PLEASE REMOVE THE FILE
- Now the auth modules extract the Maildir out of the .qmail file, but only
+ The auth modules now extract the Maildir out of the .qmail file, but only
  on local (/etc/passwd) lookups.
 
 ================================================================================
@@ -449,24 +488,70 @@ Environment variables with control files (see control file for description):
  RBL
  RBLONLYHEADER
 
-Environment variables *without* control file:
+Environment variables *without* control file (setable with tcpserver):
 
-DENYMAIL
+SMTP550DISCONNECT
 
- Heavy sanity checking of the envelope sender address
- Default: none
+ Disconnect the SMTP session if a 5xx is produced by the sender
+ Default: off
  Affects: qmail-smtpd
- Example: DNSCHECK
- Note: The following variables are supported:
-        SPAM     -> refuse all mail
-        NOBOUNCE -> refuse null mail from
-        DNSCHECK -> validate that envelope senders domain has an MX or A record
-                    plus check for other invalid envelope sender constructs
+ Example: "" (any value will do)
+ Note: This is useful if you have a spammer trying different senders or
+       recipients in the same session separated by rset's.
+
+NOBOUNCE
+
+ Rejects null sender bounces
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: Use only in extreme cases and only for certain IP ranges. Blocking
+       bounces is considered harmful and strictly prohibited by RFC2821.
+       This can be useful if a spammer used your domain as sender and you
+       get all the bounces. Otherwise don't enable this! You want to get
+       bounces!
+
+SANITYCHECK
+
+ Rejects senders without an @, no . in domain part or too long/short TLD
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: Rejects stuff which you probably don't want on your mailserver
+       because it's highly likely that it'll bounce later.
+
+RETURNMXCHECK
+
+ Rejects senders if they don't have a valid return MX
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: This is quite useful even though it doesn't stops many spammers
+       today. But it ensures that you can send an email or a bounce
+       back to the sender. It is also useful for your own users/customers
+       because if they type a nonexistent sender into their "from" field
+       (typos!) it'll stop them the first time instead of getting help-
+       desk calls when nobody can reply to them.
+
+BLOCKRELAYPROBE
+
+ Rejects recipients with and "!", "%" or double-"@"
+ Default: off
+ Affects: qmail-smtpd
+ Example: "" (any value will do)
+ Note: This is quite useful to stop so called anti-spam probes of clueless
+       and overzealus wannabe RBL operators. These probes try to exploit
+       some ancient sendwhale bugs never existent in qmail. Unfortunatly
+       qmail accepts such stuff even if it doesn't relays it and bounces
+       it later. "!" is the old UUCP bang path. "%" is a sendwhale relaying
+       hack and double-"@" a sendwhale bug.
+       Beware if you actually use the qmail percent-hack! Then this can't
+       be used obviously!
 
 LOGLEVEL
 
  Level of log verbosity in qmail-smtpd
- Default: none
+ Default: 0 (NULL)
  Affects: qmail-smtpd
  Example: 3
  Note: integer value from 0-3, everything will be logged through tcpserver
@@ -474,7 +559,7 @@ LOGLEVEL
 LOGLEVEL or DEBUGLEVEL
 
  Level of log verbosity in qmail-lspawn, auth_*
- Default: none (0)
+ Default: 0 (NULL)
  LEVELS:
     LOGLEVEL=1   -> Errors
     LOGLEVEL=2   -> Warnings

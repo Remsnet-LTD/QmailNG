@@ -52,21 +52,6 @@ static stralloc qldap_gid = {0};		/* UID if not specified in db */
 static stralloc qldap_messagestore = {0}; 	/* prefix for maildirpaths */
 static long	qldap_timeout = QLDAP_TIMEOUT;	/* default timeout is 30 secs */
 
-/* char replacement */
-static unsigned int replace(char *s, register unsigned int len, char f, char r)
-{
-   register char *t;
-   register int count = 0;
-
-   t=s;
-   for(;;) {
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-   }
-}
-
 int init_ldap(int *localdelivery, int *cluster, int *bind, stralloc *hm,
 			  stralloc *dotmode, stralloc *quota, stralloc *quotawarning)
 /* reads all necesary control files and makes everything ready for a ldap lookup
@@ -216,7 +201,7 @@ int init_ldap(int *localdelivery, int *cluster, int *bind, stralloc *hm,
 		t = cf;
 		t += fmt_strn(cf, "control/quotawarning", 64); *t=0;
 		if (control_readfile(quotawarning, ctrl_file, 0) == 1 ) {
-			replace(quotawarning->s, quotawarning->len, '\0', '\n');
+			byte_repl(quotawarning->s, quotawarning->len, '\0', '\n');
 			if (!stralloc_0(quotawarning)) return -1;
 		} else {
 			if (!stralloc_copys(quotawarning, "") ) return -1;
@@ -280,6 +265,7 @@ int qldap_open(void)
 	}
 	log(128, ", bind successful\n");
 	return 0;
+#endif
 }
 
 
@@ -296,9 +282,10 @@ int qldap_lookup(searchinfo *search, char **attrs, userinfo *info,
 	int num_entries;
 	struct timeval ldaptimeout = {0};
 
-        /* set up the ldap search timeout */
-        ldaptimeout.tv_sec = qldap_timeout;
-        ldaptimeout.tv_usec = 0;
+#ifndef USE_CLDAP
+	/* set up the ldap search timeout */
+	ldaptimeout.tv_sec = qldap_timeout;
+	ldaptimeout.tv_usec = 0;
 
 	/* do the search for the login uid */
 	if ( (rc = ldap_search_st(ld, qldap_basedn.s, LDAP_SCOPE_SUBTREE,

@@ -443,7 +443,12 @@ char **recips;
 
  if (qmail_open(&qqt) == -1) temp_fork();
  mailforward_qp = qmail_qp(&qqt);
+
  qmail_put(&qqt,dtline.s,dtline.len);
+
+ if (recips[1])
+   qmail_put(&qqt,"Precedence: bulk\n",17);
+
  do
   {
    if (getln(&ss,&messline,&match,'\n') != 0) { qmail_fail(&qqt); break; }
@@ -846,7 +851,7 @@ char **argv;
          count_print();
          _exit(0);
       } else {
-         strerr_die3x(100,"Error: No valid dot-mode found: ",s,". (LDAP-ERR #2.0.2)");
+         strerr_die3x(100,"Error: Non valid dot-mode found: ",s,". (LDAP-ERR #2.0.2)");
       }
    } else qmode = DO_DOT;  /* no qmailmode, so I use standard .qmail */
 
@@ -867,7 +872,7 @@ char **argv;
      if (!stralloc_copys(&foo, s)) temp_nomem();
      if (!stralloc_0(&foo)) temp_nomem();
 
-     i = replace(foo.s, foo.len, ',', '\0') + 1;
+     i = byte_repl(foo.s, foo.len, ',', '\0') + 1;
      s = foo.s;
      slen = foo.len-1;
      for( ; i > 0; i--) {
@@ -892,6 +897,7 @@ char **argv;
          if (*sender) {
            ++count_forward;
            recips = (char **) alloc(2 * sizeof(char *));
+           if (!recips) temp_nomem();
            recips[0] = sender;
            recips[1] = 0;
            if (flagdoit) {
@@ -911,7 +917,8 @@ char **argv;
        } else if ( !str_diff(MODE_LDELIVERY, s) ) {
          if (!flagdoit) sayit("force local delivery ",s,0);
          localdelivery = 1;
-       } else strerr_warn1("Error: undefined mail mode (ignored). (LDAP-ERR #2.1.2)", 0);
+       } else strerr_warn5("Error: undefined mail delivery mode: ",
+			   LDAP_MODE,"=",s," (ignored). (LDAP-ERR #2.1.2)", 0);
 
        j = byte_chr(s,slen,0); if (j++ == slen) break; s += j; slen -= j;
      }
@@ -923,7 +930,7 @@ char **argv;
    if ( s = env_get(ENV_FORWARDS) ) {
      if (!stralloc_copys(&foo, s)) temp_nomem();
      if (!stralloc_0(&foo)) temp_nomem();
-     replace(foo.s, foo.len, ',', '\0');
+     byte_repl(foo.s, foo.len, ',', '\0');
      s = foo.s;
      slen = foo.len-1;
      for (;;) {
@@ -936,7 +943,7 @@ char **argv;
    if ( ldapprogdelivery && (s = env_get(ENV_PROGRAM)) ) {
      if (!stralloc_copys(&foo, s)) temp_nomem();
      if (!stralloc_0(&foo)) temp_nomem();
-     replace(foo.s, foo.len, ',', '\0');
+     byte_repl(foo.s, foo.len, ',', '\0');
      s = foo.s;
      slen = foo.len-1;
      for (;;) {

@@ -15,6 +15,10 @@ static int issafe(ch) char ch;
   if (ch == '=') return 1;
   if (ch == ':') return 1;
   if (ch == '-') return 1;
+  if (ch == '_') return 1;
+  if (ch == '#') return 1;
+  if (ch == ']') return 1;
+  if (ch == '[') return 1;
   if ((ch >= 'a') && (ch <= 'z')) return 1;
   if ((ch >= 'A') && (ch <= 'Z')) return 1;
   if ((ch >= '0') && (ch <= '9')) return 1;
@@ -67,7 +71,7 @@ char *rcptto;
   safeput(qqt,remoteip);
   qmail_puts(qqt,"])");
 
-  qmail_puts(qqt," (envelope-sender <");
+  qmail_puts(qqt,"\n          (envelope-sender <");
   if (mailfrom) safeput(qqt,mailfrom);
   qmail_puts(qqt,">)\n          by ");
 
@@ -81,17 +85,4 @@ char *rcptto;
 
   datetime_tai(&dt,now());
   qmail_put(qqt,buf,date822fmt(buf,&dt));
-}
-
-void
-rblheader(qqt,remoteip,rbl)
-struct qmail *qqt;
-char *remoteip;
-char *rbl;
-{
-  qmail_puts(qqt,"X-RBL-Check: ");
-  if (*remoteip) safeput(qqt,remoteip);
-  qmail_puts(qqt," is listed by ");
-  if (*rbl) safeput(qqt,rbl);
-  qmail_puts(qqt,"\n");
 }

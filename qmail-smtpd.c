@@ -21,6 +21,7 @@
 #include "now.h"
 #include "exit.h"
 #include "rcpthosts.h"
+#include "rbl.h"
 #ifndef TLS
 #include "timeoutread.h"
 #include "timeoutwrite.h"
@@ -134,28 +135,31 @@ void die_alarm() { out("451 timeout (#4.4.2)\r\n"); logline(1,"connection timed 
 void die_nomem() { out("421 out of memory (#4.3.0)\r\n"); logline(1,"out of memory, closing connection"); flush(); _exit(1); }
 void die_control() { out("421 unable to read controls (#4.3.0)\r\n"); logline(1,"unable to real controls, closing connection"); flush(); _exit(1); }
 void die_ipme() { out("421 unable to figure out my IP addresses (#4.3.0)\r\n"); logline(1,"unable to figure out my IP address, closing connection"); flush(); _exit(1); }
+void err_dns() { out("421 DNS temporary failure at return MX check, try again later (#4.3.0)\r\n"); }
 void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n"); logline(1,"stray new line detected, closing connection"); flush(); _exit(1); }
+void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
 
 void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
 void err_bmf() { out("553 syntax error, please forward to your postmaster (#5.7.1)\r\n"); }
-void err_hard(arg) char *arg; { out("554 syntax error, "); out(arg); out(" (#5.5.4)\r\n"); }
-void err_rbl(arg) char *arg; { out("553 sorry, your mailserver is listed in "); out(arg); out(", mail from your location is not accepted here (#5.7.1)\r\n"); }
 void err_maxrcpt() { out("553 sorry, too many recipients (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
+void err_badbounce() { out("550 sorry, I don't accept bounce messages with more than one recipient. Go read RFC2821. (#5.7.1)\r\n"); }
 #ifdef TLS
 void err_nogwcert() { out("553 no valid cert for gatewaying (#5.7.1)\r\n"); }
 #endif
 void err_unimpl(arg) char *arg; { out("502 unimplemented (#5.5.1)\r\n"); logpid(3); logstring(3,"unrecognized command ="); logstring(3,arg); logflush(3); }
 void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); logline(3,"message denied because of 'SMTP SIZE' argument"); }
 void err_syntax() { out("555 syntax error (#5.5.4)\r\n"); }
+void err_relay() { out("553 we don't relay (#5.7.1)\r\n"); }
 void err_wantmail() { out("503 MAIL first (#5.5.1)\r\n"); logline(3,"'mail from' first"); }
 void err_wantrcpt() { out("503 RCPT first (#5.5.1)\r\n"); logline(3,"'rcpt to' first"); }
 void err_noop() { out("250 ok\r\n"); logline(3,"'noop'"); }
 void err_vrfy(arg) char *arg; { out("252 send some mail, i'll try my best\r\n"); logpid(3); logstring(3,"vrfy for ="); logstring(3,arg); logflush(3); }
-void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
-void err_dns() { out("451 DNS temporary failure, try again later (#4.3.0)\r\n"); }
-void err_spam() { out("553 sorry, mail from your location is not accepted here (#5.7.1)\r\n"); }
-void err_badrcptto() { out("553 sorry, mail to that recipient is not accepted on this system (#5.7.1)\r\n"); }
+
+void err_rbl(arg) char *arg; { out("553 sorry, your mailserver is rejected by "); out(arg); out("\r\n"); }
+void err_deny() { out("553 sorry, mail from your location is administratively denied (#5.7.1)\r\n"); }
+void err_badrcptto() { out("553 sorry, mail to that recipient is not accepted (#5.7.1)\r\n"); }
+void err_554msg(arg) char *arg; { out("554 sorry, "); out(arg); out("\r\n"); /*logstring(3,"message denied because");*/ logstring(3,arg); logflush(3); }
 
 
 stralloc greeting = {0};
@@ -183,6 +187,11 @@ void smtp_quit()
   logline(3,"quit, closing connection");
   flush(); _exit(0);
 }
+void err_quit()
+{
+  logline(3,"quit, closing connection");
+  flush(); _exit(0);
+}
 
 char *remoteip;
 char *remotehost;
@@ -191,8 +200,6 @@ char *local;
 char *relayclient;
 char *relayok;
 char *denymail;
-char *rblenabled;
-char *rblonlyheader;
 int  spamflag = 0;
 
 stralloc helohost = {0};
@@ -213,9 +220,14 @@ int rmfok = 0;
 stralloc rmf = {0};
 struct constmap maprmf;
 int rblok = 0;
-int rblohok = 0;
-stralloc rbl = {0};
-stralloc rblmessage = {0};
+int brtok = 0;
+stralloc brt = {0};
+struct constmap mapbadrcptto;
+int errdisconnect = 0;
+int nobounce = 0;
+int sanitycheck = 0;
+int returnmxcheck = 0;
+int blockrelayprobe = 0;
 int tarpitcount = 0;
 int tarpitdelay = 5;
 int maxrcptcount = 0;
@@ -268,16 +280,28 @@ void setup()
   if (brtok)
     if (!constmap_init(&mapbadrcptto,brt.s,brt.len,0)) die_nomem();
 
-  rblok = control_readfile(&rbl,"control/rbllist",0);
+  rblok = rblinit();
   if (rblok == -1) die_control();
-  if (rblok) {
-    rblenabled = env_get("RBL");
 
-    rblohok = control_readint(&rblonlyheader,"control/rblonlyheader",0);
-    if (rblohok == -1) die_control();
-    rblonlyheader = env_get("RBLONLYHEADER");
-    if (rblonlyheader) logline(2,"Log RBL match only in header, do not reject message");
-  }
+  errdisconnect = (env_get("SMTP550DISCONNECT") ? 1:0);
+  if (errdisconnect) logstring(2,", smtp550disconnect enabled");
+
+  nobounce = (env_get("NOBOUNCE") ? 1:0);
+  if (nobounce) logstring(2,", nobounce enabled");
+
+  sanitycheck = (env_get("SANITYCHECK") ? 1:0);
+  if (sanitycheck) logstring(2,", sanitycheck enabled");
+
+  returnmxcheck = (env_get("RETURNMXCHECK") ? 1:0);
+  if (returnmxcheck) logstring(2,", returnmxcheck enabled");
+
+  blockrelayprobe = (env_get("BLOCKRELAYPROBE") ? 1:0);
+  if (blockrelayprobe) logstring(2,", blockrelayprobe enabled");
+
+  relayok = relayclient = env_get("RELAYCLIENT");
+  if (relayclient) logstring(2,", relayclient set");
+
+  logflush(2);
 
   if (control_readint(&databytes,"control/databytes") == -1) die_control();
   x = env_get("DATABYTES");
@@ -312,9 +336,6 @@ void setup()
   if (!local) local = "unknown";
   logstring(2,local);
 
-  relayok = relayclient = env_get("RELAYCLIENT");
-  if (relayclient) { logstring(2,", relayclient set"); }
-  denymail = env_get("DENYMAIL");
   logflush(2);
   dohelo(remotehost);
 }
@@ -397,111 +418,18 @@ int badmxcheck(dom) char *dom;
     case DNS_SOFT:
          ret=DNS_SOFT;
          break;
-
     case DNS_HARD:
          ret=DNS_HARD;
          break;
-
     case 1:
-         if (checkip.len <= 0) ret=DNS_HARD;
+         if (checkip.len == 0) ret=DNS_HARD;
          break;
-
     default:
          ret=0;
          break;
   }
   return (ret);
 }
-
-/* RBL */
-
-stralloc ip_reverse;
-
-void rbl_init()
-{
-  unsigned int i;
-  unsigned int j;
-  char *ip_env;
-
-  ip_env = remoteip;
-  if (!ip_env) ip_env = "";
-
-  if (!stralloc_copys(&ip_reverse,"")) die_nomem();
-
-  i = str_len(ip_env);
-  while (i) {
-    for (j = i;j > 0;--j) if (ip_env[j - 1] == '.') break;
-    if (!stralloc_catb(&ip_reverse,ip_env + j,i - j)) die_nomem();
-    if (!stralloc_cats(&ip_reverse,".")) die_nomem();
-    if (!j) break;
-    i = j - 1;
-  }
-}
-
-stralloc rbl_tmp;
-
-int rbl_lookup(char *base)
-{
-  ipalloc rblsa = {0};
-
-  if (!*base) return 2;
-
-  if (!stralloc_copys(&rbl_tmp,"")) die_nomem();
-
-  if (!stralloc_copy(&rbl_tmp,&ip_reverse)) die_nomem();
-  if (!stralloc_cats(&rbl_tmp,base)) die_nomem();
-
-  switch (dns_ip(&rblsa,&rbl_tmp))
-  {
-    case DNS_MEM:
-    case DNS_SOFT:
-         return 2; /* soft error */
-         break;
-
-    case DNS_HARD:
-         return 0; /* found no match */
-         break;
-
-    default:
-         return 1; /* found match */
-         break;
-  }
-  return 1; /* should never get here */
-}
-
-int rblcheck()
-{
-  int r = 1;
-  char *p;
-
-  rbl_init();
-
-  p = &rbl.s[0];
-  while(p < &rbl.s[0]+rbl.len)
-  {
-    logpid(2); logstring(2,"RBL check with '"); logstring(2,p); logstring(2,"':");
-    r = rbl_lookup(p);
-      if (r == 2)
-      {
-        logstring(2,"temporary DNS error"); logflush(2);
-        return 2;
-      }
-      if (r == 1)
-      {
-        logstring(2,"found match, sender is blocked"); logflush(2);
-        stralloc_copys(&rblmessage,p);
-        stralloc_0(&rblmessage);
-        return 1;
-      }
-    /* continue */
-    logstring(2,"no match found, continue"); logflush(2);
-    p = p+strlen(p);
-    p++;
-  }
-  return r;
-}
-
-/* RBL */
 
 int sizelimit(arg)
 char *arg;
@@ -553,7 +481,6 @@ int bmfcheck()
 }
 
 int seenmail = 0;
-int flagbarf; /* defined if seenmail */
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
 int rcptcount;
@@ -577,15 +504,13 @@ int rcptcount;
 
 int rmfcheck()
 {
-  int r,j;
+  int j;
+  if (!rmfok) return 0;
+  if (constmap(&maprmf,addr.s,addr.len - 1)) return 1;
   j = byte_rchr(addr.s,addr.len,'@');
-  if (brtok)
-    if (constmap(&mapbadrcptto, addr.s, addr.len - 1) ||
-        constmap(&mapbadrcptto, addr.s + j, addr.len - j - 1))
-       { logpid(2); logstring(2,addr.s); logflush(2); return 2; }
-  r = rcpthosts(addr.s,str_len(addr.s));
-  if (r == -1) die_control();
-  return r;
+  if (j < addr.len)
+    if (constmap(&maprmf,addr.s + j,addr.len - j - 1)) return 1;
+  return 0;
 }
 
 
@@ -596,12 +521,41 @@ stralloc spfbarfmsg = {0};
 stralloc mailfrom = {0};
 stralloc rcptto = {0};
 
+int rcptdenied()
+{
+  int j;
+  if (!brtok) return 0;
+  if (constmap(&mapbadrcptto, addr.s, addr.len - 1)) return 1;
+  j = byte_rchr(addr.s,addr.len,'@');
+  if (j < addr.len)
+    if (constmap(&mapbadrcptto, addr.s + j, addr.len - j - 1))
+      return 1;
+  return 0;
+}
+
+int relayprobe() /* relay probes trying stupid old sendwhale bugs */
+{
+  int j;
+  j = addr.len;
+  while(--j >= 0)
+    if (addr.s[j] == '@') break;
+  if (j < 0) j = addr.len;
+  while(--j >= 0) {
+    if (addr.s[j] == '@') return 1; /* double @ */
+    if (addr.s[j] == '%') return 1; /* percent relaying */
+    if (addr.s[j] == '!') return 1; /* UUCP bang path */
+  }
+  return 0;
+}
+
+
 void smtp_helo(arg) char *arg;
 {
   smtp_greet("250 "); out("\r\n");
   seenmail = 0; dohelo(arg);
   logpid(3); logstring(3,"remote helo ="); logstring(3,arg); logflush(3);
 }
+
 char smtpsize[FMT_ULONG];
 void smtp_ehlo(arg) char *arg;
 {
@@ -628,9 +582,11 @@ void smtp_ehlo(arg) char *arg;
   logpid(3); logstring(3,"remote ehlo ="); logstring(3,arg); logflush(3);
   logpid(3); logstring(3,"max msg size ="); logstring(3,smtpsize); logflush(3);
 }
+
 void smtp_rset()
 {
   seenmail = 0;
+  relayclient = relayok; /* restore original relayclient setting */
   out("250 flushed\r\n");
   logline(3,"remote rset");
 }
@@ -680,25 +636,87 @@ void smtp_mail(arg) char *arg;
    env_unset("SPFRESULT");
 
   int i,j;
-  char *why;
+  char *rblname;
+  int bounceflag = 0;
+
   logpid(3); logstring(3,"remote sent 'mail from' ="); logstring(3,arg); logflush(3);
+
+  /* address syntax check */
   if (!addrparse(arg))
   {
     err_syntax();
     logpid(2); logstring(2,"RFC821 syntax error in mail from ="); logstring(2,arg); logflush(2);
+    if (errdisconnect) err_quit();
     return;
   }
-  if (databytes && !sizelimit(arg)) { err_size(); return; }
   logpid(3); logstring(3,"mail from ="); logstring(3,addr.s); logflush(3);
-  flagbarf = bmfcheck();
-  if (flagbarf)
+
+  /* smtp size check */
+  if (databytes && !sizelimit(arg))
   {
-    err_bmf();
-    logpid(2); logstring(2,"bad mail from ="); logstring(2,arg); logflush(2);
+    err_size(); /* logging is done in error routine */
+    if (errdisconnect) err_quit();
     return;
   }
 
-  /* Allow relaying based on envelope sender address */
+  /* bad mailfrom check */
+  if (bmfcheck())
+  {
+    err_bmf();
+    logpid(2); logstring(2,"bad mailfrom ="); logstring(2,addr.s); logflush(2);
+    if (errdisconnect) err_quit();
+    return;
+  }
+
+  /* NOBOUNCE check */
+  if (!addr.s[0] || !str_diff("#@[]", addr.s))
+  {
+    bounceflag = 1;
+    if (nobounce)
+    {
+      err_554msg("RFC2821 bounces are administratively denied");
+      if (errdisconnect) err_quit();
+      return;
+    }
+  }
+
+  /* Sanity checks */
+  if (sanitycheck && !bounceflag)
+  {
+    /* Invalid Mailfrom */
+    if ((i=byte_rchr(addr.s,addr.len,'@')) >= addr.len)
+    {
+      err_554msg("mailfrom without @ is administratively denied");
+      if (errdisconnect) err_quit();
+      return;
+    }
+    if ( i == 0 || addr.s[i+1] == '\0' ) {
+      err_554msg("mailfrom without user or domain part is administratively denied");
+      if (errdisconnect) err_quit();
+      return;
+    }
+    /* No '.' in domain.TLD */
+    if ((j = byte_rchr(addr.s+i, addr.len-i, '.')) >= addr.len-i)
+    {
+      err_554msg("mailfrom without . in domain is administratively denied");
+      if (errdisconnect) err_quit();
+      return;
+    }
+    /* check tld length */
+    j = addr.len-(i+1+j+1);
+    if (j < 2 || j > 6)
+    {
+      /* XXX: This needs adjustment when new TLD's are constituded.
+       * OK, now after the candidates are nominated we know new TLD's
+       * may contain up to six characters.
+       */
+      err_554msg("mailfrom without country or top level domain is administratively denied");
+      if (errdisconnect) err_quit();
+      return;
+     }
+  }
+
+  /* relay mail from check (allow relaying based on evelope sender address) */
   if (!relayok)
   {
     if (rmfcheck())
@@ -706,126 +724,53 @@ void smtp_mail(arg) char *arg;
       relayclient = "";
       logline(2,"relaying allowed for envelope sender");
     }
-    else relayclient = 0;
+    /* else relayclient = 0; *//* Do we really need this ??
+    NO, could be problematic if a relaycheck is done before */
   }
 
   /* Check RBL only if relayclient is not set */
-  if (rblenabled && !relayclient)
+  if (rblok && !relayclient)
   {
-    logline(3,"RBL checking enabled, going through list of RBLs");
-    switch(rblcheck())
+    switch(rblcheck(remoteip, &rblname))
     {
       case 2: /* soft error lookup */
-        err_dns();
-        return;
+        /*
+         * continue if  RBL DNS has a problem. if a RBL is unreachable
+         * we dont want to fail. accept message anyway. a false negative
+         * is better in this case than rejecting every message just
+         * because one RBL failed. play safe, might be an important mail.
+         */
+        break;
       case 1: /* host is listed in RBL */
-        if (rblonlyheader)
-          rblheader(qqt,remoteip,rblmessage.s);
-        else {
-         err_rbl(rblmessage.s);
-         return;
-         }
+        err_rbl(rblname);
+        if (errdisconnect) err_quit();
+        return;
       default: /* ok, go ahead */
-    logline(3,"RBL checking completed without match or listed in header");
+        logline(3,"RBL checking completed");
+        break;
     }
   }
 
-  /* DENYMAIL is set for this session from this client, so heavy checking
-   * of mailfrom is done. If one of the following is set:
-   * SPAM     -> refuse all mail
-   * NOBOUNCE -> refuse null mailfrom
-   * DNSCHECK -> validate Mailfrom domain
-   */
-  if (denymail)
+  /* return MX check */
+  if (returnmxcheck && !bounceflag)
   {
-    if (!str_diff("SPAM", denymail))
-    {
-       flagbarf=1;
-       spamflag=1;
-       why = "refused to accept SPAM";
-    }
-    else
-    {
-      if (!addr.s[0] || !str_diff("#@[]", addr.s)) /* if (!addr.s[0]) */
+    if ((i=byte_rchr(addr.s,addr.len,'@')) < addr.len)
+      switch (badmxcheck(&addr.s[i+1]))
       {
-         if (!str_diff("NOBOUNCE", denymail))
-         {
-            why = "refused to accept RFC821 bounce from remote";
-            flagbarf=1;
-         }
+	case 0:
+	  break; /* valid */
+	case DNS_SOFT:
+	  err_dns();
+	  logline(3,"refused mailfrom because return MX lookup failed temporarly");
+	  if (errdisconnect) err_quit();
+	  return;
+	case DNS_HARD:
+	default:
+	  err_554msg("refused mailfrom because return MX does not exist");
+	  if (errdisconnect) err_quit();
+	  return;
       }
-      else
-      {
-        /* Invalid Mailfrom */
-        if ((i=byte_rchr(addr.s,addr.len,'@')) >= addr.len)
-        {
-           why = "refused 'mail from' without @";
-           flagbarf=1;
-        }
-        else
-        {
-          /* money!@domain.TLD */
-          if (addr.s[i-1] == '!')
-          {
-             why = "refused 'mail from' with !@";
-             flagbarf=1;
-          }
-
-          /* check syntax, visual */
-          if ((j = byte_rchr(addr.s+i, addr.len-i, '.')) >= addr.len-i)
-          {
-             why = "refused 'mail from' without . in domain";
-             flagbarf=1; /* curious no '.' in domain.TLD */
-          }
-
-          j = addr.len-(i+1+j+1);
-          if (j < 2 || j > 6)
-          {
-             /* XXX: This needs adjustment when new TLD's are constituded.
-              * OK, now after the candidates are nominated we know new TLD's
-              * may contain up to six characters.
-              */
-             why = "refused 'mail from' without country or top level domain";
-             flagbarf=1;
-          }
-
-          if (!flagbarf)
-          {
-            if (!str_diff("DNSCHECK", denymail))
-            {
-              /* check syntax, via DNS */
-              switch (badmxcheck(&addr.s[i+1]))
-              {
-                case 0:
-                  break; /*valid*/
-                case DNS_SOFT:
-                  flagbarf=2; /*fail tmp*/
-                  why = "refused 'mail from' because return MX lookup failed temporarly";
-                  break;
-                case DNS_HARD:
-                default:
-                  flagbarf=1;
-                  why = "refused 'mail from' because return MX does not exist";
-                  break;
-              }
-            } /* DNSCHECK */
-          } /* if !flagbarf */
-        } /* without @ */
-      } /* bounce */
-    } /* SPAM */
-
-    if (flagbarf)
-    {
-      logpid(2); logstring(2,why); logstring(2,"for ="); logstring(2,addr.s); logflush(2);
-      if (flagbarf==2)
-        err_dns();
-      else if (spamflag)
-        err_spam();
-      else
-        err_hard(why);
-      return;
-    }
-  } /* denymail */
+  }
 
   seenmail = 1;
   if (!stralloc_copys(&rcptto,"")) die_nomem();
@@ -861,40 +806,55 @@ void smtp_rcpt(arg) char *arg; {
   {
     err_syntax();
     logpid(2); logstring(2,"syntax error in 'rcpt to' ="); logstring(2,arg); logflush(2);
+    if (errdisconnect) err_quit();
     return;
   }
   logpid(3); logstring(3,"rcpt to ="); logstring(3,addr.s); logflush(3);
-  if (relayclient) {
+
+  /* blockrelay stupid sendwhale bug relay probing */
+  if (blockrelayprobe) /* don't enable this if you use percenthack */
+  {
+    if (relayprobe())
+    {
+      err_relay();
+      logline(3,"'rcpt to' denied = looks like sendwhale bug relay probe");
+      if (errdisconnect) err_quit();
+      return;
+    }
+  }
+
+  if (relayclient)
+  {
     --addr.len;
     if (!stralloc_cats(&addr,relayclient)) die_nomem();
     if (!stralloc_0(&addr)) die_nomem();
-  }
-  else {
-    if (addrallowed()==2)
+  } else {
+    if (rcptdenied())
     {
       err_badrcptto();
-      logpid(2); logstring(2,"'rcpt to' not allowed ="); logstring(2,arg); logflush(2);
+      logpid(2); logstring(2,"'rcpt to' denied ="); logstring(2,arg); logflush(2);
+      if (errdisconnect) err_quit();
       return;
     }
 #ifndef TLS
     if (!addrallowed())
     {
-       err_nogateway();
-       logpid(2); logstring(2,"no mail relay for 'rcpt to' ="); logstring(2,arg); logflush(2);
-       return;
+      err_nogateway();
+      logpid(2); logstring(2,"no mail relay for 'rcpt to' ="); logstring(2,arg); logflush(2);
+      if (errdisconnect) err_quit();
+      return;
     }
 #else
     if (!addrallowed())
     {
       if (ssl)
-      { STACK_OF(X509_NAME) *sk;
+      {
+        STACK_OF(X509_NAME) *sk;
         X509 *peercert;
         stralloc tlsclients = {0};
         struct constmap maptlsclients;
 
-        SSL_set_verify(ssl,
-                       SSL_VERIFY_PEER|SSL_VERIFY_CLIENT_ONCE,
-                       NULL);
+        SSL_set_verify(ssl, SSL_VERIFY_PEER|SSL_VERIFY_CLIENT_ONCE, NULL);
         if ((sk = SSL_load_client_CA_file("control/clientca.pem")) == NULL)
         {
            err_nogateway();
@@ -941,12 +901,20 @@ void smtp_rcpt(arg) char *arg; {
     }
 #endif
 
-  }
+  } /* else from if relayclient */
   ++rcptcount;
   if (maxrcptcount && rcptcount > maxrcptcount)
   {
     err_maxrcpt();
     logline(1,"message denied because of more 'RCPT TO' than allowed by MAXRCPTCOUNT");
+    if (errdisconnect) err_quit();
+    return;
+  }
+  if (rcptcount > 1 && (!mailfrom.s[0] || !str_diff("#@[]", mailfrom.s)))
+  {
+    err_badbounce();
+    logline(1,"bounce message denied because it has more than one recipient");
+    if (errdisconnect) err_quit();
     return;
   }
   if (!stralloc_cats(&rcptto,"T")) die_nomem();
@@ -1105,6 +1073,7 @@ void smtp_data() {
   if (qmail_open(&qqt) == -1) { err_qqt(); logline(1,"failed to start qmail-queue"); return; }
   qp = qmail_qp(&qqt);
   out("354 go ahead\r\n"); logline(3,"go ahead");
+  rblheader(&qqt);
 
 #ifdef TLS
   if(ssl){

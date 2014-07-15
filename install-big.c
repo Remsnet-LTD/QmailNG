@@ -113,6 +113,9 @@ void hier()
   c(auto_qmail,"bin","qmail-rspawn",auto_uido,auto_gidq,0711);
   c(auto_qmail,"bin","qmail-clean",auto_uido,auto_gidq,0711);
   c(auto_qmail,"bin","qmail-send",auto_uido,auto_gidq,0711);
+#ifdef EXTERNAL_TODO
+  c(auto_qmail,"bin","qmail-todo",auto_uido,auto_gidq,0711);
+#endif
   c(auto_qmail,"bin","splogger",auto_uido,auto_gidq,0711);
   c(auto_qmail,"bin","qmail-newu",auto_uido,auto_gidq,0700);
   c(auto_qmail,"bin","qmail-newmrh",auto_uido,auto_gidq,0700);
@@ -153,6 +156,10 @@ void hier()
   c(auto_qmail,"bin","auth_pop",auto_uido,auto_gidq,0700);
   c(auto_qmail,"bin","auth_imap",auto_uido,auto_gidq,0700);
   c(auto_qmail,"bin","qmail-ldaplookup",auto_uido,auto_gidq,0700);
+  c(auto_qmail,"bin","digest",auto_uido,auto_gidq,0755);
+  c(auto_qmail,"bin","pbsadd",auto_uido,auto_gidq,0755);
+  c(auto_qmail,"bin","pbscheck",auto_uido,auto_gidq,0755);
+  c(auto_qmail,"bin","pbsdbd",auto_uido,auto_gidq,0755);
 
   c(auto_qmail,"man/man5","addresses.5",auto_uido,auto_gidq,0644);
   c(auto_qmail,"man/cat5","addresses.0",auto_uido,auto_gidq,0644);

@@ -483,3 +483,10 @@ qldap-profile.c
 qldap-profile.h
 output.h
 output.c
+pbscheck.c
+pbsdbd.c
+pbsadd.c
+POPBEFORESMTP
+qmail-todo.c
+byte_repl.c
+rbl.c

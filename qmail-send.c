@@ -58,21 +58,6 @@ stralloc doublebouncehost = {0};
 
 stralloc custombouncetext = {0};
 
-/* char replacement */
-unsigned int replace(char *s, register unsigned int len, char f, char r)
-{
-   register char *t;
-   register int count = 0;
-
-   t=s;
-   for(;;) {
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-      if (!len) return count; if (*t == f) { *t=r; count++; } ++t; --len;
-   }
-}
-
 char strnum2[FMT_ULONG];
 char strnum3[FMT_ULONG];
 
@@ -617,6 +602,7 @@ char *recip;
 }
 
 stralloc bouncetext = {0};
+int bouncemaxbytes = 0;
 
 void addbounce(id,recip,report)
 unsigned long id;
@@ -765,9 +751,20 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
      qmail_fail(&qqt);
    else
     {
+     int bytestogo;
+     int bytestoget;
+     bytestogo = bouncemaxbytes;
+     bytestoget = (bytestogo < sizeof(buf) && bouncemaxbytes != 0) ? bytestogo : sizeof(buf);
      substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
-     while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
+     while ((r = substdio_get(&ssread,buf,bytestoget)) > 0) {
        qmail_put(&qqt,buf,r);
+       bytestogo -= r;
+       if ( bouncemaxbytes != 0 && bytestogo <= 0 ) {
+	 qmail_puts(&qqt,"\n\n--- End of message stripped.\n");
+	 break;
+       }
+       bytestoget = (bytestogo < sizeof(buf) && bouncemaxbytes != 0) ? bytestogo : sizeof(buf);
+     }
      close(fd);
      if (r == -1)
        qmail_fail(&qqt);
@@ -975,13 +972,15 @@ int c;
 	   logsafe(dline[c].s + 3);
 	   log1("\n");
 	   dline[c].len = 0;
-	   return;
+	   break;
 	 default:
 	   wlog3("delivery ",strnum3,": report mangled, will defer\n");
 	}
-       job_close(d[c][delnum].j);
-       d[c][delnum].used = 0; --concurrencyused[c];
-       del_status();
+       if (dline[c].s[2] != 'L') {
+	 job_close(d[c][delnum].j);
+	 d[c][delnum].used = 0; --concurrencyused[c];
+	 del_status();
+       }
       }
      dline[c].len = 0;
     }
@@ -1247,6 +1246,7 @@ void pass_do()
 
 /* this file is too long ---------------------------------------------- TODO */
 
+#ifndef EXTERNAL_TODO
 datetime_sec nexttodorun;
 DIR *tododir; /* if 0, have to opendir again */
 stralloc todoline = {0};
@@ -1470,6 +1470,134 @@ fd_set *rfds;
    if (fdchan[c] != -1) close(fdchan[c]);
 }
 
+#endif
+
+/* this file is too long ------------------------------------- EXTERNAL TODO */
+
+#ifdef EXTERNAL_TODO
+stralloc todoline = {0};
+char todobuf[2048];
+int todofdin;
+int todofdout;
+int flagtodoalive;
+
+void tododied() { log1("alert: oh no! lost qmail-todo connection! dying...\n");
+ flagexitasap = 1; flagtodoalive = 0; }
+
+void todo_init()
+{
+  todofdout = 7;
+  todofdin = 8;
+  flagtodoalive = 1;
+  return;
+}
+
+void todo_selprep(nfds,rfds,wakeup)
+int *nfds;
+fd_set *rfds;
+datetime_sec *wakeup;
+{
+  if (flagexitasap) {
+    if (flagtodoalive)
+      write(todofdout, "X", 1);
+  }
+  if (flagtodoalive) {
+    FD_SET(todofdin,rfds);
+    if (*nfds <= todofdin)
+      *nfds = todofdin + 1;
+  }
+}
+
+void todo_del(char* s)
+{
+ int flagchan[CHANNELS];
+ struct prioq_elt pe;
+ unsigned long id;
+ unsigned int len;
+ char ch;
+ int c;
+
+ for (c = 0;c < CHANNELS;++c) flagchan[c] = 0;
+ switch(*s++) {
+  case 'L':
+    flagchan[0] = 1;
+    break;
+  case 'R':
+    flagchan[1] = 1;
+    break;
+  case 'B':
+    flagchan[0] = 1;
+    flagchan[1] = 1;
+    break;
+  case 'X':
+    break;
+  default:
+    log1("warning: qmail-send unable to understand qmail-todo\n");
+    return;
+ }
+
+ len = scan_ulong(s,&id);
+ if (!len || s[len]) {
+  log1("warning: qmail-send unable to understand qmail-todo\n");
+  return;
+ }
+
+ pe.id = id; pe.dt = now();
+ for (c = 0;c < CHANNELS;++c)
+   if (flagchan[c])
+     while (!prioq_insert(&pqchan[c],&pe)) nomem();
+
+ for (c = 0;c < CHANNELS;++c) if (flagchan[c]) break;
+ if (c == CHANNELS)
+   while (!prioq_insert(&pqdone,&pe)) nomem();
+
+ return;
+}
+
+void todo_do(rfds)
+fd_set *rfds;
+{
+  int r;
+  char ch;
+  int i;
+
+  if (!flagtodoalive) return;
+  if (!FD_ISSET(todofdin,rfds)) return;
+
+  r = read(todofdin,todobuf,sizeof(todobuf));
+  if (r == -1) return;
+  if (r == 0) {
+    if (flagexitasap)
+      flagtodoalive = 0;
+    else
+      tododied();
+    return;
+  }
+  for (i = 0;i < r;++i) {
+    ch = todobuf[i];
+    while (!stralloc_append(&todoline,&ch)) nomem();
+    if (todoline.len > REPORTMAX)
+      todoline.len = REPORTMAX;
+      /* qmail-todo is responsible for keeping it short */
+    if (!ch && (todoline.len > 1)) {
+      switch (todoline.s[0]) {
+	case 'D':
+	  if (flagexitasap) break;
+	  todo_del(todoline.s + 1);
+	  break;
+	case 'L':
+	  log1(todoline.s + 1);
+	  break;
+	default:
+	  log1("warning: qmail-send unable to understand qmail-todo: report mangled\n");
+	  break;
+      }
+      todoline.len = 0;
+    }
+  }
+}
+
+#endif
 
 /* this file is too long ---------------------------------------------- MAIN */
 
@@ -1485,8 +1613,9 @@ int getcontrols() { if (control_init() == -1) return 0;
  if (!stralloc_cats(&doublebounceto,"@")) return 0;
  if (!stralloc_cat(&doublebounceto,&doublebouncehost)) return 0;
  if (!stralloc_0(&doublebounceto)) return 0;
+ if (control_readint(&bouncemaxbytes,"control/bouncemaxbytes") == -1) return 0;
  if (control_readfile(&custombouncetext,"control/custombouncetext",0) == -1) return 0;
- replace(custombouncetext.s, custombouncetext.len, '\0', '\n');
+ byte_repl(custombouncetext.s, custombouncetext.len, '\0', '\n');
  if (!stralloc_0(&custombouncetext) ) return 0;
  if (control_readfile(&locals,"control/locals",1) != 1) return 0;
  if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
@@ -1539,6 +1668,9 @@ void reread()
    wlog1("alert: unable to reread controls: unable to switch to home directory\n");
    return;
   }
+#ifdef EXTERNAL_TODO
+ write(todofdout, "H", 1);
+#endif
  regetcontrols();
  while (chdir("queue") == -1)
   {
@@ -1609,8 +1741,12 @@ void main()
  todo_init();
  cleanup_init();
 
+#ifdef EXTERNAL_TODO
+ while (!flagexitasap || !del_canexit() || flagtodoalive)
+#else
  while (!flagexitasap || !del_canexit())
-  {
+#endif
+ {
    recent = now();
 
    if (flagrunasap) { flagrunasap = 0; pqrun(); }

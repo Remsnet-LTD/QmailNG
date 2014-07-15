@@ -1,14 +1,17 @@
 # Edit this few lines to configure your ldap stuff and checkpassword
 
 # to enable some additional for qmail-ldap stuff put it on the LDAPFLAGS line
+#
 # -DLDAP_ESCAPE_BUG should be added as long as the ldap servers have
 # problems with the escapeing of LDAP filters (fixed with OpenLDAP 1.2.7)
 # -DQLDAP_CLUSTER for enabling cluster support
-# to enable the dash_ext patch for extended mail addresses add
-# -DDASH_EXT to the LDAPFLAGS
-# to use cleartext passwords (a bad idea on production systems) add
-# -DCLEARTEXTPASSWD to the LDAPFLAGS
-#LDAPFLAGS=-DQLDAP_CLUSTER
+# -DDASH_EXT to enable the dash_ext patch for extended mail addresses
+# -DCLEARTEXTPASSWD to use cleartext passwords (a bad idea on production
+# systems)
+# -DEXTERNAL_TODO to use the external high-performance todo processing (this
+# avoids the silly qmail syndrome with high injection rates)
+#LDAPFLAGS=-DQLDAP_CLUSTER -DEXTERNAL_TODO
+#LDAPFLAGS=-DQLDAP_CLUSTER -DEXTERNAL_TODO -DDASH_EXT
 
 # Perhaps you have different ldap libraries, change them here
 LDAPLIBS=-L/usr/local/lib -lldap -llber
@@ -31,6 +34,7 @@ LDAPINCLUDES=-I/usr/local/include
 #TLSLIBS=-L/usr/local/lib -lssl -lcrypto
 # Path to OpenSSL binary
 #OPENSSLBIN=/usr/local/bin/openssl
+#OPENSSLBIN=/usr/bin/openssl
 
 # to make the Netscape download progress bar work with qmail-pop3d
 # uncomment the next line (allready done)
@@ -70,7 +74,8 @@ SHELL=/bin/sh
 
 default: it qldap
 
-qldap: qmail-quotawarn qmail-reply auth_pop auth_imap digest qmail-ldaplookup
+qldap: qmail-quotawarn qmail-reply auth_pop auth_imap digest qmail-ldaplookup \
+pbsadd pbscheck pbsdbd qmail-todo
 
 addresses.0: \
 addresses.5
@@ -331,6 +336,10 @@ compile byte_rchr.c byte.h
 byte_rcspn.o: \
 compile byte_rcspn.c byte.h
 	./compile byte_rcspn.c
+
+byte_repl.o: \
+compile byte_repl.c byte.h
+	./compile byte_repl.c
 
 byte_zero.o: \
 compile byte_zero.c byte.h
@@ -1182,6 +1191,44 @@ compile output.c output.h stralloc.h substdio.h fmt.h str.h scan.h \
 readwrite.h
 	./compile output.c
 
+pbsadd: \
+load pbsadd.o control.o now.o ip.o getln.a open.a env.a stralloc.a \
+alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o socket.lib
+	./load pbsadd control.o now.o ip.o getln.a open.a env.a \
+	stralloc.a alloc.a strerr.a substdio.a error.a str.a fs.a \
+	auto_qmail.o `cat socket.lib`
+
+pbsadd.o: \
+compile pbsadd.c alloc.h auto_qmail.h byte.h control.h env.h error.h \
+exit.h fmt.h ip.h now.h readwrite.h stralloc.h substdio.h
+	./compile pbsadd.c
+
+pbscheck: \
+load pbscheck.o control.o now.o timeoutread.o timeoutwrite.o \
+ip.o getln.a open.a env.a stralloc.a alloc.a strerr.a substdio.a \
+error.a str.a fs.a auto_qmail.o socket.lib
+	./load pbscheck control.o now.o timeoutread.o timeoutwrite.o \
+	ip.o getln.a open.a env.a stralloc.a alloc.a strerr.a substdio.a \
+	error.a str.a fs.a auto_qmail.o `cat socket.lib`
+
+pbscheck.o: \
+compile pbscheck.c alloc.h auto_qmail.h byte.h control.h env.h error.h \
+exit.h fmt.h ip.h now.h readwrite.h str.h stralloc.h substdio.h timeoutread.h \
+timeoutwrite.h
+	./compile pbscheck.c
+
+pbsdbd: \
+load pbsdbd.o control.o now.o ip.o ndelay.a getln.a open.a stralloc.a \
+alloc.a strerr.a substdio.a error.a str.a fs.a auto_qmail.o socket.lib
+	./load pbsdbd control.o now.o ip.o ndelay.a getln.a open.a \
+	stralloc.a alloc.a strerr.a substdio.a error.a str.a fs.a \
+	auto_qmail.o `cat socket.lib`
+
+pbsdbd.o: \
+compile pbsdbd.c alloc.h auto_qmail.h byte.h control.h ip.h ndelay.h \
+now.h stralloc.h strerr.h substdio.h uint32.h
+	./compile pbsdbd.c
+
 pinq: \
 warn-auto.sh pinq.sh conf-qmail conf-break conf-split
 	cat warn-auto.sh pinq.sh \
@@ -1801,12 +1848,12 @@ auto_split.h spf.h
 	./compile qmail-showctl.c
 
 qmail-smtpd: \
-load qmail-smtpd.o rcpthosts.o commands.o timeoutread.o \
+load qmail-smtpd.o rcpthosts.o commands.o timeoutread.o rbl.o \
 timeoutwrite.o ip.o ipme.o ipalloc.o control.o constmap.o received.o \
 date822fmt.o now.o qmail.o spf.o cdb.a fd.a wait.a datetime.a getln.a \
 open.a sig.a case.a env.a stralloc.a alloc.a substdio.a error.a str.a \
 fs.a auto_qmail.o dns.lib socket.lib
-	./load qmail-smtpd rcpthosts.o commands.o timeoutread.o \
+	./load qmail-smtpd rcpthosts.o commands.o timeoutread.o rbl.o \
 	timeoutwrite.o ip.o ipme.o ipalloc.o control.o constmap.o \
 	received.o date822fmt.o now.o qmail.o spf.o cdb.a fd.a wait.a \
 	datetime.a getln.a open.a sig.a case.a env.a stralloc.a \
@@ -1822,7 +1869,7 @@ compile qmail-smtpd.c sig.h readwrite.h stralloc.h gen_alloc.h \
 substdio.h alloc.h auto_qmail.h control.h received.h constmap.h \
 error.h ipme.h ip.h ipalloc.h strsalloc.h ip.h gen_alloc.h ip.h qmail.h \
 substdio.h str.h fmt.h scan.h byte.h case.h env.h now.h datetime.h \
-exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h
+exit.h rcpthosts.h timeoutread.h timeoutwrite.h commands.h spf.h rbl.h
 	./compile ${TLSON} ${TLSINCLUDES} qmail-smtpd.c
 
 qmail-start: \
@@ -1843,7 +1890,7 @@ qmail-start.9 conf-break conf-spawn
 
 qmail-start.o: \
 compile qmail-start.c fd.h prot.h exit.h fork.h auto_uids.h
-	./compile qmail-start.c
+	./compile $(LDAPFLAGS) qmail-start.c
 
 qmail-tcpok: \
 load qmail-tcpok.o open.a lock.a strerr.a substdio.a error.a str.a \
@@ -1874,6 +1921,20 @@ qmail-tcpto.o: \
 compile qmail-tcpto.c substdio.h subfd.h substdio.h auto_qmail.h \
 fmt.h ip.h lock.h error.h exit.h datetime.h now.h datetime.h
 	./compile qmail-tcpto.c
+
+qmail-todo: \
+load qmail-todo.o control.o constmap.o trigger.o fmtqfn.o now.o \
+readsubdir.o case.a ndelay.a getln.a sig.a open.a stralloc.a alloc.a \
+substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
+	./load qmail-todo control.o constmap.o trigger.o fmtqfn.o now.o \
+	readsubdir.o case.a ndelay.a getln.a sig.a open.a stralloc.a \
+	alloc.a substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
+
+qmail-todo.o: \
+compile alloc.h auto_qmail.h byte.h constmap.h control.h direntry.h error.h \
+exit.h fmt.h fmtqfn.h getln.h open.h ndelay.h now.h readsubdir.h readwrite.h \
+scan.h select.h str.h stralloc.h substdio.h trigger.h
+	./compile qmail-todo.c
 
 qmail-upq: \
 warn-auto.sh qmail-upq.sh conf-qmail conf-break conf-split
@@ -1944,6 +2005,10 @@ qsutil.h
 quote.o: \
 compile quote.c stralloc.h gen_alloc.h str.h quote.h
 	./compile quote.c
+
+rbl.o: \
+compile rbl.c dns.h env.h ipalloc.h qmail.h rbl.h stralloc.h
+	./compile rbl.c
 
 rcpthosts.o: \
 compile rcpthosts.c cdb.h uint32.h byte.h open.h error.h control.h \
@@ -2199,12 +2264,12 @@ scan.h fmt.h
 	./compile splogger.c
 
 str.a: \
-makelib str_len.o str_diff.o str_diffn.o str_cpy.o str_cpyb.o str_chr.o \
+makelib str_len.o str_diff.o str_diffn.o str_cpy.o str_chr.o \
 str_rchr.o str_start.o byte_chr.o byte_rchr.o byte_cspn.o byte_rcspn.o \
-byte_diff.o byte_copy.o byte_cr.o byte_zero.o
-	./makelib str.a str_len.o str_diff.o str_diffn.o str_cpy.o str_cpyb.o \
+byte_diff.o byte_copy.o byte_cr.o byte_zero.o byte_repl.o
+	./makelib str.a str_len.o str_diff.o str_diffn.o str_cpy.o \
 	str_chr.o str_rchr.o str_start.o byte_chr.o byte_rchr.o byte_cspn.o \
-	byte_rcspn.o byte_diff.o byte_copy.o byte_cr.o byte_zero.o
+	byte_rcspn.o byte_diff.o byte_copy.o byte_cr.o byte_zero.o byte_repl.o
 
 str_chr.o: \
 compile str_chr.c str.h

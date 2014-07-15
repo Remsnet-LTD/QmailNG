@@ -1,12 +1,12 @@
 QMAIL_LDAP by Andre Oppermann <opi@nrg4u.com>,
 Claudio Jeker <jeker@n-r-g.com> and Boris Lutz <lutz@n-r-g.com>
-(c) 1998,1999,2000,2001 Internet Business Solutions Ltd.
+(c) 1998,1999,2000,2001,2002 Internet Business Solutions Ltd.
 
 This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2001/09/29 21:48:32 $ ($Revision: 1.44 $)
+RELEASE: $Date: 2002/05/01 21:25:41 $ ($Revision: 1.56 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,63 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ Major overhaul of qmail-smtpd. Completely restructured anti-spam stuff and
+ replaced DENYMAIL environment variable (settable through tcpserver) with:
+  - SMTP550DISCONNECT to disconnect the smtp session immediatly after a fatal
+    5xx error
+  - NOBOUNCE to reject null sender bounces
+  - SANITYCHECK to reject messages without @, no . in TLD, too short/long TLD
+  - RETURNMXCHECK to check if the sender has an MX
+  - BLOCKRELAYPROBE to block rcptto containing !%@ before @ from Russel Nelson
+  - RBL to check RBLs
+  - RBLONLYHEADER to only add a X-RBL header
+
+ added bouncemaxbytes patch:
+ to turn it on write the amount of bytes to bounce in the file
+ ~control/bouncemaxbytes.
+ Work inspired and mostly copied from Frank DENIS aka Jedi/Sector One.
+
+ Bug fix in qmail-send.c log handling:
+ If in one read a log entry and a delivery status notification was delivered the
+ status notification was dropped and therefor qmail-send did not close the job.
+
+ qmail-remote supports the smtp size extension as specified by rfc 1870.
+ If the EHLO extension size is set qmail-remote sends size in the mail form
+ commando. It does not parse the EHLO size argument to check if the size is
+ OK, the remote smtp server should decide if it is OK.
+
+ clean up in qmail-remote, the starttls option was not compared in a case
+ independend way as defined in rfc 2821. The tls debug option is now called
+ TLSDEBUG.
+
+ added Russ Nelson patch to qmail-remote to send using QMTP.
+ From his patch:
+  This patch to qmail-remote causes it to attempt qmtp first if the MX priority
+  indicates so.  Read http://cr.yp.to/proto/mxps.txt for more information.
+  If you want this qmail-remote to be able to send email to you using qmtp,
+  then you should be running a qmtpd on port 209, and you should have your
+  lowest MX priority be 12801.
+
+ added pop-before-smtp tools (see POPBEFORESMTP for more info).
+
+ reject any null sender (bounce) smtp session with more than one rcpt-to
+ (based on an idea of Charles Cazabon and some code of Henning Brauer)
+
+ updated QLDAPINSTALL (more about those nasty -lresolv and ld.so problems)
+
+ beautified the output of the recieved line (added an additional linebreak)
+
+ Add a precedence bulk header when we forward a message to more than one
+ recipient. So auto-reply programs at the recipients will not answer such
+ mails. A message forwarded to more than one recipient is now considered
+ a mailing list email.
+
+ Add an external TODO processor program. This moves the queue todo processing
+ out of qmail-send to avoid the silly qmail syndrome with high injection rates
+ (see EXTTODO for more info). Enable with -DEXTERNAL_TODO in Makefile.
+
+NEWS for 20011001 stuff:
 
  added a variation of Henning Brauer's alternate mailhost patch.
  For more info: mailto:<qmail-ldap-get.5350@argus.pipeline.ch>

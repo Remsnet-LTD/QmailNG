@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -15,6 +16,7 @@
 #include "dns.h"
 #include "alloc.h"
 #include "quote.h"
+#include "fmt.h"
 #include "ip.h"
 #include "ipalloc.h"
 #include "ipme.h"
@@ -46,7 +48,12 @@ char *fqdn = 0;
 					 this port via a simple -D argument */
 #define PORT_SMTP 25 /* silly rabbit, /etc/services is for users */
 #endif
-unsigned long port = PORT_SMTP;
+#ifndef PORT_QMTP /* this is for testing purposes, so you can overwrite
+					 this port via a simple -D argument */
+#define PORT_QMTP 209 /* silly rabbit, /etc/services is for users */
+#endif
+unsigned long smtp_port = PORT_SMTP;
+unsigned long qmtp_port = PORT_QMTP;
 
 GEN_ALLOC_typedef(saa,stralloc,sa,len,a)
 GEN_ALLOC_readyplus(saa,stralloc,sa,len,a,i,n,x,10,saa_readyplus)
@@ -84,6 +91,8 @@ void temp_chdir() { out("Z\
 Unable to switch to home directory. (#4.3.0)\n"); zerodie(); }
 void temp_control() { out("Z\
 Unable to read control files. (#4.3.0)\n"); zerodie(); }
+void temp_proto() { out("Z\
+recipient did not talk proper QMTP (#4.3.0)\n"); zerodie(); }
 void perm_partialline() { out("D\
 SMTP cannot transfer messages with partial final lines. (#5.6.2)\n"); zerodie(); }
 void perm_usage() { out("D\
@@ -176,9 +185,9 @@ int safewrite(fd,buf,len) int fd; char *buf; int len;
   return r;
 }
 
-char inbuf[1024];
+char inbuf[1500];
 substdio ssin = SUBSTDIO_FDBUF(read,0,inbuf,sizeof inbuf);
-char smtptobuf[1024];
+char smtptobuf[1500];
 substdio smtpto = SUBSTDIO_FDBUF(safewrite,-1,smtptobuf,sizeof smtptobuf);
 char smtpfrombuf[128];
 substdio smtpfrom = SUBSTDIO_FDBUF(saferead,-1,smtpfrombuf,sizeof smtpfrombuf);
@@ -234,7 +243,7 @@ char *prepend;
 char *append;
 {
 /* TAG */
-#if defined(TLS) && defined(DEBUG)
+#if defined(TLS) && defined(TLSDEBUG)
 #define ONELINE_NAME(X) X509_NAME_oneline(X,NULL,0)
 
  if(ssl){
@@ -304,18 +313,22 @@ char *fqdn;
 void smtp()
 #endif
 {
+  struct stat st;
+  unsigned long len;
   unsigned long code;
   int flagbother;
+  int flagsize;
   int i;
+  char num[FMT_ULONG];
 #ifdef TLS
+  int flagtls;
   int needtlsauth = 0;
   SSL_CTX *ctx;
   int saveerrno, r;
-#ifdef DEBUG
+#ifdef TLSDEBUG
   char buf[1024];
 #endif
   stralloc servercert = {0};
-  struct stat st;
 
   if( fqdn && *fqdn ) {
     if(!stralloc_copys(&servercert, "control/tlshosts/")) temp_nomem();
@@ -324,19 +337,16 @@ void smtp()
     if(!stralloc_0(&servercert)) temp_nomem();
     if (stat(servercert.s,&st) == 0)  needtlsauth = 1;
   }
+  flagtls = 0;
 #endif
 
   if (smtpcode() != 220) quit("ZConnected to "," but greeting failed");
  
-#ifdef TLS
+  flagsize = 0;
   substdio_puts(&smtpto,"EHLO ");
-#else
-  substdio_puts(&smtpto,"HELO ");
-#endif
   substdio_put(&smtpto,helohost.s,helohost.len);
   substdio_puts(&smtpto,"\r\n");
   substdio_flush(&smtpto);
-#ifdef TLS
   if (smtpcode() != 250){
    substdio_puts(&smtpto,"HELO ");
    substdio_put(&smtpto,helohost.s,helohost.len);
@@ -344,26 +354,30 @@ void smtp()
    substdio_flush(&smtpto);
    if (smtpcode() != 250) quit("ZConnected to "," but my name was rejected");
   }
-#else
-  if (smtpcode() != 250) quit("ZConnected to "," but my name was rejected");
+
+  /* extension handling */
+  for (i = 0; i < smtptext.len; i += str_chr(smtptext.s+i,'\n') + 1) {
+    if (i+8 < smtptext.len && !case_diffb("SIZE", 4, smtptext.s+i+4) )
+      flagsize = 1;
+#ifdef TLS
+    else if (i+12 < smtptext.len && !case_diffb("STARTTLS", 8, smtptext.s+i+4) )
+      flagtls = 1;
 #endif
+  }
 
 #ifdef TLS
-  i = 0;
-  while((i += str_chr(smtptext.s+i,'\n') + 1) && (i+12 < smtptext.len) &&
-        str_diffn(smtptext.s+i+4,"STARTTLS\n",9));
-  if (i+12 < smtptext.len)
+  if (flagtls)
    {
     substdio_puts(&smtpto,"STARTTLS\r\n");
     substdio_flush(&smtpto);
     if (smtpcode() == 220)
      {
-#ifdef DEBUG
+#ifdef TLSDEBUG
       SSL_load_error_strings();
 #endif
       SSLeay_add_ssl_algorithms();
       if(!(ctx=SSL_CTX_new(SSLv23_client_method())))
-#ifdef DEBUG
+#ifdef TLSDEBUG
        {out("ZTLS not available: error initializing ctx");
         out(": ");
         out(ERR_error_string(ERR_get_error(), buf));
@@ -386,7 +400,7 @@ void smtp()
       }
  
       if(!(ssl=SSL_new(ctx)))
-#ifdef DEBUG
+#ifdef TLSDEBUG
         {out("ZTLS not available: error initializing ssl");
          out(": ");
          out(ERR_error_string(ERR_get_error(), buf));
@@ -410,7 +424,7 @@ void smtp()
           out(servercert.s); out(": ");
           out(X509_verify_cert_error_string(r)); out("\n");}
         else
-#ifdef DEBUG
+#ifdef TLSDEBUG
          {out("ZTLS not available: connect failed");
           out(": ");
           out(ERR_error_string(ERR_get_error(), buf));
@@ -450,7 +464,15 @@ void smtp()
 
   substdio_puts(&smtpto,"MAIL FROM:<");
   substdio_put(&smtpto,sender.s,sender.len);
-  substdio_puts(&smtpto,">\r\n");
+  substdio_puts(&smtpto,">");
+  if (flagsize) {
+    substdio_puts(&smtpto," SIZE=");
+    if (fstat(0,&st) == -1) quit("Z", " unable to fstat stdin");
+    len = st.st_size;
+    len += len>>5; /* add some size for the \r chars see rcf 1870 */
+    substdio_put(&smtpto,num,fmt_ulong(num,len+1));
+  }
+  substdio_puts(&smtpto,"\r\n");
   substdio_flush(&smtpto);
   code = smtpcode();
   if (code >= 500) quit("DConnected to "," but sender was rejected");
@@ -489,6 +511,113 @@ void smtp()
   if (code >= 500) quit("D"," failed after I sent the message");
   if (code >= 400) quit("Z"," failed after I sent the message");
   quit("K"," accepted message");
+}
+
+int qmtp_priority(int pref)
+{
+  if (pref < 12800) return 0;
+  if (pref > 13055) return 0;
+  if (pref % 16 == 1) return 1;
+  return 0;
+}
+
+void qmtp()
+{
+  struct stat st;
+  unsigned long len;
+  int len2;
+  char *x;
+  int i;
+  int n;
+  unsigned char ch;
+  char num[FMT_ULONG];
+  int flagallok;
+
+  if (fstat(0,&st) == -1) quit("Z", " unable to fstat stdin");
+  len = st.st_size;
+
+  /* the following code was substantially taken from serialmail's serialqmtp.c */
+  substdio_put(&smtpto,num,fmt_ulong(num,len+1));
+  substdio_put(&smtpto,":\n",2);
+  while (len > 0) {
+    n = substdio_feed(&ssin);
+    if (n <= 0) _exit(32); /* wise guy again */
+    x = substdio_PEEK(&ssin);
+    substdio_put(&smtpto,x,n);
+    substdio_SEEK(&ssin,n);
+    len -= n;
+  }
+  substdio_put(&smtpto,",",1);
+
+  len = sender.len;
+  substdio_put(&smtpto,num,fmt_ulong(num,len));
+  substdio_put(&smtpto,":",1);
+  substdio_put(&smtpto,sender.s,sender.len);
+  substdio_put(&smtpto,",",1);
+
+  len = 0;
+  for (i = 0;i < reciplist.len;++i)
+    len += fmt_ulong(num,reciplist.sa[i].len) + 1 + reciplist.sa[i].len + 1;
+  substdio_put(&smtpto,num,fmt_ulong(num,len));
+  substdio_put(&smtpto,":",1);
+  for (i = 0;i < reciplist.len;++i) {
+    substdio_put(&smtpto,num,fmt_ulong(num,reciplist.sa[i].len));
+    substdio_put(&smtpto,":",1);
+    substdio_put(&smtpto,reciplist.sa[i].s,reciplist.sa[i].len);
+    substdio_put(&smtpto,",",1);
+  }
+  substdio_put(&smtpto,",",1);
+  substdio_flush(&smtpto);
+
+  flagallok = 1;
+
+  for (i = 0;i < reciplist.len;++i) {
+    len = 0;
+    for (;;) {
+      get(&ch);
+      if (ch == ':') break;
+      if (len > 200000000) temp_proto();
+      if (ch - '0' > 9) temp_proto();
+      len = 10 * len + (ch - '0');
+    }
+    if (!len) temp_proto();
+    get(&ch); --len;
+    if ((ch != 'Z') && (ch != 'D') && (ch != 'K')) temp_proto();
+
+    if (!stralloc_copyb(&smtptext,&ch,1)) temp_proto();
+    if (!stralloc_cats(&smtptext,"qmtp: ")) temp_nomem();
+
+    while (len > 0) {
+      get(&ch);
+      --len;
+    }
+
+    for (len = 0;len < smtptext.len;++len) {
+      ch = smtptext.s[len];
+      if ((ch < 32) || (ch > 126)) smtptext.s[len] = '?';
+    }
+    get(&ch);
+    if (ch != ',') temp_proto();
+    smtptext.s[smtptext.len-1] = '\n';
+
+    if (smtptext.s[0] == 'K') out("r");
+    else if (smtptext.s[0] == 'D') {
+      out("h");
+      flagallok = 0;
+    }
+    else { /* if (smtptext.s[0] == 'Z') */
+      out("s");
+      flagallok = 0;
+    }
+    if (substdio_put(subfdoutsmall,smtptext.s+1,smtptext.len-1) == -1) temp_noconn();
+    zero();
+  }
+  if (!flagallok) {
+    out("DGiving up on ");outhost();out("\n");
+  } else {
+    out("KAll received okay by ");outhost();out("\n");
+  }
+  zerodie();
 }
 
 stralloc canonhost = {0};
@@ -579,7 +708,7 @@ char **argv;
   if (relayhost) {
     i = str_chr(relayhost,':');
     if (relayhost[i]) {
-      scan_ulong(relayhost + i + 1,&port);
+      scan_ulong(relayhost + i + 1,&smtp_port);
       relayhost[i] = 0;
     }
     if (!stralloc_copys(&host,relayhost)) temp_nomem();
@@ -639,7 +768,20 @@ char **argv;
     /* performace hack to send TCP ACK's without delay */
     setsockopt(smtpfd, IPPROTO_TCP, TCP_NODELAY, &tcpnodelay, sizeof(tcpnodelay));
  
-    if (timeoutconn(smtpfd,&ip.ix[i].ip,(unsigned int) port,timeoutconnect) == 0) {
+    if (qmtp_priority(ip.ix[i].pref)) {
+      if (timeoutconn(smtpfd,&ip.ix[i].ip,(unsigned int) qmtp_port,timeoutconnect) == 0) {
+	tcpto_err(&ip.ix[i].ip,0);
+	partner = ip.ix[i].ip;
+	qmtp(); /* does not return */
+      }
+      close(smtpfd);
+      smtpfd = socket(AF_INET,SOCK_STREAM,0);
+      if (smtpfd == -1) temp_oserr();
+
+      /* performace hack to send TCP ACK's without delay */
+      setsockopt(smtpfd, IPPROTO_TCP, TCP_NODELAY, &tcpnodelay, sizeof(tcpnodelay));
+    }
+    if (timeoutconn(smtpfd,&ip.ix[i].ip,(unsigned int) smtp_port,timeoutconnect) == 0) {
       tcpto_err(&ip.ix[i].ip,0);
       partner = ip.ix[i].ip;
 #ifdef TLS
