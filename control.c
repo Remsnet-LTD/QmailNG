@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "readwrite.h"
 #include "open.h"
 #include "getln.h"
@@ -27,7 +28,7 @@ stralloc *sa;
     }
 }
 
-int control_init()
+int control_init(void)
 {
  int r;
  r = control_readline(&me,"control/me");
@@ -37,9 +38,9 @@ int control_init()
 
 int control_rldef(sa,fn,flagme,def)
 stralloc *sa;
-char *fn;
+const char *fn;
 int flagme;
-char *def;
+const char *def;
 {
  int r;
  r = control_readline(sa,fn);
@@ -51,7 +52,7 @@ char *def;
 
 int control_readline(sa,fn)
 stralloc *sa;
-char *fn;
+const char *fn;
 {
  substdio ss;
  int fd;
@@ -60,7 +61,7 @@ char *fn;
  fd = open_read(fn);
  if (fd == -1) { if (errno == error_noent) return 0; return -1; }
  
- substdio_fdbuf(&ss,read,fd,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ss,subread,fd,inbuf,sizeof(inbuf));
 
  if (getln(&ss,sa,&match,'\n') == -1) { close(fd); return -1; }
 
@@ -71,7 +72,7 @@ char *fn;
 
 int control_readint(i,fn)
 int *i;
-char *fn;
+const char *fn;
 {
  unsigned long u;
  switch(control_readline(&line,fn))
@@ -87,7 +88,7 @@ char *fn;
 
 int control_readulong(ul,fn)
 unsigned long *ul;
-char *fn;
+const char *fn;
 {
  unsigned long u;
  switch(control_readline(&line,fn))
@@ -103,7 +104,7 @@ char *fn;
 
 int control_readfile(sa,fn,flagme)
 stralloc *sa;
-char *fn;
+const char *fn;
 int flagme;
 {
  substdio ss;
@@ -128,7 +129,7 @@ int flagme;
    return -1;
   }
 
- substdio_fdbuf(&ss,read,fd,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ss,subread,fd,inbuf,sizeof(inbuf));
 
  for (;;)
   {
@@ -147,7 +148,7 @@ int flagme;
 
 int control_readrawfile(sa,fn)
 stralloc *sa;
-char *fn;
+const char *fn;
 {
  substdio ss;
  int fd;
@@ -162,7 +163,7 @@ char *fn;
    return -1;
   }
 
- substdio_fdbuf(&ss,read,fd,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ss,subread,fd,inbuf,sizeof(inbuf));
 
  for (;;)
   {

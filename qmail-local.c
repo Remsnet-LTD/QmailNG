@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "readwrite.h"
 #include "sig.h"
 #include "env.h"
@@ -47,7 +48,7 @@ void temp_fork() { strerr_die3x(111,"Unable to fork: ",error_str(errno),". (#4.3
 void temp_read() { strerr_die3x(111,"Unable to read message: ",error_str(errno),". (#4.3.0)"); }
 void temp_slowlock()
 { strerr_die1x(111,"File has been locked for 30 seconds straight. (#4.3.0)"); }
-void temp_qmail(fn) char *fn;
+void temp_qmail(fn) const char *fn;
 { strerr_die5x(111,"Unable to open ",fn,": ",error_str(errno),". (#4.3.0)"); }
 
 int flagdoit;
@@ -75,7 +76,7 @@ stralloc ueo = {0};
 stralloc cmds = {0};
 stralloc messline = {0};
 stralloc foo = {0};
-stralloc qwapp = {0};
+stralloc qapp = {0};
 
 char buf[1024];
 char outbuf[1024];
@@ -91,8 +92,8 @@ void maildir_child(dir)
 char *dir;
 {
  unsigned long pid;
- unsigned long time;
- char host[64];
+ unsigned long tnow;
+ char hostname[64];
  char *s;
  int loop;
  struct stat st;
@@ -106,16 +107,16 @@ char *dir;
  }
 
  pid = getpid();
- host[0] = 0;
- gethostname(host,sizeof(host));
+ hostname[0] = 0;
+ gethostname(hostname,sizeof(hostname));
  for (loop = 0;;++loop)
   {
-   time = now();
+   tnow = now();
    s = fntmptph;
    s += fmt_str(s,"tmp/");
-   s += fmt_ulong(s,time); *s++ = '.';
+   s += fmt_ulong(s,tnow); *s++ = '.';
    s += fmt_ulong(s,pid); *s++ = '.';
-   s += fmt_strn(s,host,sizeof(host));
+   s += fmt_strn(s,hostname,sizeof(hostname));
    *s++ = 0;
    if (stat(fntmptph,&st) == -1) if (errno == error_noent) break;
    /* really should never get to this point */
@@ -129,8 +130,8 @@ char *dir;
  fd = open_excl(fntmptph);
  if (fd == -1) _exit(1);
 
- substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
- substdio_fdbuf(&ssout,write,fd,outbuf,sizeof(outbuf));
+ substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
+ substdio_fdbuf(&ssout,subwrite,fd,outbuf,sizeof(outbuf));
  if (substdio_put(&ssout,rpline.s,rpline.len) == -1) goto fail;
  if (substdio_put(&ssout,dtline.s,dtline.len) == -1) goto fail;
 
@@ -179,9 +180,9 @@ void quota_warning(char *fn)
  char *(args[3]);
  int wstat;
 
- if (!stralloc_copys(&qwapp, auto_qmail)) temp_nomem();
- if (!stralloc_cats(&qwapp, "/bin/qmail-quotawarn")) temp_nomem();
- if (!stralloc_0(&qwapp)) temp_nomem();
+ if (!stralloc_copys(&qapp, auto_qmail)) temp_nomem();
+ if (!stralloc_cats(&qapp, "/bin/qmail-quotawarn")) temp_nomem();
+ if (!stralloc_0(&qapp)) temp_nomem();
 
  if (seek_begin(0) == -1) temp_rewind();
 
@@ -190,7 +191,7 @@ void quota_warning(char *fn)
    case -1:
      temp_fork();
    case 0:
-     args[0] = qwapp.s; args[1] = fn; args[2] = 0;
+     args[0] = qapp.s; args[1] = fn; args[2] = 0;
      sig_pipedefault();
      execv(*args,args);
      _exit(2);
@@ -203,7 +204,7 @@ void quota_warning(char *fn)
   {
    case 2:
      strerr_die5x(111,"Unable to run quotawarn program: ",
-	 qwapp.s, ": ",error_str(errno),". (#4.2.2)");
+	 qapp.s, ": ",error_str(errno),". (#4.2.2)");
    case 111: _exit(111);
    case 0: break;
    default: _exit(100);
@@ -357,8 +358,8 @@ char *fn;
  seek_end(fd);
  pos = seek_cur(fd);
 
- substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
- substdio_fdbuf(&ssout,write,fd,outbuf,sizeof(outbuf));
+ substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
+ substdio_fdbuf(&ssout,subwrite,fd,outbuf,sizeof(outbuf));
  if (substdio_put(&ssout,ufline.s,ufline.len)) goto writeerrs;
  if (substdio_put(&ssout,rpline.s,rpline.len)) goto writeerrs;
  if (substdio_put(&ssout,dtline.s,dtline.len)) goto writeerrs;
@@ -407,7 +408,8 @@ char *prog;
    case -1:
      temp_fork();
    case 0:
-     args[0] = "/bin/sh"; args[1] = "-c"; args[2] = prog; args[3] = 0;
+     args[0] = (char *)"/bin/sh"; args[1] = (char *)"-c";
+     args[2] = prog; args[3] = 0;
      sig_pipedefault();
      execv(*args,args);
      strerr_die3x(111,"Unable to run /bin/sh: ",error_str(errno),". (#4.3.0)");
@@ -432,12 +434,12 @@ void mailforward(recips)
 char **recips;
 {
  struct qmail qqt;
- char *qqx;
+ const char *qqx;
  substdio ss;
  int match;
 
  if (seek_begin(0) == -1) temp_rewind();
- substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
+ substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
 
  if (qmail_open(&qqt) == -1) temp_fork();
  mailforward_qp = qmail_qp(&qqt);
@@ -466,7 +468,7 @@ void bouncexf()
  substdio ss;
 
  if (seek_begin(0) == -1) temp_rewind();
- substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
+ substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
  for (;;)
   {
    if (getln(&ss,&messline,&match,'\n') != 0) temp_read();
@@ -487,11 +489,12 @@ void checkhome()
    strerr_die3x(111,"Unable to stat home directory: ",error_str(errno),". (#4.3.0)");
  if (st.st_mode & auto_patrn)
    strerr_die1x(111,"Uh-oh: home directory is writable. (#4.7.0)");
- if (st.st_mode & 01000)
+ if (st.st_mode & 01000) {
    if (flagdoit)
      strerr_die1x(111,"Home directory is sticky: user is editing his .qmail file. (#4.2.1)");
    else
      strerr_warn1("Warning: home directory is sticky.",0);
+ }
 }
 
 int qmeox(dashowner)
@@ -628,7 +631,7 @@ void unescape(char *s)
   } while (*s++);
 }
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
@@ -752,7 +755,7 @@ char **argv;
  if (!stralloc_copys(&ufline,"From ")) temp_nomem();
  if (*sender)
   {
-   int len; int i; char ch;
+   int len; char ch;
 
    len = str_len(sender);
    if (!stralloc_readyplus(&ufline,len)) temp_nomem();
@@ -873,7 +876,10 @@ char **argv;
            if ((rt = env_get(ENV_REPLYTEXT))) {
 	     ++count_forward;
              if (flagdoit) {
-               mailprogram("qmail-reply");
+	       if (!stralloc_copys(&qapp,"qmail-reply ")) temp_nomem();
+	       if (!stralloc_cats(&qapp,aliasempty)) temp_nomem();
+	       if (!stralloc_0(&qapp)) temp_nomem();
+               mailprogram(qapp.s);
              } else {
                sayit("reply to ",sender,str_len(sender));
                sayit("replytext ",rt,str_len(rt));
@@ -1058,5 +1064,5 @@ char **argv;
   }
 
  count_print();
- _exit(0);
+ return 0;
 }

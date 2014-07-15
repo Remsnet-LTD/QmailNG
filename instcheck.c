@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "strerr.h"
 #include "error.h"
 #include "readwrite.h"
@@ -50,8 +51,8 @@ int mode;
 }
 
 void d(home,subdir,uid,gid,mode)
-char *home;
-char *subdir;
+const char *home;
+const char *subdir;
 int uid;
 int gid;
 int mode;
@@ -62,8 +63,8 @@ int mode;
 }
 
 void p(home,fifo,uid,gid,mode)
-char *home;
-char *fifo;
+const char *home;
+const char *fifo;
 int uid;
 int gid;
 int mode;
@@ -74,9 +75,25 @@ int mode;
 }
 
 void c(home,subdir,file,uid,gid,mode)
-char *home;
-char *subdir;
-char *file;
+const char *home;
+const char *subdir;
+const char *file;
+int uid;
+int gid;
+int mode;
+{
+  if (chdir(home) == -1)
+    strerr_die4sys(111,FATAL,"unable to switch to ",home,": ");
+  if (chdir(subdir) == -1)
+    strerr_die6sys(111,FATAL,"unable to switch to ",home,"/",subdir,": ");
+  perm(".../",subdir,"/",file,S_IFREG,uid,gid,mode);
+}
+
+void C(home,subdir,file,source,uid,gid,mode)
+const char *home;
+const char *subdir;
+const char *file;
+const char *source;
 int uid;
 int gid;
 int mode;
@@ -89,8 +106,8 @@ int mode;
 }
 
 void z(home,file,len,uid,gid,mode)
-char *home;
-char *file;
+const char *home;
+const char *file;
 int len;
 int uid;
 int gid;
@@ -101,8 +118,24 @@ int mode;
   perm("",home,"/",file,S_IFREG,uid,gid,mode);
 }
 
-void main()
+void l(home,subdir,logdir,loguser,uid,gid,mode)
+const char *home;
+const char *subdir;
+const char *logdir;
+const char *loguser;
+int uid;
+int gid;
+int mode;
+{
+  if (chdir(home) == -1)
+    strerr_die4sys(111,FATAL,"unable to switch to ",home,": ");
+  if (chdir(subdir) == -1)
+    strerr_die6sys(111,FATAL,"unable to switch to ",home,"/",subdir,": ");
+  perm(".../",subdir,"/","run",S_IFREG,uid,gid,mode);
+}
+
+int main()
 {
   hier();
-  _exit(0);
+  return 0;
 }

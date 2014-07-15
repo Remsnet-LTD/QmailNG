@@ -2,12 +2,18 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "auto_qmail.h"
+#include "byte.h"
 #include "env.h"
 #include "error.h"
 #include "fmt.h"
+#include "getln.h"
+#include "gfrom.h"
+#include "lock.h"
 #include "maildir++.h"
 #include "now.h"
+#include "open.h"
 #include "qmail-ldap.h"
+#include "readwrite.h"
 #include "seek.h"
 #include "sig.h"
 #include "str.h"
@@ -67,7 +73,7 @@ void
 maildir_child(char *dir)
 {
 	unsigned long pid;
-	unsigned long time;
+	unsigned long tnow;
 	char host[64];
 	char *s;
 	int loop;
@@ -86,10 +92,10 @@ maildir_child(char *dir)
 	gethostname(host,sizeof(host));
 	for (loop = 0;;++loop)
 	{
-		time = now();
+		tnow = now();
 		s = fntmptph;
 		s += fmt_str(s,"tmp/");
-		s += fmt_ulong(s,time); *s++ = '.';
+		s += fmt_ulong(s,tnow); *s++ = '.';
 		s += fmt_ulong(s,pid); *s++ = '.';
 		s += fmt_strn(s,host,sizeof(host)); *s++ = 0;
 		if (stat(fntmptph,&st) == -1) if (errno == error_noent) break;
@@ -104,8 +110,8 @@ maildir_child(char *dir)
 	fd = open_excl(fntmptph);
 	if (fd == -1) _exit(1);
 
-	substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
-	substdio_fdbuf(&ssout,write,fd,outbuf,sizeof(outbuf));
+	substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
+	substdio_fdbuf(&ssout,subwrite,fd,outbuf,sizeof(outbuf));
 	if (substdio_put(&ssout,rpline.s,rpline.len) == -1) goto fail;
 	if (substdio_put(&ssout,dtline.s,dtline.len) == -1) goto fail;
 
@@ -278,7 +284,7 @@ maildir_write(char *fn)
 		temp_childcrashed();
 	switch(wait_exitcode(wstat))
 	{
-	case 0: break;
+	case 0: _exit(99);
 	case 2: strerr_die1x(111,"Unable to chdir to maildir. (#4.2.1)");
 	case 3: strerr_die1x(111,"Timeout on maildir delivery. (#4.3.0)");
 	case 4: strerr_die1x(111,"Unable to read message. (#4.3.0)");
@@ -341,8 +347,8 @@ mailfile(char *fn)
 	seek_end(fd);
 	pos = seek_cur(fd);
 
-	substdio_fdbuf(&ss,read,0,buf,sizeof(buf));
-	substdio_fdbuf(&ssout,write,fd,outbuf,sizeof(outbuf));
+	substdio_fdbuf(&ss,subread,0,buf,sizeof(buf));
+	substdio_fdbuf(&ssout,subwrite,fd,outbuf,sizeof(outbuf));
 	if (substdio_put(&ssout,ufline.s,ufline.len)) goto writeerrs;
 	if (substdio_put(&ssout,rpline.s,rpline.len)) goto writeerrs;
 	if (substdio_put(&ssout,dtline.s,dtline.len)) goto writeerrs;
@@ -367,7 +373,7 @@ mailfile(char *fn)
 	if (substdio_flush(&ssout)) goto writeerrs;
 	if (fsync(fd) == -1) goto writeerrs;
 	close(fd);
-	exit(99);
+	_exit(99);
 
 writeerrs:
 	strerr_warn5("Unable to write ",fn,": ",
@@ -377,7 +383,7 @@ writeerrs:
 	_exit(111);
 }
 
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *s;
 	int pid, wstat;
@@ -387,17 +393,17 @@ void main(int argc, char **argv)
 		strerr_die1x(100,"condwrite: usage: "
 		    "condwrite {maildir/|mailfile} program [ arg ... ]");
 
-	if ( s = env_get("RPLINE") ) {
+	if ((s = env_get("RPLINE"))) {
 		if (!stralloc_copys(&rpline, s)) temp_nomem();
 	} else
 		strerr_die2x(100, FATAL, "RPLINE not present.");
 
-	if ( s = env_get("DTLINE") ) {
+	if ((s = env_get("DTLINE"))) {
 		if (!stralloc_copys(&dtline, s)) temp_nomem();
 	} else
 		strerr_die2x(100, FATAL, "DTLINE not present.");
 
-	if ( s = env_get("UFLINE") ) {
+	if ((s = env_get("UFLINE"))) {
 		if (!stralloc_copys(&ufline, s)) temp_nomem();
 	} else
 		strerr_die2x(100, FATAL, "UFLINE not present.");
@@ -432,5 +438,5 @@ void main(int argc, char **argv)
 		maildir_write(argv[1]);
 	else
 		mailfile(argv[1]);
-	_exit(100);
+	return 100;
 }

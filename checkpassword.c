@@ -17,6 +17,9 @@
 #include "scan.h"
 #include "str.h"
 #include "stralloc.h"
+#ifdef QLDAP_CLUSTER
+#include "qldap-cluster.h"
+#endif
 
 #include "checkpassword.h"
 
@@ -53,7 +56,7 @@ check_ldap(stralloc *login, stralloc *authdata,
 	static	stralloc ld = {0};
 	qldap	*q;
 	char	*filter;
-	int	r, status, pwok;
+	int	r, status, pwok, needforward;
 	unsigned long count, size, max;
 	const	char	*attrs[] = {
 				LDAP_UID, /* the first 6 attrs are default */
@@ -66,6 +69,7 @@ check_ldap(stralloc *login, stralloc *authdata,
 				LDAP_PASSWD, 0}; /* passwd is extra */
 
 	/* TODO more debug output is needed */
+	needforward = 0;
 	q = qldap_new();
 	if (q == 0)
 		return ERRNO;
@@ -110,8 +114,7 @@ check_ldap(stralloc *login, stralloc *authdata,
 			/* hostname is different, so I reconnect */
 			log(8, "check_ldap: forwarding session to %s\n",
 			    c->forwarder.s);
-			pwok = FORWARD;
-			goto done;
+			needforward = 1;
 		}
 #endif
 
@@ -173,11 +176,11 @@ check_ldap(stralloc *login, stralloc *authdata,
 			break;
 		}
 	}
-done:
 	log(32, "check_ldap: password compare was %s\n",
-	    pwok == OK || pwok == FORWARD ?
-	    "successful":"not successful");
+	    pwok == OK?"successful":"not successful");
 	qldap_free(q);
+	if (pwok == OK  && needforward == 1)
+		return FORWARD;
 	return pwok;
 fail:
 	qldap_free(q);

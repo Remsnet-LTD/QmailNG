@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "readwrite.h"
 #include "sig.h"
 #include "direntry.h"
@@ -31,6 +32,7 @@
 #include "constmap.h"
 #include "fmtqfn.h"
 #include "readsubdir.h"
+#include "cdb.h"
 
 /* critical timing feature #1: if not triggered, do not busy-loop */
 /* critical timing feature #2: if triggered, respond within fixed time */
@@ -62,9 +64,9 @@ char strnum2[FMT_ULONG];
 char strnum3[FMT_ULONG];
 
 #define CHANNELS 2
-char *chanaddr[CHANNELS] = { "local/", "remote/" };
-char *chanstatusmsg[CHANNELS] = { " local ", " remote " };
-char *tochan[CHANNELS] = { " to local ", " to remote " };
+const char *chanaddr[CHANNELS] = { "local/", "remote/" };
+const char *chanstatusmsg[CHANNELS] = { " local ", " remote " };
+const char *tochan[CHANNELS] = { " to local ", " to remote " };
 int chanfdout[CHANNELS] = { 1, 3 };
 int chanfdin[CHANNELS] = { 2, 4 };
 int chanskip[CHANNELS] = { 10, 20 };
@@ -114,6 +116,7 @@ void fnmake_chanaddr(id,c) unsigned long id; int c;
 
 /* this file is too long ----------------------------------------- REWRITING */
 
+stralloc localscdb = {0};
 stralloc rwline = {0};
 
 /* 1 if by land, 2 if by sea, 0 if out of memory. not allowed to barf. */
@@ -123,7 +126,7 @@ char *recip;
 {
   int i;
   int j;
-  char *x;
+  const char *x;
   static stralloc addr = {0};
   int at;
 
@@ -146,15 +149,29 @@ char *recip;
 
   at = byte_rchr(addr.s,addr.len,'@');
 
-  if (constmap(&maplocals,addr.s + at + 1,addr.len - at - 1)) {
-    if (!stralloc_cat(&rwline,&addr)) return 0;
-    if (!stralloc_0(&rwline)) return 0;
-    return 1;
-  }
+  if (localscdb.s && localscdb.len > 1) {
+    int fd, r;
+    uint32 dlen;
+    fd = open_read(localscdb.s);
+    if (fd == -1) return -1;
+    r = cdb_seek(fd, addr.s + at + 1,addr.len - at - 1, &dlen);
+    close(fd);
+    if (r == -1) return -1;
+    if (r == 1) {
+      if (!stralloc_cat(&rwline,&addr)) return 0;
+      if (!stralloc_0(&rwline)) return 0;
+      return 1;
+    }
+  } else
+    if (constmap(&maplocals,addr.s + at + 1,addr.len - at - 1)) {
+      if (!stralloc_cat(&rwline,&addr)) return 0;
+      if (!stralloc_0(&rwline)) return 0;
+      return 1;
+    }
 
   for (i = 0;i <= addr.len;++i)
     if (!i || (i == at + 1) || (i == addr.len) || ((i > at) && (addr.s[i] == '.')))
-      if (x = constmap(&mapvdoms,addr.s + i,addr.len - i)) {
+      if ((x = constmap(&mapvdoms,addr.s + i,addr.len - i))) {
         if (!*x) break;
         if (!stralloc_cats(&rwline,x)) return 0;
         if (!stralloc_cats(&rwline,"-")) return 0;
@@ -217,7 +234,7 @@ unsigned long id;
  fdinfo = open_read(fn.s);
  if (fdinfo == -1) return 0;
  if (fstat(fdinfo,&st) == -1) { close(fdinfo); return 0; }
- substdio_fdbuf(&ss,read,fdinfo,buf,sizeof(buf));
+ substdio_fdbuf(&ss,subread,fdinfo,buf,sizeof(buf));
  if (getln(&ss,&line,&match,'\0') == -1) { close(fdinfo); return 0; }
  close(fdinfo);
  if (!match) return 0;
@@ -240,8 +257,8 @@ int comm_pos[CHANNELS];
 void comm_init()
 {
  int c;
- substdio_fdbuf(&sstoqc,write,5,sstoqcbuf,sizeof(sstoqcbuf));
- substdio_fdbuf(&ssfromqc,read,6,ssfromqcbuf,sizeof(ssfromqcbuf));
+ substdio_fdbuf(&sstoqc,subwrite,5,sstoqcbuf,sizeof(sstoqcbuf));
+ substdio_fdbuf(&ssfromqc,subread,6,ssfromqcbuf,sizeof(ssfromqcbuf));
  for (c = 0;c < CHANNELS;++c)
    if (ndelay_on(chanfdout[c]) == -1)
    /* this is so stupid: NDELAY semantics should be default on write */
@@ -451,7 +468,7 @@ void pqstart()
 
  readsubdir_init(&rs,"info",pausedir);
 
- while (x = readsubdir_next(&rs,&id))
+ while ((x = readsubdir_next(&rs,&id)))
    if (x > 0)
      pqadd(id);
 }
@@ -585,7 +602,7 @@ char *recip;
  int i;
  char *domain;
  int domainlen;
- char *prepend;
+ const char *prepend;
 
  i = str_rchr(recip,'@');
  if (!recip[i]) return recip;
@@ -594,7 +611,7 @@ char *recip;
 
  for (i = 0;i <= domainlen;++i)
    if ((i == 0) || (i == domainlen) || (domain[i] == '.'))
-     if (prepend = constmap(&mapvdoms,domain + i,domainlen - i))
+     if ((prepend = constmap(&mapvdoms,domain + i,domainlen - i)))
       {
        if (!*prepend) break;
        i = str_len(prepend);
@@ -659,7 +676,7 @@ unsigned long id;
 {
  struct qmail qqt;
  struct stat st;
- char *bouncesender;
+ const char *bouncesender;
  char *bouncerecip;
  int r;
  int fd;
@@ -739,7 +756,7 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
      qmail_fail(&qqt);
    else
     {
-     substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
+     substdio_fdbuf(&ssread,subread,fd,inbuf,sizeof(inbuf));
      while ((r = substdio_get(&ssread,buf,sizeof(buf))) > 0)
        qmail_put(&qqt,buf,r);
      close(fd);
@@ -762,7 +779,7 @@ I tried to deliver a bounce message to this address, but the bounce bounced!\n\
      int bytestoget;
      bytestogo = bouncemaxbytes;
      bytestoget = (bytestogo < sizeof(buf) && bouncemaxbytes != 0) ? bytestogo : sizeof(buf);
-     substdio_fdbuf(&ssread,read,fd,inbuf,sizeof(inbuf));
+     substdio_fdbuf(&ssread,subread,fd,inbuf,sizeof(inbuf));
      while ((r = substdio_get(&ssread,buf,bytestoget)) > 0) {
        qmail_put(&qqt,buf,r);
        bytestogo -= r;
@@ -1114,7 +1131,7 @@ int c;
    if (pass[c].fd == -1) goto trouble;
    if (!getinfo(&line,&birth,pe.id)) { close(pass[c].fd); goto trouble; }
    pass[c].id = pe.id;
-   substdio_fdbuf(&pass[c].ss,read,pass[c].fd,pass[c].buf,sizeof(pass[c].buf));
+   substdio_fdbuf(&pass[c].ss,subread,pass[c].fd,pass[c].buf,sizeof(pass[c].buf));
    pass[c].j = job_open(pe.id,c);
    jo[pass[c].j].retry = nextretry(birth,c);
    jo[pass[c].j].flagdying = (recent > birth + lifetime);
@@ -1652,7 +1669,11 @@ fd_set *rfds;
 
 /* this file is too long ---------------------------------------------- MAIN */
 
-int getcontrols() { if (control_init() == -1) return 0;
+int getcontrols()
+{
+ struct stat st;
+
+ if (control_init() == -1) return 0;
  if (control_readint(&lifetime,"control/queuelifetime") == -1) return 0;
  if (control_readint(&concurrency[0],"control/concurrencylocal") == -1) return 0;
  if (control_readint(&concurrency[1],"control/concurrencyremote") == -1) return 0;
@@ -1667,8 +1688,17 @@ int getcontrols() { if (control_init() == -1) return 0;
  if (control_readint(&bouncemaxbytes,"control/bouncemaxbytes") == -1) return 0;
  if (control_readrawfile(&custombouncetext,"control/custombouncetext") == -1) return 0;
  if (!stralloc_0(&custombouncetext) ) return 0;
- if (control_readfile(&locals,"control/locals",1) != 1) return 0;
- if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
+
+ if (stat("control/locals.cdb", &st) == 0) {
+   if (!stralloc_copys(&localscdb, auto_qmail)) return 0;
+   if (!stralloc_cats(&localscdb, "/control/locals.cdb")) return 0;
+   if (!stralloc_0(&localscdb)) return 0;
+   if (!constmap_init(&maplocals,"",0,1)) return 0;
+ } else {
+   if (control_readfile(&locals,"control/locals",1) != 1) return 0;
+   if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
+ }
+
  switch(control_readfile(&percenthack,"control/percenthack",0))
   {
    case -1: return 0;
@@ -1689,6 +1719,7 @@ stralloc newcbtext = {0};
 
 void regetcontrols()
 {
+ struct stat st;
  int r;
 
  if (control_readint(&bouncemaxbytes,"control/bouncemaxbytes") == -1)
@@ -1699,17 +1730,29 @@ void regetcontrols()
  while (!stralloc_0(&newcbtext)) nomem();
  while (!stralloc_copy(&custombouncetext,&newcbtext)) nomem();
 
- if (control_readfile(&newlocals,"control/locals",1) != 1)
-  { wlog1("alert: unable to reread control/locals\n"); return; }
+ if (stat("control/locals.cdb", &st) == 0) {
+   while (!stralloc_copys(&localscdb, auto_qmail)) nomem();
+   while (!stralloc_cats(&localscdb, "/control/locals.cdb")) nomem();
+   while  (!stralloc_0(&localscdb)) nomem();
+
+   constmap_free(&maplocals);
+   while (!constmap_init(&maplocals,"",0,1)) nomem();
+ } else {
+   if (control_readfile(&newlocals,"control/locals",1) != 1)
+    { wlog1("alert: unable to reread control/locals\n"); return; }
+
+   while (!stralloc_copys(&localscdb, "")) nomem();
+
+   constmap_free(&maplocals);
+   while (!stralloc_copy(&locals,&newlocals)) nomem();
+   while (!constmap_init(&maplocals,locals.s,locals.len,0)) nomem();
+ }
+
  r = control_readfile(&newvdoms,"control/virtualdomains",0);
  if (r == -1)
   { wlog1("alert: unable to reread control/virtualdomains\n"); return; }
 
- constmap_free(&maplocals);
  constmap_free(&mapvdoms);
-
- while (!stralloc_copy(&locals,&newlocals)) nomem();
- while (!constmap_init(&maplocals,locals.s,locals.len,0)) nomem();
 
  if (r)
   {
@@ -1738,7 +1781,7 @@ void reread()
   }
 }
 
-void main()
+int main()
 {
  int fd;
  datetime_sec wakeup;
@@ -1845,5 +1888,5 @@ void main()
   }
  pqfinish();
  wlog1("status: exiting\n");
- _exit(0);
+ return 0;
 }

@@ -17,6 +17,7 @@
 #include "open.h"
 #include "qmail.h"
 #include "qmail-ldap.h"
+#include "readwrite.h"
 #include "seek.h"
 #include "sgetopt.h"
 #include "sig.h"
@@ -80,7 +81,7 @@ void readmail(char *file)
 	if (fd == -1)
 		strerr_die4sys(100, FATAL, "Unable to open '", file, "': ");
 
-	substdio_fdbuf(&ss, read, fd, buffer, sizeof(buffer));
+	substdio_fdbuf(&ss, subread, fd, buffer, sizeof(buffer));
 	for (;;) {
 		if (getln(&ss, &line, &match, '\n') == -1)
 			strerr_die4sys(100, FATAL, "Unable to read '",
@@ -181,8 +182,6 @@ int junksender(char *addr, int len)
 	return 0;
 }
 
-#ifdef NOTYET
-
 datetime_sec get_stamp(char const *hex)
 {
 	unsigned long t;
@@ -255,7 +254,7 @@ int recent_lookup(char *buf, int len)
 			/* match found, look at timeval */
 			i += len;
 			if (s[i++] != ':') {
-				strerr_warn(WARN,
+				strerr_warn2(WARN,
 				    "Database file corrupted", 0);
 				unlink("qmail-reply.db");
 				stralloc_copys(&rs, "");
@@ -310,6 +309,7 @@ void unlock(void)
 }
 
 stralloc sfs = {0};
+stralloc spath = {0};
 
 void addstamps(void)
 {
@@ -329,19 +329,20 @@ void addstamps(void)
 	while ((d = readdir(dir))) {
 		if (d->d_name[0] != '@') continue;
 		/* this is a possible stamp file */
-		if (d->d_name[str_chr(d->d_name+1, '@')] != '@') {
+		if (d->d_name[str_chr(d->d_name+1, '@')+1] != '@') {
 			strerr_warn3(WARN, "Strange stamp file: ",
 			    d->d_name, 0);
 			continue;
 		}
-		if (stat(d->d_name,&st) == -1) {
+		if (!stralloc_copys(&spath, "tmp/") ||
+		    !stralloc_cats(&spath, d->d_name) ||
+		    !stralloc_0(&spath)) break;
+		if (stat(spath.s,&st) == -1) {
 			strerr_warn4(WARN, "Can't stat stamp file: ",
 			    d->d_name, ": ", &strerr_sys);
 			continue;
 		}
-		if (!stralloc_cats(&sfs, "tmp/") ||
-		    !stralloc_cats(&sfs, d->d_name) ||
-		    !stralloc_0(&sfs)) break;
+		if (!stralloc_cat(&sfs, &spath)) break;
 		if (!stralloc_cats(&rs, d->d_name+1) ||
 		    !stralloc_cats(&rs, stamp(st.st_mtime)) ||
 		    !stralloc_0(&rs)) break;
@@ -356,7 +357,7 @@ void deletestamps(void)
 	char *s;
 
 	s = sfs.s;
-	for(i = 0; sfs.len; i += str_len(s+i) + 1) {
+	for(i = 0; i < sfs.len; i += str_len(s+i) + 1) {
 		unlink(s + i);
 	}
 }
@@ -418,7 +419,7 @@ void recent_update(char *buf, int len)
 		return;
 	}
 
-	substdio_fdbuf(&ss, write, fd, rsoutbuf, sizeof(rsoutbuf));
+	substdio_fdbuf(&ss, subwrite, fd, rsoutbuf, sizeof(rsoutbuf));
 
 	/* dump database */
 	for (i = 0; i < slen; i += str_len(s+i) + 1) {
@@ -455,7 +456,7 @@ void touchstamp(char *buf, int len)
 	int fd;
 
 	if (!stralloc_copys(&sfs, "tmp/@")) temp_nomem();
-	if (!stralloc_copyb(&sfs, buf, len)) temp_nomem();
+	if (!stralloc_catb(&sfs, buf, len)) temp_nomem();
 	if (!stralloc_0(&sfs)) temp_nomem();
 
 	if ((fd = open_trunc(sfs.s)) == -1)
@@ -495,7 +496,6 @@ int recent(char *buf, int len, char *dir)
 		return 0;
 	}
 }
-#endif
 
 int getfield(char *s, int len)
 {
@@ -535,7 +535,7 @@ int parseheader(/* TODO names for to/cc checking */ void)
 
 	subj_set = 0;
 	if (seek_begin(0) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, 0, buffer, sizeof(buffer) );
+	substdio_fdbuf(&ss, subread, 0, buffer, sizeof(buffer) );
 	do {
 		if(getln(&ss, &line, &match, '\n') != 0) {
 			strerr_warn3(WARN, "Unable to read message: ",
@@ -651,7 +651,7 @@ struct mheader mheader[] = {
 void sendmail(void)
 {
 	struct qmail qqt;
-	char *qqx;
+	const char *qqx;
 	datetime_sec starttime;
 	unsigned long qp;
 	int offset;
@@ -708,9 +708,7 @@ int main(int argc, char **argv)
 	if (!env_init()) temp_nomem();
 
 	flagenv = 1;
-#ifdef NOTYET
 	timeout = REPLY_TIMEOUT;
-#endif
 
 	while((opt = getopt(argc,argv,"f:j:")) != opteof)
 		switch(opt) {
@@ -739,10 +737,9 @@ int main(int argc, char **argv)
 
 	/* check if a reply is needed */
 	if (junksender(to.s, to.len)) _exit(0);
-#ifdef NOTYET
-	if (maildir)
+	if (maildir && (*maildir == '.' || *maildir == '/') &&
+	    maildir[str_len(maildir)-1] == '/')
 		if (recent(to.s, to.len, maildir)) _exit(0);
-#endif
 	/* parse header, exit if a precedence or mailinglist field
 	   has been found or the mail is not directly sent to us. */
 	if (parseheader()) _exit(0);

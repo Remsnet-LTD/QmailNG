@@ -90,7 +90,7 @@ default: it ldap
 
 ldap: qmail-quotawarn qmail-reply auth_pop auth_imap auth_smtp digest \
 qmail-ldaplookup pbsadd pbscheck pbsdbd qmail-todo qmail-forward \
-qmail-secretary qmail-group qmail-verify condwrite
+qmail-secretary qmail-group qmail-verify condwrite qmail-cdb
 
 addresses.0: \
 addresses.5
@@ -112,17 +112,17 @@ auth_imap: \
 load auth_imap.o auth_mod.o checkpassword.o passwd.o digest_md4.o \
 digest_md5.o digest_rmd160.o digest_sha1.o base64.o read-ctrl.o \
 control.o dirmaker.o mailmaker.o qldap.a localdelivery.o locallookup.o \
-pbsexec.o constmap.o getln.a substdio.a stralloc.a env.a wait.a dns.o \
-ip.o ipalloc.o ipme.o alloc.a str.a case.a fs.a error.a timeoutconn.o \
+pbsexec.o constmap.o getln.a strerr.a substdio.a stralloc.a env.a wait.a \
+dns.o ip.o ipalloc.o ipme.o alloc.a str.a case.a fs.a error.a timeoutconn.o \
 timeoutread.o ndelay.a open.a sig.a prot.o auto_uids.o auto_qmail.o \
 dns.lib socket.lib
 	./load auth_imap auth_mod.o checkpassword.o passwd.o digest_md4.o \
 	digest_md5.o digest_rmd160.o digest_sha1.o base64.o read-ctrl.o \
 	control.o dirmaker.o mailmaker.o qldap.a localdelivery.o \
-	locallookup.o pbsexec.o constmap.o getln.a substdio.a stralloc.a \
-	env.a wait.a dns.o ip.o ipalloc.o ipme.o alloc.a str.a case.a fs.a \
-	error.a timeoutconn.o timeoutread.o ndelay.a open.a sig.a prot.o \
-	auto_uids.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS) \
+	locallookup.o pbsexec.o constmap.o getln.a strerr.a substdio.a \
+	stralloc.a env.a wait.a dns.o ip.o ipalloc.o ipme.o alloc.a str.a \
+	case.a fs.a error.a timeoutconn.o timeoutread.o ndelay.a open.a \
+	sig.a prot.o auto_uids.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS) \
 	`cat dns.lib` `cat socket.lib`
 
 auth_imap.o: \
@@ -141,17 +141,17 @@ auth_pop: \
 load auth_pop.o auth_mod.o checkpassword.o passwd.o digest_md4.o \
 digest_md5.o digest_rmd160.o digest_sha1.o base64.o read-ctrl.o \
 control.o dirmaker.o mailmaker.o qldap.a localdelivery.o locallookup.o \
-pbsexec.o constmap.o getln.a substdio.a stralloc.a env.a wait.a dns.o \
-ip.o ipalloc.o ipme.o alloc.a str.a case.a fs.a error.a timeoutconn.o \
+pbsexec.o constmap.o getln.a strerr.a substdio.a stralloc.a env.a wait.a \
+dns.o ip.o ipalloc.o ipme.o alloc.a str.a case.a fs.a error.a timeoutconn.o \
 timeoutread.o ndelay.a open.a prot.o auto_uids.o auto_qmail.o \
 dns.lib socket.lib
 	./load auth_pop auth_mod.o checkpassword.o passwd.o digest_md4.o \
 	digest_md5.o digest_rmd160.o digest_sha1.o base64.o read-ctrl.o \
 	control.o qldap.a dirmaker.o mailmaker.o localdelivery.o \
-	locallookup.o pbsexec.o constmap.o getln.a substdio.a stralloc.a \
-	env.a wait.a dns.o ip.o ipalloc.o ipme.o alloc.a str.a case.a \
-	fs.a error.a timeoutconn.o timeoutread.o ndelay.a open.a prot.o \
-	auto_uids.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS) \
+	locallookup.o pbsexec.o constmap.o getln.a strerr.a substdio.a \
+	stralloc.a env.a wait.a dns.o ip.o ipalloc.o ipme.o alloc.a str.a \
+	case.a fs.a error.a timeoutconn.o timeoutread.o ndelay.a open.a \
+	prot.o auto_uids.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS) \
 	`cat dns.lib` `cat socket.lib`
 
 auth_pop.o: \
@@ -163,11 +163,11 @@ auth_mod.h
 auth_smtp: \
 load auth_smtp.o checkpassword.o passwd.o digest_md4.o digest_md5.o \
 digest_rmd160.o digest_sha1.o base64.o read-ctrl.o control.o qldap.a \
-constmap.o getln.a substdio.a stralloc.a env.a alloc.a str.a case.a \
-fs.a error.a open.a prot.o auto_uids.o auto_qmail.o
+constmap.o getln.a strerr.a substdio.a stralloc.a env.a alloc.a str.a \
+case.a fs.a error.a open.a prot.o auto_uids.o auto_qmail.o
 	./load auth_smtp checkpassword.o passwd.o digest_md4.o \
 	digest_md5.o digest_rmd160.o digest_sha1.o base64.o read-ctrl.o \
-	control.o qldap.a constmap.o getln.a substdio.a stralloc.a \
+	control.o qldap.a constmap.o getln.a strerr.a substdio.a stralloc.a \
 	env.a alloc.a str.a case.a fs.a error.a open.a prot.o auto_uids.o \
 	auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS)
 
@@ -292,6 +292,14 @@ auto-str conf-users
 auto_usera.o: \
 compile auto_usera.c
 	./compile auto_usera.c
+
+auto_userl.c: \
+auto-str conf-users
+	./auto-str auto_userl `head -3 conf-users | tail -1` > auto_userl.c
+
+auto_userl.o: \
+compile auto_userl.c
+	./compile auto_userl.c
 
 base64.o: \
 compile base64.c base64.h str.h
@@ -533,9 +541,9 @@ open.a sig.a lock.a auto_qmail.o
 	fs.a mailmaker.o open.a sig.a lock.a auto_qmail.o
 
 condwrite.o: \
-compile condwrite.c auto_qmail.h env.h error.h fmt.h maildir++.h now.h \
-qmail-ldap.h seek.h sig.h str.h stralloc.h strerr.h subfd.h substdio.h \
-wait.h mailmaker.h qldap-errno.h
+compile condwrite.c auto_qmail.h byte.h env.h error.h fmt.h getln.h gfrom.h \
+lock.h maildir++.h now.h open.h qmail-ldap.h seek.h sig.h str.h stralloc.h \
+strerr.h subfd.h substdio.h wait.h mailmaker.h qldap-errno.h
 	./compile $(MDIRMAKE) condwrite.c
 
 config: \
@@ -592,11 +600,12 @@ compile datetime_un.c datetime.h
 
 digest: \
 load digest.o passwd.o digest_md4.o digest_md5.o digest_rmd160.o \
-digest_sha1.o base64.o qldap-debug.o output.o getopt.a substdio.a \
-case.a env.a stralloc.a str.a fs.a alloc.a error.a
+digest_sha1.o base64.o qldap-debug.o output.o getopt.a strerr.a \
+substdio.a case.a env.a stralloc.a str.a fs.a alloc.a error.a
 	./load digest passwd.o digest_md4.o digest_md5.o digest_rmd160.o \
-	digest_sha1.o base64.o qldap-debug.o output.o getopt.a substdio.a \
-	case.a env.a stralloc.a str.a fs.a alloc.a error.a $(SHADOWLIBS)
+	digest_sha1.o base64.o qldap-debug.o output.o getopt.a strerr.a \
+	substdio.a case.a env.a stralloc.a str.a fs.a alloc.a error.a \
+	$(SHADOWLIBS)
 
 digest.o: \
 compile digest.c base64.h error.h passwd.h qldap-errno.h \
@@ -1003,16 +1012,17 @@ seek.h fork.h
 
 install: \
 load install.o fifo.o hier.o auto_qmail.o auto_split.o auto_uids.o \
-strerr.a substdio.a open.a error.a str.a fs.a
+auto_userl.o strerr.a substdio.a open.a error.a str.a fs.a
 	./load install fifo.o hier.o auto_qmail.o auto_split.o \
-	auto_uids.o strerr.a substdio.a open.a error.a str.a fs.a 
+	auto_uids.o auto_userl.o strerr.a substdio.a open.a error.a \
+	str.a fs.a
 
 install-big: \
 load install-big.o fifo.o install.o auto_qmail.o auto_split.o \
-auto_uids.o strerr.a substdio.a open.a error.a str.a fs.a
+auto_uids.o auto_userl.o strerr.a substdio.a open.a error.a str.a fs.a
 	./load install-big fifo.o install.o auto_qmail.o \
-	auto_split.o auto_uids.o strerr.a substdio.a open.a error.a \
-	str.a fs.a 
+	auto_split.o auto_uids.o auto_userl.o strerr.a substdio.a \
+	open.a error.a str.a fs.a
 
 install-big.o: \
 compile install-big.c auto_qmail.h auto_split.h auto_uids.h fmt.h \
@@ -1026,9 +1036,9 @@ exit.h
 
 instcheck: \
 load instcheck.o fifo.o hier.o auto_qmail.o auto_split.o auto_uids.o \
-strerr.a substdio.a error.a str.a fs.a
+auto_userl.o strerr.a substdio.a error.a str.a fs.a
 	./load instcheck fifo.o hier.o auto_qmail.o auto_split.o \
-	auto_uids.o strerr.a substdio.a error.a str.a fs.a 
+	auto_uids.o auto_userl.o strerr.a substdio.a error.a str.a fs.a
 
 instcheck.o: \
 compile instcheck.c strerr.h error.h readwrite.h exit.h
@@ -1448,6 +1458,18 @@ qldap-profile.o: \
 compile qldap-profile.c qldap-profile.h qldap-debug.h
 	./compile $(INCTAI) $(DEBUG) qldap-profile.c
 
+qmail-cdb: \
+load qmail-cdb.o cdbmss.o getln.a open.a cdbmake.a seek.a case.a \
+stralloc.a alloc.a strerr.a substdio.a error.a str.a auto_qmail.o
+	./load qmail-cdb cdbmss.o getln.a open.a cdbmake.a seek.a \
+	case.a stralloc.a alloc.a strerr.a substdio.a error.a str.a \
+	auto_qmail.o
+
+qmail-cdb.o: \
+compile qmail-cdb.c auto_qmail.h case.h cdbmss.h exit.h getln.h \
+open.h readwrite.h stralloc.h strerr.h substdio.h
+	./compile qmail-cdb.c
+
 qmail-clean: \
 load qmail-clean.o fmtqfn.o now.o getln.a sig.a stralloc.a alloc.a \
 substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
@@ -1602,19 +1624,21 @@ qmail-log.5
 	nroff -man qmail-log.5 > qmail-log.0
 
 qmail-ldaplookup: \
-load qmail-ldaplookup.o qldap.a constmap.o localdelivery.o read-ctrl.o \
-control.o env.a getopt.a getln.a stralloc.a alloc.a strerr.a error.a \
-substdio.a open.a fs.a str.a case.a auto_usera.o auto_qmail.o
-	./load qmail-ldaplookup qldap.a constmap.o localdelivery.o \
-	read-ctrl.o control.o env.a getopt.a getln.a stralloc.a alloc.a \
-	strerr.a error.a substdio.a open.a fs.a str.a case.a auto_usera.o \
-	auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS)
+load qmail-ldaplookup.o qldap.a passwd.o digest_md4.o digest_md5.o \
+digest_rmd160.o digest_sha1.o base64.o constmap.o localdelivery.o \
+read-ctrl.o control.o env.a getopt.a getln.a stralloc.a alloc.a strerr.a \
+error.a substdio.a open.a fs.a str.a case.a auto_usera.o auto_qmail.o
+	./load qmail-ldaplookup qldap.a passwd.o digest_md4.o \
+	digest_md5.o digest_rmd160.o digest_sha1.o base64.o constmap.o \
+	localdelivery.o read-ctrl.o control.o env.a getopt.a getln.a \
+	stralloc.a alloc.a strerr.a error.a substdio.a open.a fs.a str.a \
+	case.a auto_usera.o auto_qmail.o $(LDAPLIBS) $(SHADOWLIBS)
 
 qmail-ldaplookup.o: \
-compile qmail-ldaplookup.c qmail-ldap.h qldap-errno.h stralloc.h \
-alloc.h error.h str.h qldap-debug.h check.h substdio.h \
-fmt.h scan.h readwrite.h byte.h getln.h digest_md4.h auto_qmail.h \
-digest_md5.h digest_rmd160.h digest_sha1.h open.h uint32.h auto_break.h
+compile qmail-ldaplookup.c alloc.h auto_usera.h byte.h case.h env.h error.h \
+localdelivery.h output.h passwd.h qldap.h qldap-cluster.h qldap-debug.h \
+qldap-errno.h qmail-ldap.h read-ctrl.h scan.h sgetopt.h str.h stralloc.h \
+strerr.h subfd.h substdio.h
 	./compile $(LDAPFLAGS) $(SHADOWOPTS) $(DEBUG) qmail-ldaplookup.c
 
 qmail-lspawn: \
@@ -1965,12 +1989,13 @@ load qmail-send.o qsutil.o control.o constmap.o newfield.o prioq.o \
 trigger.o fmtqfn.o quote.o now.o readsubdir.o qmail.o date822fmt.o \
 datetime.a case.a ndelay.a getln.a wait.a seek.a fd.a sig.a open.a \
 lock.a stralloc.a alloc.a substdio.a error.a str.a fs.a auto_qmail.o \
-auto_split.o env.a
+auto_split.o env.a cdb.a
 	./load qmail-send qsutil.o control.o constmap.o newfield.o \
 	prioq.o trigger.o fmtqfn.o quote.o now.o readsubdir.o \
 	qmail.o date822fmt.o datetime.a case.a ndelay.a getln.a \
 	wait.a seek.a fd.a sig.a open.a lock.a stralloc.a alloc.a \
-	substdio.a error.a str.a fs.a auto_qmail.o auto_split.o env.a
+	substdio.a error.a str.a fs.a auto_qmail.o auto_split.o env.a \
+	cdb.a
 
 qmail-send.0: \
 qmail-send.8
@@ -1990,7 +2015,7 @@ open.h seek.h exit.h lock.h ndelay.h now.h datetime.h getln.h \
 substdio.h alloc.h error.h stralloc.h gen_alloc.h str.h byte.h fmt.h \
 scan.h case.h auto_qmail.h trigger.h newfield.h stralloc.h quote.h \
 qmail.h substdio.h qsutil.h prioq.h datetime.h gen_alloc.h constmap.h \
-fmtqfn.h readsubdir.h direntry.h
+fmtqfn.h readsubdir.h direntry.h cdb.h uint32.h
 	./compile $(LDAPFLAGS) qmail-send.c
 
 qmail-showctl: \
@@ -2092,14 +2117,14 @@ fmt.h ip.h lock.h error.h exit.h datetime.h now.h datetime.h
 
 qmail-todo: \
 load qmail-todo.o control.o constmap.o trigger.o fmtqfn.o now.o \
-readsubdir.o case.a ndelay.a getln.a sig.a open.a stralloc.a alloc.a \
-substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
+readsubdir.o case.a ndelay.a getln.a sig.a cdb.a open.a stralloc.a \
+alloc.a substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
 	./load qmail-todo control.o constmap.o trigger.o fmtqfn.o now.o \
-	readsubdir.o case.a ndelay.a getln.a sig.a open.a stralloc.a \
+	readsubdir.o case.a ndelay.a getln.a sig.a cdb.a open.a stralloc.a \
 	alloc.a substdio.a error.a str.a fs.a auto_qmail.o auto_split.o
 
 qmail-todo.o: \
-compile qmail-todo.c alloc.h auto_qmail.h byte.h constmap.h control.h \
+compile qmail-todo.c alloc.h auto_qmail.h byte.h cdb.h constmap.h control.h \
 direntry.h error.h exit.h fmt.h fmtqfn.h getln.h open.h ndelay.h now.h \
 readsubdir.h scan.h select.h sig.h str.h stralloc.h substdio.h trigger.h
 	./compile $(LDAPFLAGS) qmail-todo.c
@@ -2200,6 +2225,10 @@ readsubdir.o: \
 compile readsubdir.c readsubdir.h direntry.h fmt.h scan.h str.h \
 auto_split.h
 	./compile readsubdir.c
+
+readwrite.o: \
+compile readwrite.c readwrite.h
+	./compile readwrite.c
 
 read-ctrl.o: \
 compile read-ctrl.c auto_qmail.h error.h open.h read-ctrl.h
@@ -2587,10 +2616,10 @@ compile substdi.c substdio.h byte.h error.h
 
 substdio.a: \
 makelib substdio.o substdi.o substdo.o subfderr.o subfdout.o \
-subfdouts.o subfdin.o subfdins.o substdio_copy.o
+subfdouts.o subfdin.o subfdins.o substdio_copy.o readwrite.o
 	./makelib substdio.a substdio.o substdi.o substdo.o \
 	subfderr.o subfdout.o subfdouts.o subfdin.o subfdins.o \
-	substdio_copy.o
+	substdio_copy.o readwrite.o
 
 substdio.o: \
 compile substdio.c substdio.h

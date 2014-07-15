@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <unistd.h>
 #include "sig.h"
 #include "stralloc.h"
 #include "str.h"
@@ -31,7 +32,7 @@ stralloc remotename = {0};
 
 char temp[IPFMT + FMT_ULONG];
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char *argv[];
 {
@@ -129,5 +130,5 @@ char *argv[];
 
  sig_pipedefault();
  execvp(*argv,argv);
- die();
+ return 111;
 }

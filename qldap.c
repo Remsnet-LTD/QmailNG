@@ -223,7 +223,6 @@ retry:
 	   LDAP_STRONG_AUTH_NOT_SUPPORTED,
 	   LDAP_STRONG_AUTH_REQUIRED,
 	   *LDAP_INAPPROPRIATE_AUTH*,
-	   *LDAP_INVALID_CREDENTIALS*,
 	   LDAP_AUTH_UNKNOWN
 	 */
 	switch (rc) {
@@ -302,9 +301,9 @@ qldap_free_results(qldap *q)
 int
 qldap_free(qldap *q)
 {
-	if (!STATEIN(q, NEW))
+	qldap_free_results(q);
+	if (!STATEIN(q, NEW) && !STATEIN(q, CLOSE))
 		qldap_close(q);
-	/* TODO free all other values and free q */
 	byte_zero(q, sizeof(qldap));
 	alloc_free(q);
 	return OK;
@@ -325,7 +324,7 @@ qldap_lookup(qldap *q, const char *filter, const char *attrs[])
 	tv.tv_usec = 0;
 
 	rc = ldap_search_st(q->ld, basedn.s, LDAP_SCOPE_SUBTREE,
-		filter, attrs, 0, &tv, &q->res);
+		filter, (char **)attrs, 0, &tv, &q->res);
 
 	switch (rc) {
 	/* probably more detailed information should be returned, eg.:
@@ -412,7 +411,7 @@ qldap_filter(qldap *q, const char *filter, const char *attrs[],
 	tv.tv_usec = 0;
 
 	rc = ldap_search_st(q->ld, bdn, scope, filter,
-	    attrs, 0, &tv, &q->res);
+	    (char **)attrs, 0, &tv, &q->res);
 
 	switch (rc) {
 	/* probably more detailed information should be returned, eg.:
@@ -702,7 +701,14 @@ qldap_get_dn(qldap *q, stralloc *dn)
 		return NOSUCH;
 	if (!stralloc_copys(dn, d) || !stralloc_0(dn))
 		return ERRNO;
+#ifdef LDAP_OPT_PROTOCOL_VERSION
+	/*
+	 * OpenLDAP 1.x does not have ldap_memfree() use free() instead.
+	 */
 	ldap_memfree(d);
+#else
+	free(d);
+#endif
 	return OK;
 }
 
@@ -839,12 +845,20 @@ fail:
  * perform a bind operation to follow a referral. Works only with OpenLDAP.
  */
 #if defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_API_VERSION > 2000)
+#if LDAP_VENDOR_VERSION >= 20100 /* Oh no! They changed again the api, honey. */
 static int dorebind(LDAP *, LDAP_CONST char *, ber_tag_t , ber_int_t, void *);
+#else
+static int dorebind(LDAP *, LDAP_CONST char *, int, ber_int_t);
+#endif
 
-
+#if LDAP_VENDOR_VERSION >= 20100 /* Oh no! They changed again the api, honey. */
 static int
 dorebind(LDAP *ld, LDAP_CONST char *url,
     ber_tag_t request, ber_int_t msgid, void *dummy)
+#else
+static int
+dorebind(LDAP *ld, LDAP_CONST char *url, int request, ber_int_t msgid)
+#endif
 {
 	int		r;
 	LDAPURLDesc	*srv;

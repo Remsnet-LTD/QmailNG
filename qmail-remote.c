@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include "sig.h"
 #include "stralloc.h"
 #include "substdio.h"
@@ -142,11 +143,11 @@ void sigalrm()
 {
  flagtimedout = 1;
 }
-int ssl_timeoutread(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
+int ssl_timeoutread(tout,fd,buf,n) int tout; int fd; char *buf; int n;
 {
  int r; int saveerrno;
  if (flagtimedout) { errno = error_timeout; return -1; }
- alarm(timeout);
+ alarm(tout);
  r = SSL_read(ssl,buf,n);
  saveerrno = errno;
  alarm(0);
@@ -154,11 +155,11 @@ int ssl_timeoutread(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
  errno = saveerrno;
  return r;
 }
-int ssl_timeoutwrite(timeout,fd,buf,n) int timeout; int fd; char *buf; int n;
+int ssl_timeoutwrite(tout,fd,buf,n) int tout; int fd; char *buf; int n;
 {
  int r; int saveerrno;
  if (flagtimedout) { errno = error_timeout; return -1; }
- alarm(timeout);
+ alarm(tout);
  r = SSL_write(ssl,buf,n);
  saveerrno = errno;
  alarm(0);
@@ -176,8 +177,6 @@ int wantcomp = 0;
 
 void compression_init(void)
 {
-  int r;
-
   compdata = 1;
   stream.zalloc = Z_NULL;
   stream.zfree = Z_NULL;
@@ -299,7 +298,7 @@ int safewrite(fd,buf,len) int fd; char *buf; int len;
 }
 
 char inbuf[1500];
-substdio ssin = SUBSTDIO_FDBUF(read,0,inbuf,sizeof inbuf);
+substdio ssin = SUBSTDIO_FDBUF(subread,0,inbuf,sizeof inbuf);
 char smtptobuf[1500];
 substdio smtpto = SUBSTDIO_FDBUF(safewrite,-1,smtptobuf,sizeof smtptobuf);
 char smtpfrombuf[128];
@@ -658,7 +657,6 @@ void qmtp()
 {
   struct stat st;
   unsigned long len;
-  int len2;
   char *x;
   int i;
   int n;
@@ -813,19 +811,18 @@ void getcontrols()
   if (!ip_scan(outgoingip.s, &outip)) temp_noip();
 }
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
   static ipalloc ip = {0};
   int i;
-  int tcpnodelay = 1;
-  unsigned long random;
+  unsigned long randm;
   char **recips;
   unsigned long prefme;
   int flagallaliases;
   int flagalias;
-  char *relayhost;
+  const char *relayhost;
 
 #ifdef TLS_REMOTE
   sig_alarmcatch(sigalrm);
@@ -841,17 +838,15 @@ char **argv;
   relayhost = 0;
   for (i = 0;i <= host.len;++i)
     if ((i == 0) || (i == host.len) || (host.s[i] == '.'))
-      if (relayhost = constmap(&maproutes,host.s + i,host.len - i))
+      if ((relayhost = constmap(&maproutes,host.s + i,host.len - i)))
         break;
   if (relayhost && !*relayhost) relayhost = 0;
  
   if (relayhost) {
     i = str_chr(relayhost,':');
-    if (relayhost[i]) {
+    if (relayhost[i])
       scan_ulong(relayhost + i + 1,&smtp_port);
-      relayhost[i] = 0;
-    }
-    if (!stralloc_copys(&host,relayhost)) temp_nomem();
+    if (!stralloc_copyb(&host,relayhost, i)) temp_nomem();
   }
 
 
@@ -872,8 +867,8 @@ char **argv;
   }
 
  
-  random = now() + (getpid() << 16);
-  switch (relayhost ? dns_ip(&ip,&host) : dns_mxip(&ip,&host,random)) {
+  randm = now() + (getpid() << 16);
+  switch (relayhost ? dns_ip(&ip,&host) : dns_mxip(&ip,&host,randm)) {
     case DNS_MEM: temp_nomem();
     case DNS_SOFT: temp_dns();
     case DNS_HARD: perm_dns();
@@ -926,4 +921,6 @@ char **argv;
   }
   
   temp_noconn();
+  /* NOTREACHED */
+  return 0;
 }

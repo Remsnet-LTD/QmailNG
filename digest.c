@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -7,6 +8,7 @@
 #include "error.h"
 #include "passwd.h"
 #include "qldap-errno.h"
+#include "readwrite.h"
 #include "sgetopt.h"
 #include "stralloc.h"
 

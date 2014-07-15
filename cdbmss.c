@@ -10,15 +10,15 @@ int fd;
   cdbmake_init(&c->cdbm);
   c->fd = fd;
   c->pos = sizeof(c->cdbm.final);
-  substdio_fdbuf(&c->ss,write,fd,c->ssbuf,sizeof(c->ssbuf));
+  substdio_fdbuf(&c->ss,subwrite,fd,c->ssbuf,sizeof(c->ssbuf));
   return seek_set(fd,(seek_pos) c->pos);
 }
 
 int cdbmss_add(c,key,keylen,data,datalen)
 struct cdbmss *c;
-unsigned char *key;
+const unsigned char *key;
 unsigned int keylen;
-unsigned char *data;
+const unsigned char *data;
 unsigned int datalen;
 {
   uint32 h;

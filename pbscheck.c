@@ -20,7 +20,7 @@
 #include "timeoutwrite.h"
 
 static void die(void);
-static int safewrite(int, char *, int);
+static int safewrite(int, void *, int);
 static void puts(const char *);
 static void flush(void);
 static void err(const char *);
@@ -225,12 +225,14 @@ int main (int argc, char** argv)
 	char *ipstr;
 	char *s;
 	unsigned long t;
-	int sfd;
+	int sfd = -1;
 	int len;
 	int i;
 
 	childargs = argv + 1;
 	if (!*childargs) die_usage();
+
+	if (env_get("NOPBS")) goto start_daemon;
 
 	setup();
 
@@ -282,7 +284,7 @@ int main (int argc, char** argv)
 	setenv(packet + 3 + packet[1], i - packet[1] - 3);
 
 start_daemon:
-	close(sfd); /* try to close socket */
+	if (sfd == -1) close(sfd); /* try to close socket */
 
 	/* start smtpd */
 	execvp(*childargs,childargs);
@@ -297,7 +299,7 @@ static void die(void)
 	_exit(1);
 }
 
-static int safewrite(int fd, char *buf, int len)
+static int safewrite(int fd, void *buf, int len)
 {
 	int r;
 	r = timeoutwrite(1200,fd,buf,len);

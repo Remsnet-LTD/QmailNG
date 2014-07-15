@@ -1,5 +1,7 @@
 #include <sys/types.h>
 #include <errno.h>
+#include <unistd.h>
+#include "error.h"
 #include "cdb.h"
 
 #ifndef SEEK_SET
@@ -46,7 +48,7 @@ unsigned int len;
 
 int cdb_seek(fd,key,len,dlen)
 int fd;
-char *key;
+const char *key;
 unsigned int len;
 uint32 *dlen;
 {

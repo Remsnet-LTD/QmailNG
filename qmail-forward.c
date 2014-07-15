@@ -6,6 +6,7 @@
 #include "getln.h"
 #include "now.h"
 #include "qmail.h"
+#include "readwrite.h"
 #include "seek.h"
 #include "str.h"
 #include "stralloc.h"
@@ -58,7 +59,7 @@ void bouncexf(void)
 	int match;
 
 	if (seek_begin(0) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, 0, buf, sizeof(buf));
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
 	for (;;)
 	{
 		if (getln(&ss, &messline, &match, '\n') != 0) temp_read();
@@ -82,7 +83,8 @@ main (int argc, char **argv)
 {
 	struct qmail qqt;
 	substdio ss;
-	char *remote, *to, *from, *qqx;
+	char *remote, *to, *from;
+	const char *qqx;
 	unsigned long qp;
 	datetime_sec when;
 	int match, i;
@@ -114,7 +116,7 @@ main (int argc, char **argv)
 	bouncexf();
 
 	if (seek_begin(0) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, 0, buf, sizeof(buf));
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
 
 	if (qmail_remote(&qqt, remote) == -1) temp_fork();
 	qp = qmail_qp(&qqt);
@@ -137,4 +139,6 @@ main (int argc, char **argv)
 	strnum1[fmt_ulong(strnum1, (unsigned long) when)] = 0;
 	strnum2[fmt_ulong(strnum2, qp)] = 0;
 	strerr_die5x(0, "qmail-forward: ok ", strnum1, " qp ", strnum2, ".");
+	/* NOTREACHED */
+	return 0;
 }

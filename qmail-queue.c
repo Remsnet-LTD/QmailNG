@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "readwrite.h"
 #include "sig.h"
 #include "exit.h"
@@ -21,6 +22,7 @@
 #define ADDR 1003
 
 #ifdef BIGBROTHER
+#include "byte.h"
 #include "constmap.h"
 #include "control.h"
 #include "stralloc.h"
@@ -166,13 +168,14 @@ void pidopen()
 
 char tmp[FMT_ULONG];
 
-void main()
+int main()
 {
  unsigned int len;
  char ch;
 #ifdef BIGBROTHER
  unsigned int xlen, n;
- char *x, *b;
+ char *x;
+ const char *b;
 #endif
 
  sig_blocknone();
@@ -222,8 +225,8 @@ void main()
  if (unlink(pidfn) == -1) die(63);
  flagmademess = 1;
 
- substdio_fdbuf(&ssout,write,messfd,outbuf,sizeof(outbuf));
- substdio_fdbuf(&ssin,read,0,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ssout,subwrite,messfd,outbuf,sizeof(outbuf));
+ substdio_fdbuf(&ssin,subread,0,inbuf,sizeof(inbuf));
 
  if (substdio_bput(&ssout,received,receivedlen) == -1) die_write();
 
@@ -240,8 +243,8 @@ void main()
  if (intdfd == -1) die(65);
  flagmadeintd = 1;
 
- substdio_fdbuf(&ssout,write,intdfd,outbuf,sizeof(outbuf));
- substdio_fdbuf(&ssin,read,1,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ssout,subwrite,intdfd,outbuf,sizeof(outbuf));
+ substdio_fdbuf(&ssin,subread,1,inbuf,sizeof(inbuf));
 
  if (substdio_bput(&ssout,"u",1) == -1) die_write();
  if (substdio_bput(&ssout,tmp,fmt_ulong(tmp,uid)) == -1) die_write();
@@ -292,7 +295,7 @@ void main()
    do
     {
      n = byte_chr(x,xlen,0);
-     if (b = constmap(&mapbb, x, n)) {
+     if ((b = constmap(&mapbb, x, n))) {
        if (*b) {
          if (substdio_bput(&ssout,"T", 1) == -1) die_write();
          if (substdio_bputs(&ssout,b) == -1) die_write();
@@ -311,5 +314,5 @@ void main()
  if (link(intdfn,todofn) == -1) die(66);
 
  triggerpull();
- die(0);
+ return 0;
 }

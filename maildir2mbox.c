@@ -1,3 +1,7 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <unistd.h>
 #include "readwrite.h"
 #include "prioq.h"
 #include "env.h"
@@ -33,7 +37,7 @@ char outbuf[SUBSTDIO_OUTSIZE];
 
 void die_nomem() { strerr_die2x(111,FATAL,"out of memory"); }
 
-void main()
+int main()
 {
  substdio ssin;
  substdio ssout;
@@ -73,8 +77,8 @@ void main()
  if (fdnewmbox == -1)
    strerr_die4sys(111,FATAL,"unable to create ",mboxtmp,": ");
 
- substdio_fdbuf(&ssin,read,fdoldmbox,inbuf,sizeof(inbuf));
- substdio_fdbuf(&ssout,write,fdnewmbox,outbuf,sizeof(outbuf));
+ substdio_fdbuf(&ssin,subread,fdoldmbox,inbuf,sizeof(inbuf));
+ substdio_fdbuf(&ssout,subwrite,fdnewmbox,outbuf,sizeof(outbuf));
 
  switch(substdio_copy(&ssout,&ssin))
   {
@@ -90,7 +94,7 @@ void main()
    fd = open_read(filenames.s + pe.id);
    if (fd == -1)
      strerr_die4sys(111,FATAL,"unable to read $MAILDIR/",filenames.s + pe.id,": ");
-   substdio_fdbuf(&ssin,read,fd,inbuf,sizeof(inbuf));
+   substdio_fdbuf(&ssin,subread,fd,inbuf,sizeof(inbuf));
 
    if (getln(&ssin,&line,&match,'\n') != 0)
      strerr_die4sys(111,FATAL,"unable to read $MAILDIR/",filenames.s + pe.id,": ");
@@ -158,5 +162,5 @@ void main()
      strerr_warn4(WARNING,"$MAILDIR/",filenames.s + pe.id," will be delivered twice; unable to unlink: ",&strerr_sys);
   }
 
- _exit(0);
+ return 0;
 }

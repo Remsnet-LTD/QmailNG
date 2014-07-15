@@ -19,6 +19,7 @@
 #include "now.h"
 #include "open.h"
 #include "qmail.h"
+#include "readwrite.h"
 #include "seek.h"
 #include "sgetopt.h"
 #include "sig.h"
@@ -498,7 +499,7 @@ void
 sendconfirm(stralloc *hash, int fd)
 {
 	struct qmail qqt;
-	char *qqx;
+	const char *qqx;
 	unsigned long qp;
 	int r;
 
@@ -537,7 +538,8 @@ void
 sendmoderator(stralloc *hash, int fd)
 {
 	struct qmail qqt;
-	char *qqx, *s, *smax;
+	char *s, *smax;
+	const char *qqx;
 	unsigned long qp;
 	int r;
 
@@ -562,7 +564,7 @@ sendmoderator(stralloc *hash, int fd)
 	}
 	qqx = qmail_close(&qqt);
 	if (!*qqx) {
-		strnum[fmt_ulong(strnum,qmail_qp(&qp))] = 0;
+		strnum[fmt_ulong(strnum,qmail_qp(&qqt))] = 0;
 		strerr_warn2("qmail-secretary: info: qp ", strnum, 0);
 		return;
 	}
@@ -670,7 +672,7 @@ attachmail(struct qmail *qq, int fd, int maxsize)
 		qmail_close(qq);
 		temp_rewind();
 	}
-	substdio_fdbuf(&ss, read, fd, buf, sizeof(buf));
+	substdio_fdbuf(&ss, subread, fd, buf, sizeof(buf));
 	for (;;) {
 		if (getln(&ss, &messline, &match, '\n') != 0) {
 			qmail_fail(qq);
@@ -697,7 +699,7 @@ bouncefx(void)
 	int		match;
 
 	if (seek_begin(0) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, 0, buf, sizeof(buf));
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
 	for (;;)
 	{
 		if (getln(&ss, &messline, &match, '\n') != 0) temp_read();
@@ -740,7 +742,7 @@ createhash(int fd, stralloc *hash)
 
 
 	if (seek_begin(fd) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, fd, buf, sizeof(buf));
+	substdio_fdbuf(&ss, subread, fd, buf, sizeof(buf));
 	for (;;)
 	{
 		if (getln(&ss, &messline, &match, '\n') != 0) temp_read();
@@ -876,8 +878,8 @@ void savemessage(stralloc *hash, const char *maildir, const char *subdir)
 		strerr_die2sys(111, FATAL, "Unable to open tmp file: ");
 
 	if (seek_begin(0) == -1) temp_rewind();
-	substdio_fdbuf(&ss, read, 0, buf, sizeof(buf));
-	substdio_fdbuf(&ssout, write, fd, outbuf, sizeof(outbuf));
+	substdio_fdbuf(&ss, subread, 0, buf, sizeof(buf));
+	substdio_fdbuf(&ssout, subwrite, fd, outbuf, sizeof(outbuf));
 	if (substdio_put(&ssout, dtline.s, dtline.len) == -1) goto fail;
 
 	switch(substdio_copy(&ssout, &ss)) {
@@ -957,7 +959,7 @@ blast(stralloc *hash, const char *maildir, const char *subdir, char **args)
 			_exit(111);
 		}
 	} else {
-		substdio_fdbuf(&ssout, write, 1, outbuf, sizeof(outbuf));
+		substdio_fdbuf(&ssout, subwrite, 1, outbuf, sizeof(outbuf));
 		if (substdio_puts(&ssout, "K") == -1) goto fail;
 		if (substdio_puts(&ssout, s) == -1) goto fail;
 		if (substdio_put(&ssout, "", 1) == -1) goto fail;

@@ -20,7 +20,7 @@ sa_init(stralloc *header)
 }
 
 static int
-sa_read(int fd, char *buf, int len)
+sa_read(int fd, void *buf, int len)
 {
 	int	t;
 
@@ -54,7 +54,7 @@ magicsubject(stralloc *l, stralloc *h, stralloc *s)
 			if (!stralloc_append(h, &l->s[i])) return -1;
 			continue;
 		}
-		if (case_startb(l->s + i, l - i, "%SUBJECT%") == 0) {
+		if (case_startb(l->s + i, j - i, "%SUBJECT%") == 0) {
 			if (!stralloc_append(h, &l->s[i])) return -1;
 			continue;
 		}

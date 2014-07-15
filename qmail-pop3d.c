@@ -1,5 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+/* XXX unable to include stdio.h for rename because of puts() */
+#include <unistd.h>
 #include "commands.h"
 #include "sig.h"
 #include "getln.h"
@@ -398,7 +400,7 @@ void pop3_top(arg) char *arg;
   okay();
 #endif
 
-  substdio_fdbuf(&ssmsg,read,fd,ssmsgbuf,sizeof(ssmsgbuf));
+  substdio_fdbuf(&ssmsg,subread,fd,ssmsgbuf,sizeof(ssmsgbuf));
   blast(&ssmsg,limit);
   close(fd);
 }
@@ -417,7 +419,7 @@ struct commands pop3commands[] = {
 , { 0, err_unimpl, 0 }
 } ;
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
@@ -441,5 +443,6 @@ char **argv;
 
   okay();
   commands(&ssin,pop3commands);
-  die();
+  log_quit();
+  return 0;
 }

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "error.h"
 #include "getln.h"
 #include "qldap.h"
@@ -60,7 +61,7 @@ void lookup(stralloc *mail);
 
 int timeout = 3;
 int
-saferead(int fd, char *buf, int len)
+saferead(int fd, void *buf, int len)
 {
 	return timeoutread(timeout,fd,buf,len);
 }
@@ -145,8 +146,14 @@ lookup(stralloc *mail)
 			 * ldap server can recover */
 			die_timeout();
 		case TOOMANY:
+#ifdef DUPEALIAS
+			if (substdio_putflush(subfdout, "K", 1) == -1)
+				die_write();
+			qldap_free_results(q);
+#else
 			/* admin error, also temporary */
 			temp_fail();
+#endif
 			return;
 		case FAILED:
 			/* ... again temporary */

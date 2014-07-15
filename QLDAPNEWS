@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license. See LICENSE.
 
-RELEASE: $Date: 2003/10/01 09:20:23 $ ($Revision: 1.134 $)
+RELEASE: $Date: 2003/11/04 10:45:39 $ ($Revision: 1.145 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -20,6 +20,59 @@ WARNING: If you are upgrading from 20030801a or earlier make sure that
          you have read the news section for 20030901.
 
 NEWS for current stuff:
+
+ Basic daemontool run scripts installed in ~/boot. qmail-ldap installs now
+ daemontools run script for most services in ~/boot. A Makefile for cdb
+ updating is installed in ~control.
+
+ locals and rcpthosts can now be stored as cdb. This makes morercpthost.cdb
+ superfluous, also the hupping of qmail-send if the locals.cdb file changes
+ is no longer neccesary. If locals.cdb is present locals is ignored respectively
+ if rcpthosts.cdb is present rcpthosts and morercpthosts.cdb are ignored.
+
+ Important bug fix: if you removed rcpthosts, qmail-ldap became a open relay.
+ This is stock qmail behaviour but since we include locals in our rcpthost
+ check this old assumption is wrong. We also consider the stock qmail behaviour
+ as a design flaw because a mta should never be a open relay unless the
+ luser want's so.
+
+ readwrite cleanup. Similar to other djb ware we wrap read() and write()
+ into the functions subread() and subwrite(). This solves the 64-bit troubles
+ with read and write. read() and write() should no longer be used together with
+ the substdio framework.
+
+ Huge cleanup. Bring qmail into the 21st century. Define all prototypes
+ and include the needed system include files. This commit fixes about 99%
+ of all compiler warnings and makes code developing lesser error-prone.
+ The Makefile dependencies need to be updated to reflect reality.
+ A few errors are still in the tree which are either hard to solve or
+ considered harmless -- mainly return type of main() in a few helper apps.
+ This cleanup brought some strange bugs to light which are now fixed.
+
+ Finally enabled the "send only one reply to each sender" feature
+ in qmail-reply.
+
+ Critical bugfix in auth_imap.c. A bug in the function that should invoke
+ the next authmodule caused auth_imap to end up in one infinit loop.
+
+ Add DUPEALIAS feature. When duplicate or overlapping mail or
+ mailAlternateAddress exist the mail will be forwarded to this local
+ user (like the alias user of qmail). It can be either bounced or
+ handled there with a script/program answering with some meaningful
+ reply. This compile time option is intended for migration of old
+ X.400 mail systems where a user was available under some short names
+ if nobody else had the same shortname.
+
+ Add some more features to qmail-ldaplookup. Password compare works now.
+ It is now also possible to use a different binddn and bindpw.
+ What is missing are local /etc/passwd lookups and group handling.
+
+ The objectclass of a group object can now be changed like all other ldap
+ values via qmail-ldap.h.
+
+ Fix in the qmail schema definitions: a ')' was missing.
+
+NEWS for 20031001 stuff:
 
  Change NOPOP in accountStatus to NOACCESS as it is not just disabling
  pop access but also imap and possibly others.
@@ -119,8 +172,8 @@ NEWS for current stuff:
 
  Modernize qmail startup infratructure. First step is to redo the ~boot
  directory and to add ~log directory. Create subdirs for qmail, qmail-smtpd,
- qmail-qmqpd, qmail-pop3d, qmail-imapd and qmail-pbsd for supervise and multilog.
- Corresponding run files will come in the next release.
+ qmail-qmqpd, qmail-pop3d, qmail-imapd and qmail-pbsd for supervise and
+ multilog.  Corresponding run files will come in the next release.
 
  Fix bug in qmail-smtp addrparse function. If "mail from" or "rcpt to" did
  neither contain a '<' nor a ':' the function returned a nullsender (bounce)

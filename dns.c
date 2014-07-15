@@ -7,6 +7,8 @@
 #include <errno.h>
 extern int res_query();
 extern int res_search();
+extern int h_errno;
+#include "errno.h"
 #include "ip.h"
 #include "ipalloc.h"
 #include "strsalloc.h"
@@ -51,23 +53,25 @@ int type;
  errno = 0;
  if (!stralloc_copy(&glue,domain)) return DNS_MEM;
  if (!stralloc_0(&glue)) return DNS_MEM;
- if (!responsebuflen)
-  if (response.buf = (unsigned char *)alloc(PACKETSZ+1))
+ if (!responsebuflen) {
+  if ((response.buf = (unsigned char *)alloc(PACKETSZ+1)))
    responsebuflen = PACKETSZ+1;
   else return DNS_MEM;
+ }
 
  responselen = lookup(glue.s,C_IN,type,response.buf,responsebuflen);
  if ((responselen >= responsebuflen) ||
      (responselen > 0 && (((HEADER *)response.buf)->tc)))
   {
-   if (responsebuflen < 65536)
-    if (alloc_re(&response.buf, responsebuflen, 65536))
+   if (responsebuflen < 65536) {
+    if (alloc_re((char **)&response.buf, responsebuflen, 65536))
      responsebuflen = 65536;
     else return DNS_MEM;
     saveresoptions = _res.options;
     _res.options |= RES_USEVC;
     responselen = lookup(glue.s,C_IN,type,response.buf,responsebuflen);
     _res.options = saveresoptions;
+   }
   }
  if (responselen <= 0)
   {
@@ -283,36 +287,34 @@ stralloc *sa;
 
 #define FMT_IAA 40
 
-static int iaafmt(s,ip)
+static int iaafmt(s,tip)
 char *s;
-struct ip_address *ip;
+struct ip_address *tip;
 {
  unsigned int i;
  unsigned int len;
  len = 0;
- i = fmt_ulong(s,(unsigned long) ip->d[3]); len += i; if (s) s += i;
+ i = fmt_ulong(s,(unsigned long) tip->d[3]); len += i; if (s) s += i;
  i = fmt_str(s,"."); len += i; if (s) s += i;
- i = fmt_ulong(s,(unsigned long) ip->d[2]); len += i; if (s) s += i;
+ i = fmt_ulong(s,(unsigned long) tip->d[2]); len += i; if (s) s += i;
  i = fmt_str(s,"."); len += i; if (s) s += i;
- i = fmt_ulong(s,(unsigned long) ip->d[1]); len += i; if (s) s += i;
+ i = fmt_ulong(s,(unsigned long) tip->d[1]); len += i; if (s) s += i;
  i = fmt_str(s,"."); len += i; if (s) s += i;
- i = fmt_ulong(s,(unsigned long) ip->d[0]); len += i; if (s) s += i;
+ i = fmt_ulong(s,(unsigned long) tip->d[0]); len += i; if (s) s += i;
  i = fmt_str(s,".in-addr.arpa."); len += i; if (s) s += i;
  return len;
 }
 
-static int dns_ptrplus(ssa,ip)
-strsalloc *ssa;
-struct ip_address *ip;
+int dns_ptr(sa,tip)
+stralloc *sa;
+struct ip_address *tip;
 {
  stralloc sa = {0};
  int r;
 
- if (!stralloc_ready(&sa,iaafmt((char *) 0,ip))) return DNS_MEM;
- sa.len = iaafmt(sa.s,ip);
- r = resolve(&sa,T_PTR);
- alloc_free(sa.s);
- switch(r)
+ if (!stralloc_ready(sa,iaafmt((char *) 0,tip))) return DNS_MEM;
+ sa->len = iaafmt(sa->s,tip);
+ switch(resolve(sa,T_PTR))
   {
    case DNS_MEM: return DNS_MEM;
    case DNS_SOFT: return DNS_SOFT;
@@ -356,10 +358,10 @@ static stralloc tld = {0};
 static ipalloc  tldia = {0};
 #endif
 
-static int dns_ipplus(ia,sa,pref)
+static int dns_ipplus(ia,sa,spref)
 ipalloc *ia;
 stralloc *sa;
-int pref;
+int spref;
 {
  int r;
  struct ip_mx ix;
@@ -419,7 +421,7 @@ int pref;
  while ((r = findip(T_A)) != 2)
   {
    ix.ip = ip;
-   ix.pref = pref;
+   ix.pref = spref;
    if (r == DNS_SOFT) return DNS_SOFT;
    if (r == 1) {
 #ifdef FUCKVERISIGN

@@ -5,10 +5,12 @@
 #include "localdelivery.h"
 #include "locallookup.h"
 #include "output.h"
+#include "pbsexec.h"
 #include "qldap.h"
 #include "qldap-debug.h"
 #include "qldap-errno.h"
 #include "read-ctrl.h"
+#include "readwrite.h"
 #include "stralloc.h"
 #ifdef QLDAP_CLUSTER
 #include <sys/socket.h>
@@ -254,7 +256,7 @@ copyloop(int infd, int outfd, int timeout)
 			}
 			if (bytes == 0)
 				break;
-			if (allwrite(write, outfd, copybuf, bytes) != 0) {
+			if (allwrite(subwrite, outfd, copybuf, bytes) != 0) {
 				log(1, "copyloop: write out failed: %s\n",
 				    error_str(errno));
 				break;
@@ -270,7 +272,7 @@ copyloop(int infd, int outfd, int timeout)
 			log(32, "copyloop: read in %i bytes read\n", bytes);
 			if (bytes == 0)
 				break;
-			if (allwrite(write, infd, copybuf, bytes) != 0) {
+			if (allwrite(subwrite, infd, copybuf, bytes) != 0) {
 				log(1, "copyloop: write in failed: %s\n",
 				    error_str(errno));
 				break;

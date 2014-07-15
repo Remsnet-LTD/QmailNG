@@ -11,6 +11,7 @@
 #include "getln.h"
 #include "now.h"
 #include "open.h"
+#include "readwrite.h"
 #include "scan.h"
 #include "seek.h"
 #include "sig.h"
@@ -58,7 +59,7 @@ quota_add(int fd, unsigned long size, unsigned long count)
 	seek_end(fd);
 	pos = seek_cur(fd); /* again savety */
 
-	substdio_fdbuf(&ss,write,fd,writebuf,sizeof(writebuf));
+	substdio_fdbuf(&ss,subwrite,fd,writebuf,sizeof(writebuf));
 
 	/* create string of the form '1234 12\n' and add it to the quota */
 	if (substdio_bput(&ss, num, fmt_ulong(num, size) ) == -1)
@@ -97,7 +98,7 @@ quota_rm(int fd, unsigned long size, unsigned long count)
 	seek_end(fd);
 	pos = seek_cur(fd); /* again savety */
 
-	substdio_fdbuf(&ss,write,fd,writebuf,sizeof(writebuf));
+	substdio_fdbuf(&ss,subwrite,fd,writebuf,sizeof(writebuf));
 
 	/* create string of the form '-1232 -12\n' and add it to the quota */
 	if (substdio_bput(&ss, "-", 1) == -1)
@@ -164,7 +165,7 @@ quota_recalc(const char *dir, int *fd, quota_t *q)
 
 	if (!stralloc_copys(&path, dir)) temp_nomem();
 	if (path.s[path.len-1] != '/')
-		if (! stralloc_cats(&path, "/")) temp_nomem();
+		if (!stralloc_cats(&path, "/")) temp_nomem();
 
 	while (mailfolder()) {
 		if (!stralloc_cats(&path, "../")) temp_nomem();
@@ -176,7 +177,7 @@ quota_recalc(const char *dir, int *fd, quota_t *q)
 	if (!stralloc_cats(&path, "maildirsize")) temp_nomem();
 	if (!stralloc_0(&path)) temp_nomem();
 
-	*fd = read5120( path.s, buf5120, &i);
+	*fd = read5120(path.s, buf5120, &i);
 
 	if (*fd != -1) {
 		for (j = 0; j < i && lines <= 2 ; j++) {
@@ -208,7 +209,6 @@ quota_recalc(const char *dir, int *fd, quota_t *q)
 	}
 
 	return quota_calcsize(q, fd, buf5120, i);
-
 }
 
 int
@@ -247,7 +247,7 @@ quota_check(quota_t *q, unsigned long size, unsigned long count, int *perc)
 }
 
 void
-quota_get(quota_t *q, char const *quota)
+quota_get(quota_t *q, const char *quota)
 {
 	unsigned long i;
 
@@ -460,7 +460,7 @@ quota_writesize(quota_t *q, int *fd, time_t maxtime)
 		goto fail;
 	}
 
-	substdio_fdbuf(&ss,write,*fd,writebuf,sizeof(writebuf));
+	substdio_fdbuf(&ss,subwrite,*fd,writebuf,sizeof(writebuf));
 
 	if (q->quota_size != 0) {
 		if (substdio_bput(&ss, num, fmt_ulong(num, q->quota_size))
@@ -495,8 +495,8 @@ quota_writesize(quota_t *q, int *fd, time_t maxtime)
 		goto fail;
 
 	i = check_maxtime(maxtime);
-	if (! stralloc_cats(&path, "maildirsize")) temp_nomem();
-	if (! stralloc_0(&path)) temp_nomem();
+	if (!stralloc_cats(&path, "maildirsize")) temp_nomem();
+	if (!stralloc_0(&path)) temp_nomem();
 	if (unlink(path.s) == -1 && errno != error_noent) goto fail;
 
 	if (i) {
@@ -519,8 +519,8 @@ fail:
 	strerr_warn3("Problems while trying to get maildirsize: ",
 			error_str(errno), ". (QUOTA #1.1.1)", 0);
 	unlink(buf);
-	alloc_free(buf);
-	_exit(111);
+	*fd = -1;
+	return -1;
 }
 
 static int

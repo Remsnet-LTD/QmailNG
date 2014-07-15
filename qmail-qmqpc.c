@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include "substdio.h"
 #include "getln.h"
 #include "readwrite.h"
@@ -123,7 +124,7 @@ int safewrite(fd,buf,len) int fd; char *buf; int len;
 char buf[1024];
 substdio to = SUBSTDIO_FDBUF(safewrite,-1,buf,sizeof buf);
 substdio from = SUBSTDIO_FDBUF(saferead,-1,buf,sizeof buf);
-substdio envelope = SUBSTDIO_FDBUF(read,1,buf,sizeof buf);
+substdio envelope = SUBSTDIO_FDBUF(subread,1,buf,sizeof buf);
 /* WARNING: can use only one of these at a time! */
 
 stralloc beforemessage = {0};
@@ -247,7 +248,7 @@ stralloc outgoingip = {0};
 
 ipalloc ia = {0};
 
-void main(argc,argv)
+int main(argc,argv)
 int argc;
 char **argv;
 {
@@ -288,5 +289,5 @@ char **argv;
       i = j + 1;
     }
 
-  _exit(lasterror);
+  return lasterror;
 }

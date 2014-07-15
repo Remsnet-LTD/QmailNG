@@ -4,8 +4,9 @@
 struct timeval sincepoch = {0,0};
 struct timezone notimezone = {0,0};
 
-main()
+int main()
 {
   gettimeofday(&sincepoch, &notimezone);
   printf("%d\n", sincepoch.tv_sec);
+  return 0;
 }

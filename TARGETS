@@ -402,6 +402,8 @@ auth_pop
 auth_pop.o
 auth_smtp
 auth_smtp.o
+auto_userl.c
+auto_userl.o
 base64.o
 byte_repl.o
 case_startb.o
@@ -438,7 +440,10 @@ qldap-debug.o
 qldap-errno.o
 qldap-filter.o
 qldap-profile.o
+qldap.a
 qldap.o
+qmail-cdb
+qmail-cdb.o
 qmail-forward
 qmail-forward.o
 qmail-group
@@ -457,4 +462,5 @@ qmail-verify
 qmail-verify.o
 rbl.o
 read-ctrl.o
+readwrite.o
 smtpcall.o

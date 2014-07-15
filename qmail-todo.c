@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include "auto_qmail.h"
 #include "byte.h"
+#include "cdb.h"
 #include "constmap.h"
 #include "control.h"
 #include "direntry.h"
@@ -17,6 +18,7 @@
 #include "ndelay.h"
 #include "now.h"
 #include "readsubdir.h"
+#include "readwrite.h"
 #include "scan.h"
 #include "select.h"
 #include "sig.h"
@@ -96,6 +98,7 @@ void fnmake_chanaddr(unsigned long id, int c)
 
 /* this file is not so long ------------------------------------- REWRITING */
 
+stralloc localscdb = {0};
 stralloc rwline = {0};
 
 /* 1 if by land, 2 if by sea, 0 if out of memory. not allowed to barf. */
@@ -104,7 +107,7 @@ int rewrite(char *recip)
 {
   int i;
   int j;
-  char *x;
+  const char *x;
   static stralloc addr = {0};
   int at;
 
@@ -127,11 +130,25 @@ int rewrite(char *recip)
 
   at = byte_rchr(addr.s,addr.len,'@');
 
-  if (constmap(&maplocals,addr.s + at + 1,addr.len - at - 1)) {
-    if (!stralloc_cat(&rwline,&addr)) return 0;
-    if (!stralloc_0(&rwline)) return 0;
-    return 1;
-  }
+  if (localscdb.s && localscdb.len > 1) {
+    int fd, r;
+    uint32 dlen;
+    fd = open_read(localscdb.s);
+    if (fd == -1) return -1;
+    r = cdb_seek(fd, addr.s + at + 1,addr.len - at - 1, &dlen);
+    close(fd);
+    if (r == -1) return -1;
+    if (r == 1) {
+      if (!stralloc_cat(&rwline,&addr)) return 0;
+      if (!stralloc_0(&rwline)) return 0;
+      return 1;
+    }
+  } else
+    if (constmap(&maplocals,addr.s + at + 1,addr.len - at - 1)) {
+      if (!stralloc_cat(&rwline,&addr)) return 0;
+      if (!stralloc_0(&rwline)) return 0;
+      return 1;
+    }
 
   for (i = 0;i <= addr.len;++i)
     if (!i || (i == at + 1) || (i == addr.len) || ((i > at) && (addr.s[i] == '.')))
@@ -160,8 +177,8 @@ int fdin = -1;
 
 void comm_init(void)
 {
- substdio_fdbuf(&sstoqc,write,2,sstoqcbuf,sizeof(sstoqcbuf));
- substdio_fdbuf(&ssfromqc,read,3,ssfromqcbuf,sizeof(ssfromqcbuf));
+ substdio_fdbuf(&sstoqc,subwrite,2,sstoqcbuf,sizeof(sstoqcbuf));
+ substdio_fdbuf(&ssfromqc,subread,3,ssfromqcbuf,sizeof(ssfromqcbuf));
 
  fdout = 1; /* stdout */
  fdin = 0;  /* stdin */
@@ -486,8 +503,8 @@ void todo_do(fd_set *rfds)
 
  for (c = 0;c < CHANNELS;++c) flagchan[c] = 0;
 
- substdio_fdbuf(&ss,read,fd,todobuf,sizeof(todobuf));
- substdio_fdbuf(&ssinfo,write,fdinfo,todobufinfo,sizeof(todobufinfo));
+ substdio_fdbuf(&ss,subread,fd,todobuf,sizeof(todobuf));
+ substdio_fdbuf(&ssinfo,subwrite,fdinfo,todobufinfo,sizeof(todobufinfo));
 
  uid = 0;
  pid = 0;
@@ -531,8 +548,8 @@ void todo_do(fd_set *rfds)
 	 fdchan[c] = open_excl(fn.s);
 	 if (fdchan[c] == -1)
           { log3("warning: qmail-todo: unable to create ",fn.s,"\n"); goto fail; }
-	 substdio_fdbuf(&sschan[c]
-	   ,write,fdchan[c],todobufchan[c],sizeof(todobufchan[c]));
+	 substdio_fdbuf(&sschan[c],
+	     subwrite,fdchan[c],todobufchan[c],sizeof(todobufchan[c]));
 	 flagchan[c] = 1;
 	}
        if (substdio_bput(&sschan[c],rwline.s,rwline.len) == -1)
@@ -591,10 +608,21 @@ void todo_do(fd_set *rfds)
 
 int getcontrols(void)
 {
+ struct stat st;
+
  if (control_init() == -1) return 0;
  if (control_rldef(&envnoathost,"control/envnoathost",1,"envnoathost") != 1) return 0;
- if (control_readfile(&locals,"control/locals",1) != 1) return 0;
- if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
+
+ if (stat("control/locals.cdb", &st) == 0) {
+   if (!stralloc_copys(&localscdb, auto_qmail)) return 0;
+   if (!stralloc_cats(&localscdb, "/control/locals.cdb")) return 0;
+   if (!stralloc_0(&localscdb)) return 0;
+   if (!constmap_init(&maplocals,"",0,1)) return 0;
+ } else {
+   if (control_readfile(&locals,"control/locals",1) != 1) return 0;
+   if (!constmap_init(&maplocals,locals.s,locals.len,0)) return 0;
+ }
+
  switch(control_readfile(&percenthack,"control/percenthack",0))
   {
    case -1: return 0;
@@ -615,19 +643,32 @@ stralloc newvdoms = {0};
 
 void regetcontrols(void)
 {
+ struct stat st;
  int r;
 
- if (control_readfile(&newlocals,"control/locals",1) != 1)
-  { log1("alert: qmail-todo: unable to reread control/locals\n"); return; }
+ if (stat("control/locals.cdb", &st) == 0) {
+   while (!stralloc_copys(&localscdb, auto_qmail)) nomem();
+   while (!stralloc_cats(&localscdb, "/control/locals.cdb")) nomem();
+   while  (!stralloc_0(&localscdb)) nomem();
+
+   constmap_free(&maplocals);
+   while (!constmap_init(&maplocals,"",0,1)) nomem();
+ } else {
+   if (control_readfile(&newlocals,"control/locals",1) != 1)
+    { log1("alert: qmail-todo: unable to reread control/locals\n"); return; }
+
+   while (!stralloc_copys(&localscdb, "")) nomem();
+
+   constmap_free(&maplocals);
+   while (!stralloc_copy(&locals,&newlocals)) nomem();
+   while (!constmap_init(&maplocals,locals.s,locals.len,0)) nomem();
+ }
+
  r = control_readfile(&newvdoms,"control/virtualdomains",0);
  if (r == -1)
   { log1("alert: qmail-todo: unable to reread control/virtualdomains\n"); return; }
 
- constmap_free(&maplocals);
  constmap_free(&mapvdoms);
-
- while (!stralloc_copy(&locals,&newlocals)) nomem();
- while (!constmap_init(&maplocals,locals.s,locals.len,0)) nomem();
 
  if (r)
   {
@@ -653,7 +694,7 @@ void reread(void)
   }
 }
 
-void main()
+int main()
 {
  datetime_sec wakeup;
  fd_set rfds;
@@ -726,4 +767,5 @@ void main()
     }
   }
   /* NOTREACHED */
+  return 1;
 }

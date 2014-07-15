@@ -42,7 +42,7 @@
 #include "dirmaker.h"
 #endif
 
-char *aliasempty;
+const char *aliasempty;
 
 #ifdef QLDAP_CLUSTER
 /* declaration of the mail forwarder function */
@@ -50,7 +50,7 @@ void forward_mail(char *, char *, char *, int , int);
 #endif
 
 #ifdef AUTOHOMEDIRMAKE
-void check_home(char *home, char *maildir)
+void check_home(const char *home, const char *maildir)
 {
   struct stat	st;
 
@@ -206,10 +206,10 @@ int len;
      return;
 #ifdef QLDAP_CLUSTER
    case QLX_CLUSTERSOFT:
-     substdio_puts(ss, "ZTemporary error in qmail-qmqpc, as mail forwarder. (#4.4.4)\n");
+     substdio_puts(ss, "ZTemporary error while executing qmail-forward. (#4.4.4)\n");
      return;
    case QLX_CLUSTERHARD:
-     substdio_puts(ss, "DPermanent error in qmail-qmqpc, as mail forwarder. (#5.4.4)\n");
+     substdio_puts(ss, "DPermanent error while executing qmail-forward. (#5.4.4)\n");
      return;
 #endif /* QLDAP_CLUSTER */
 #ifdef AUTOHOMEDIRMAKE
@@ -335,8 +335,17 @@ int qldap_get(stralloc *mail, int at, int fdmess)
        /* don't try an other address, retry later, hopefully ... */
        cae(q, QLX_SEARCHTIMEOUT);
      case TOOMANY:
+#ifdef DUPEALIAS
+       /*
+        * we are going to deliver this to a special alias user for
+        * further processing
+        */
+       qldap_free(q);
+       return 3;
+#else
        /* admin error, don't try a lower precedence addresses */
        cae(q, QLX_TOOMANY);
+#endif
      case FAILED:
        /* ... again do not retry lower precedence addresses */
        cae(q, QLX_LDAPFAIL);
@@ -497,7 +506,7 @@ int qldap_get(stralloc *mail, int at, int fdmess)
    if (!env_unset(ENV_GROUP)) cae(q, QLX_NOMEM);
    for (len = 0; len < foo.len;
         len += byte_chr(foo.s + len, foo.len - len, ':') + 1) {
-     if (case_startb(foo.s + len, foo.len - len, "qmailGroup")) {
+     if (case_startb(foo.s + len, foo.len - len, LDAP_GROUPOBJECTCLASS)) {
        rv = qldap_get_dn(q, &foo);
        if (rv != OK) goto fail;
        log(32, "%s: %s\n", ENV_GROUP, foo.s);
@@ -630,6 +639,8 @@ fail:
    default:
      cae(q, QLX_LDAPFAIL);
    }
+   /* NOTREACHED */
+   return -1;
 }
 /* end -- LDAP server query routines */
 
@@ -696,7 +707,7 @@ char *local;
   }
 
  if (pipe(pi) == -1) _exit(QLX_SYS);
- args[0] = "bin/qmail-getpw";
+ args[0] = (char *)"bin/qmail-getpw";
  args[1] = local;
  args[2] = 0;
    switch(gpwpid = vfork()) {
@@ -801,6 +812,32 @@ char *s; char *r; int at;
      forward_mail(host.s, ra.s, s, fdmess, fdout);
      /* that's it. Function does not return */
 #endif
+#ifdef DUPEALIAS
+   case 3:
+     /* the alias-user handling for dupe handling */
+     struct passwd *pw;
+     char num[FMT_ULONG];
+
+     log(4, "LDAP lookup got too many hits, using dupe alias\n");
+     pw = getpwnam("dupealias");
+     if (!pw) _exit(QLX_NOALIAS);
+
+     if (!stralloc_copys(&nughde, pw->pw_name)) _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     if (!stralloc_catb(&nughde,num,fmt_ulong(num, (long) pw->pw_uid)))
+       _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     if (!stralloc_catb(&nughde,num,fmt_ulong(num, (long) pw->pw_gid)))
+       _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     if (!stralloc_cats(&nughde, pw->pw_dir)) _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     if (!stralloc_cats(&nughde,"-")) _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     if (!stralloc_cats(&nughde,r)) _exit(QLX_NOMEM);
+     if (!stralloc_0(&nughde)) _exit(QLX_NOMEM);
+     break;
+#endif
    default:
      log(2, "warning: ldap lookup freaky return value (%i)\n", rv);
      _exit(QLX_USAGE);
@@ -810,8 +847,8 @@ char *s; char *r; int at;
    x = nughde.s;
    xlen = nughde.len;
 
-   args[0] = "bin/qmail-local";
-   args[1] = "--";
+   args[0] = (char *)"bin/qmail-local";
+   args[1] = (char *)"--";
    args[2] = x;
 
    n = byte_chr(x,xlen,0); if (n++ == xlen) _exit(QLX_USAGE); x += n; xlen -= n;
@@ -841,7 +878,7 @@ char *s; char *r; int at;
 
    args[7] = r + at + 1;
    args[8] = s;
-   args[9] = aliasempty;
+   args[9] = (char *)aliasempty;
    args[10] = 0;
 
    log(8, "executing 'qmail-local -- %s %s %s %s %s %s %s %s' under uid=%i, gid=%i\n",
@@ -881,7 +918,7 @@ void forward_mail(char *remote, char *to, char *from, int fdmess, int fdout)
   if (prot_uid(auto_gidn) == -1) _exit(QLX_USAGE);
   if (!getuid()) _exit(QLX_ROOT);
 
-  args[0] = "bin/qmail-forward";
+  args[0] = (char *)"bin/qmail-forward";
   args[1] = remote;
   args[2] = from;
   args[3] = to;
