@@ -84,12 +84,12 @@ auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 	i = 0;
 	s = auth_up; /* ignore service field */
 	while (auth_up[i] && auth_up[i] != '\n' ) i++;
-	if (i == auth_uplen)
+	if (i >= auth_uplen)
 		auth_error(NEEDED);
 	auth_up[i++] = '\0';
 	t = auth_up + i; /* type has to be "login" else fail ... */
 	while (auth_up[i] && auth_up[i] != '\n' ) i++;
-	if (i == auth_uplen)
+	if (i >= auth_uplen)
 		auth_error(NEEDED);
 	auth_up[i++] = '\0';
 	if (str_diff("login", t)) {
@@ -102,7 +102,7 @@ auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 	}
 	l = auth_up + i; /* next login */
 	while (auth_up[i] && auth_up[i] != '\n' ) i++;
-	if (i == auth_uplen)
+	if (i >= auth_uplen)
 		auth_error(NEEDED);
 	auth_up[i++] = '\0';
 	p = auth_up + i; /* and the password */
@@ -110,7 +110,7 @@ auth_init(int argc, char **argv, stralloc *login, stralloc *authdata)
 	if (i == auth_uplen)
 		auth_error(NEEDED);
 	auth_up[i++] = '\0';
-	if (i != auth_uplen) /* paranoia */
+	if (i > auth_uplen) /* paranoia */
 		auth_error(NEEDED);
 
 	/* copy the login and password into the coresponding structures */
@@ -134,8 +134,8 @@ auth_fail(const char *login, int reason)
 	t = auth_up;
 
 	log(2, "warning: auth_fail: user %s failed\n", login);
-	if (reason == NOSUCH ) {
-		log(4, "warning: auth_fail: user %s not found\n", login);
+	if (reason == NOSUCH || reason == AUTH_TYPE) {
+		log(4, "warning: auth_fail: %s\n", qldap_err_str(reason));
 		if (!env_unset("AUTHENTICATED"))
 			auth_error(ERRNO);
 		for (i=0; i<auth_uplen; i++) if (!auth_up[i]) auth_up[i] = '\n';
@@ -168,7 +168,7 @@ auth_fail(const char *login, int reason)
 		close(pi[1]);
 		_exit(0);
 	}
-	auth_error(PANIC); /* complete failure */
+	auth_error(reason); /* complete failure */
 }
 
 void
@@ -199,7 +199,7 @@ void auth_error(int errnum)
 	byte_zero(auth_up, sizeof(auth_up));
 
 	log(2, "warning: auth_error: authorization failed (%s)\n",
-		   qldap_err_str(errnum) );
+		   qldap_err_str(errnum));
 	if (!(env = env_get("AUTHARGC")))
 		_exit(111);
 	scan_ulong(env, &numarg);
@@ -219,7 +219,7 @@ void auth_error(int errnum)
 	if (!(env = env_get("AUTHUSER")))
 		_exit(100);
 #endif
-	execv(env, argvs);
+	execv(*argvs, argvs);
 	_exit(111);
 
 }
