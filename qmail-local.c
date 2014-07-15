@@ -923,9 +923,18 @@ char **argv;
        j = byte_chr(s,slen,0); if (j++ == slen) break; s += j; slen -= j;
      }
    }
-   if ( localdelivery ) {
-         if (!stralloc_cats(&cmds,aliasempty)) temp_nomem();
-         if (!stralloc_cats(&cmds, "\n")) temp_nomem();
+   if ( ldapprogdelivery && (s = env_get(ENV_PROGRAM)) ) {
+     if (!stralloc_copys(&foo, s)) temp_nomem();
+     if (!stralloc_0(&foo)) temp_nomem();
+     byte_repl(foo.s, foo.len, ',', '\0');
+     s = foo.s;
+     slen = foo.len-1;
+     for (;;) {
+       if (!stralloc_cats(&cmds, "|")) temp_nomem();
+       if (!stralloc_cats(&cmds, s)) temp_nomem();
+       if (!stralloc_cats(&cmds, "\n")) temp_nomem();
+       j = byte_chr(s,slen,0); if (j++ == slen) break; s += j; slen -= j;
+     }
    }
    if ( s = env_get(ENV_FORWARDS) ) {
      if (!stralloc_copys(&foo, s)) temp_nomem();
@@ -940,18 +949,9 @@ char **argv;
        j = byte_chr(s,slen,0); if (j++ == slen) break; s += j; slen -= j;
      }
    }
-   if ( ldapprogdelivery && (s = env_get(ENV_PROGRAM)) ) {
-     if (!stralloc_copys(&foo, s)) temp_nomem();
-     if (!stralloc_0(&foo)) temp_nomem();
-     byte_repl(foo.s, foo.len, ',', '\0');
-     s = foo.s;
-     slen = foo.len-1;
-     for (;;) {
-       if (!stralloc_cats(&cmds, "|")) temp_nomem();
-       if (!stralloc_cats(&cmds, s)) temp_nomem();
-       if (!stralloc_cats(&cmds, "\n")) temp_nomem();
-       j = byte_chr(s,slen,0); if (j++ == slen) break; s += j; slen -= j;
-     }
+   if ( localdelivery ) {
+         if (!stralloc_cats(&cmds,aliasempty)) temp_nomem();
+         if (!stralloc_cats(&cmds, "\n")) temp_nomem();
    }
 
  }
@@ -984,7 +984,7 @@ char **argv;
    if (fd != -1)
      if (slurpclose(fd,&cmds,256) == -1) temp_nomem();
 
- } else if (! qmode & DO_LDAP ) /* XXX: If non of DO_LDAP, DO-DOT */
+ } else if (! qmode & DO_LDAP ) /* XXX: If non of DO_LDAP, DO_DOT */
    strerr_die1x(100,"Error: No valid delivery mode selected. (LDAP-ERR #2.0.3)");
  if (!cmds.len)
   {
