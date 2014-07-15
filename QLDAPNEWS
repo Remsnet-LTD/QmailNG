@@ -6,7 +6,7 @@ This LDAP patches for qmail come with NO WARRANTY.
 
 These patches are under the BSD license.
 
-RELEASE: $Date: 2002/12/01 21:00:36 $ ($Revision: 1.77 $)
+RELEASE: $Date: 2003/01/08 08:47:20 $ ($Revision: 1.79 $)
 
 
 This is the NEWS FILE, so the QLDAPINSTALL file gets a bit cleaner.
@@ -17,6 +17,36 @@ TODO:
  see QLDAPTODO
 
 NEWS for current stuff:
+
+ Retry the ldap_bind with LDAPv2 if ldap_bind fails with LDAP_PROTOCOL_ERROR.
+ This solves a problem with OpenLDAP > 2.0 client libs and a OpenLDAP 1.2
+ Server. Inspired by Henning Brauer.
+
+ New qmail-reply program. Now it is possible to define a header section
+ with %HEADER%. With this change it is possible to define special Content-type
+ and Content-Transfer-Encodings.
+
+ Bug fix in qmail-lspawn: LDAP_MAXMSIZE = 0 should be eq unlimited.
+ Thanks to Henning Brauer.
+
+ Finally added pop3d logging similar to the smtpd logging.
+
+ Added the badmailfrom-unkown feature from Maex (via Henning Brauer).
+
+ Added a fix in qmail-ldaplookup.c. Thanks to Kosh Naranek for the report.
+
+NEWS for 20021201a stuff:
+
+ Hot fix in qmail-local. If no quota was specified accounts with mailforwarding
+ didn't work.
+
+ Close directory file handle in pbsadd and pbscheck.
+
+ Nicer exit behaviour in qmail-todo (exit 0 if no error encountered).
+
+ Add caseIgnoreIA5SubstringsMatch for mailAlternateAddress in qmail.schema.
+
+NEWS for 20021201 stuff:
 
  On exit qmail-todo behaves now like qmail-[rl]spawn and stays alive
  until qmail-send exits. All zombies have been slayered.

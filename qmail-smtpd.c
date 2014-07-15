@@ -140,7 +140,8 @@ void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n")
 void err_qqt() { out("451 qqt failure (#4.3.0)\r\n"); }
 
 void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
-void err_bmf() { out("553 syntax error, please forward to your postmaster (#5.7.1)\r\n"); }
+void err_bmf() { out("553 sorry, your mail was administratvely denied. (#5.7.1)\r\n"); }
+void err_bmfunknown() { out("553 sorry, your mail from a host without RR DNS was administratvely denied. (#5.7.1)\r\n"); }
 void err_maxrcpt() { out("553 sorry, too many recipients (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
 void err_badbounce() { out("550 sorry, I don't accept bounce messages with more than one recipient. Go read RFC2821. (#5.7.1)\r\n"); }
@@ -216,6 +217,9 @@ stralloc liphost = {0};
 int bmfok = 0;
 stralloc bmf = {0};
 struct constmap mapbmf;
+int bmfunknownok = 0;
+stralloc bmfunknown = {0};
+struct constmap mapbmfunknown;
 int rmfok = 0;
 stralloc rmf = {0};
 struct constmap maprmf;
@@ -270,6 +274,12 @@ void setup()
   if (bmfok)
     if (!constmap_init(&mapbmf,bmf.s,bmf.len,0)) die_nomem();
 
+  bmfunknownok = control_readfile(&bmfunknown,"control/badmailfrom-unknown",0);
+  if (bmfunknownok == -1) die_control();
+  if (bmfunknownok)
+    if (!constmap_init(&mapbmfunknown,bmfunknown.s,bmfunknown.len,0))
+      die_nomem();
+
   rmfok = control_readfile(&rmf,"control/relaymailfrom",0);
   if (rmfok == -1) die_control();
   if (rmfok)
@@ -284,24 +294,11 @@ void setup()
   if (rblok == -1) die_control();
 
   errdisconnect = (env_get("SMTP550DISCONNECT") ? 1:0);
-  if (errdisconnect) logstring(2,", smtp550disconnect enabled");
-
   nobounce = (env_get("NOBOUNCE") ? 1:0);
-  if (nobounce) logstring(2,", nobounce enabled");
-
   sanitycheck = (env_get("SANITYCHECK") ? 1:0);
-  if (sanitycheck) logstring(2,", sanitycheck enabled");
-
   returnmxcheck = (env_get("RETURNMXCHECK") ? 1:0);
-  if (returnmxcheck) logstring(2,", returnmxcheck enabled");
-
   blockrelayprobe = (env_get("BLOCKRELAYPROBE") ? 1:0);
-  if (blockrelayprobe) logstring(2,", blockrelayprobe enabled");
-
   relayok = relayclient = env_get("RELAYCLIENT");
-  if (relayclient) logstring(2,", relayclient set");
-
-  logflush(2);
 
   if (control_readint(&databytes,"control/databytes") == -1) die_control();
   x = env_get("DATABYTES");
@@ -335,6 +332,14 @@ void setup()
   if (!local) local = env_get("TCPLOCALIP");
   if (!local) local = "unknown";
   logstring(2,local);
+
+  logstring(2, ":");
+  if (errdisconnect) logstring(2,"smtp550disconnect");
+  if (nobounce) logstring(2,"nobounce");
+  if (sanitycheck) logstring(2,"sanitycheck");
+  if (returnmxcheck) logstring(2,"returnmxcheck");
+  if (blockrelayprobe) logstring(2,"blockrelayprobe");
+  if (relayclient) logstring(2,"relayclient");
 
   logflush(2);
   dohelo(remotehost);
@@ -477,6 +482,18 @@ int bmfcheck()
     if (constmap(&mapbmf,addr.s + j,addr.len - j - 1)) return 1;
     if (constmap(&mapbmf,addr.s, j + 1)) return 1;
   }
+  return 0;
+}
+
+int bmfunknowncheck()
+{
+  int j;
+  if (!bmfunknownok) return 0;
+  if (case_diffs(remotehost,"unknown")) return 0;
+  if (constmap(&mapbmfunknown,addr.s,addr.len - 1)) return 1;
+  j = byte_rchr(addr.s,addr.len,'@');
+  if (j < addr.len)
+    if (constmap(&mapbmfunknown,addr.s + j,addr.len - j - 1)) return 1;
   return 0;
 }
 
@@ -663,6 +680,15 @@ void smtp_mail(arg) char *arg;
   {
     err_bmf();
     logpid(2); logstring(2,"bad mailfrom ="); logstring(2,addr.s); logflush(2);
+    if (errdisconnect) err_quit();
+    return;
+  }
+  /* bad mailfrom unknown check */
+  if (bmfunknowncheck())
+  {
+    err_bmfunknown();
+    logpid(2); logstring(2,"bad mailfrom unknown =");
+    logstring(2,addr.s); logflush(2);
     if (errdisconnect) err_quit();
     return;
   }
