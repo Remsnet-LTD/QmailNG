@@ -373,10 +373,10 @@ char *append;
 
    str=ONELINE_NAME(X509_get_subject_name(peer));
    out("; subject="); out(str);
-   Free(str);
+   SSL_free(str);
    str=ONELINE_NAME(X509_get_issuer_name(peer));
    out("; issuer="); out(str);
-   Free(str);
+   SSL_free(str);
    X509_free(peer);
   }
   out(";\n");
@@ -389,7 +389,6 @@ char *append;
   outhost();
   out(append);
   out(".\n");
-#ifdef DATA_COMPRESS
   if (wantcomp == 1) {
 	  r = 100 - (int)(100.0*stream.total_out/stream.total_in);
 	  if (r < 0) {
@@ -400,7 +399,6 @@ char *append;
 	  out("Dynamic data compression saved ");
 	  out(num); out("%.\n");
   }
-#endif
   outsmtptext();
   zerodie();
 }
