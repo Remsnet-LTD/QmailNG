@@ -27,8 +27,6 @@ struct qmail *qq;
 
   setup_qqargs();
 
-  setup_qqargs();
-
   if (pipe(pim) == -1) return -1;
   if (pipe(pie) == -1) { close(pim[0]); close(pim[1]); return -1; }
   if (pipe(pierr) == -1) {
@@ -130,6 +128,7 @@ struct qmail *qq;
   exitcode = wait_exitcode(wstat);
 
   switch(exitcode) {
+    case  1: return "IYour SPAM has been ignored.";
     case 115: /* compatibility */
     case  1: return "IYour SPAM has been ignored.";
     case 11: return "Denvelope address too long for qq (#5.1.3)";
