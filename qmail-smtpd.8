@@ -519,6 +519,17 @@ This variable is re-checked after a successful AUTH command, which
 makes it possible to change its value using an AUTH_SET_MFCHECK
 environment variable.
 .TP 5
+.I PASSWORD_EXPIRES
+If this variable is set, it is expected to contain a unix time() value (the
+number of seconds since 1970-01-01 00:00:00 GMT.) If the current time is
+equal to or greater than this value, any AUTH command will fail with an
+error message saying that the password is expired.
+
+Logically, this variable should only be used on a per-user basis. The
+AUTH_CDB patch allows you to create environment variables which are
+created when a specific user sends a successful AUTH command. Otherwise,
+there is currently no other way to set this on a per-user basis.
+.TP 5
 .I QMAILQUEUE
 If this variable is set, it should point to a program which will be
 executed instead of the
@@ -793,5 +804,5 @@ See
 .B http://qmail.jms1.net/patches/combined-details.shtml
 for more detailed information about the differences between this instance
 of qmail and the stock qmail. This man page is current as of the
-.B 7.02
+.B 7.06
 version of the combined patch file.

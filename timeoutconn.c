@@ -91,54 +91,6 @@ int force;
 }
 
 
-#define BIND_SOCKET 1 /* 0 to ignore bind fail, 1 to tempfail and requeue */
-#ifdef BIND_SOCKET
-#include "control.h"
-#include "constmap.h"
-#include "stralloc.h"
-
-int bind_socket(s,ip)
-int s;
-struct ip_address *ip;
-{
-  struct sockaddr_in salocal;
-  struct ip_address iplocal;
-  char *ipstr, ipstring[IPFMT+1];
-  int iplen;
-  stralloc routes = {0};
-  struct constmap bindroutes;
-  char *bindroute = (char *)0;
-
-  /* Right, do we actually have any bind routes? */
-  switch(control_readfile(&routes,"control/bindroutes",0))
-   {
-    case 0: return 0; /* no file, no bind to worry about */
-    case -1: return -2; /* buggered up somewhere, urgh! */
-    case 1: if (!constmap_init(&bindroutes,routes.s,routes.len,1)) return -3;
-   }
-
-  ipstring[0] = '.'; /* "cheating", but makes the loop check easier below! */
-  ipstr = ipstring+1;
-  iplen = ip_fmt(ipstr,ip); /* Well, Dan seems to trust its output! */
-
-  /* check d.d.d.d, d.d.d., d.d., d., none */
-  bindroute = constmap(&bindroutes,ipstr,iplen);
-  if (!bindroute) while (iplen--)  /* no worries - the lost char must be 0-9 */
-    if (ipstring[iplen] == '.')
-      if (bindroute = constmap(&bindroutes,ipstr,iplen)) break;
-  if (!bindroute || !*bindroute) return 0; /* no bind required */
-  if (!ip_scan(bindroute,&iplocal)) return -4; /* wasn't an ip returned */
-
-  byte_zero(&salocal,sizeof(salocal));
-  salocal.sin_family = AF_INET;
-  byte_copy(&salocal.sin_addr,4,&iplocal);
-
-  if (bind(s, (struct sockaddr *)&salocal,sizeof(salocal))) return BIND_SOCKET;
-  return 0;
-}
-
-#endif
-
 int timeoutconn(s,ip,port,timeout)
 int s;
 struct ip_address *ip;

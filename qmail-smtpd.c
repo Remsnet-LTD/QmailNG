@@ -218,7 +218,7 @@ void smtp_help()
 {
     out("214 netqmail home page: http://qmail.org/netqmail\r\n");
   if(help_version)
-    out("214 jms1 combined patch v7.03 http://qmail.jms1.net/patches/combined.shtml\r\n");
+    out("214 jms1 combined patch v7.06 http://qmail.jms1.net/patches/combined.shtml\r\n");
 }
 void smtp_quit()
 {
@@ -1114,6 +1114,9 @@ void acceptmessage(qp) unsigned long qp;
   out("\r\n");
 }
 
+/* addvars() - find and add environment variables after encrypted password
+   in cdb data. if doit=0, only PASSWORD_EXPIRES is searched for. this way
+   expired passwords don't get their extra vars if password is expired. */
 void addvars(s,doit)
 char *s;
 int doit;
@@ -1121,6 +1124,7 @@ int doit;
   char *n;
   char *v;
   int x;
+  int y;
 
   n = s;
 
@@ -1129,15 +1133,17 @@ int doit;
     if (','==*n) n++ ;
     x = str_chr(n,'=');
     if (!n[x]) return ;
-    n[x]=0;
     if (n[x+1]!='\"') return ;
     v = n+x+2 ;
-    x = str_chr(v,'\"');
-    if (!v[x]) return ;
-    v[x]=0;
+    y = str_chr(v,'\"');
+    if (!v[y]) return ;
     if(!str_diff(n,"PASSWORD_EXPIRES")) scan_ulong(v,&pw_expire);
-    if(doit) env_put2(n,v);
-    n = v+x+1;
+    if(doit) {
+      n[x]=0;
+      v[y]=0;
+      env_put2(n,v);
+    }
+    n = v+y+1;
   }
 }
 
