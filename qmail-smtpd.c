@@ -51,6 +51,7 @@ void die_control() { out("421 unable to read controls (#4.3.0)\r\n"); flush(); _
 void die_ipme() { out("421 unable to figure out my IP addresses (#4.3.0)\r\n"); flush(); _exit(1); }
 void straynewline() { out("451 See http://pobox.com/~djb/docs/smtplf.html.\r\n"); flush(); _exit(1); }
 
+void err_size() { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); }
 void err_bmf() { out("553 sorry, your envelope sender is in my badmailfrom list (#5.7.1)\r\n"); }
 void err_nogateway() { out("553 sorry, that domain isn't in my list of allowed rcpthosts (#5.7.1)\r\n"); }
 void err_unimpl() { out("502 unimplemented (#5.5.1)\r\n"); }
@@ -487,7 +488,7 @@ void smtp_data() {
   qqx = qmail_close(&qqt);
   if (!*qqx) { acceptmessage(qp); return; }
   if (hops) { out("554 too many hops, this message is looping (#5.4.6)\r\n"); return; }
-  if (databytes) if (!bytestooverflow) { out("552 sorry, that message size exceeds my databytes limit (#5.3.4)\r\n"); return; }
+  if (databytes) if (!bytestooverflow) { err_size(); return; }
   if (*qqx == 'D') out("554 "); else out("451 ");
   out(qqx + 1);
   out("\r\n");
