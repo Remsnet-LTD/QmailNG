@@ -45,7 +45,7 @@ void put(buf,len) char *buf; int len;
 {
   substdio_put(&ssout,buf,len);
 }
-void puts(s) char *s;
+void putstr(s) char *s;
 {
   substdio_puts(&ssout,s);
 }
@@ -55,9 +55,9 @@ void flush()
 }
 void err(s) char *s;
 {
-  puts("-ERR ");
-  puts(s);
-  puts("\r\n");
+  putstr("-ERR ");
+  putstr(s);
+  putstr("\r\n");
   flush();
 }
 
@@ -73,7 +73,7 @@ void err_toobig() { err("not that many messages"); }
 void err_nosuch() { err("unable to open that message"); }
 void err_nounlink() { err("unable to unlink all deleted messages"); }
 
-void okay() { puts("+OK \r\n"); flush(); }
+void okay() { putstr("+OK \r\n"); flush(); }
 
 void printfn(fn) char *fn;
 {
@@ -153,11 +153,11 @@ void pop3_stat()
  
   total = 0;
   for (i = 0;i < numm;++i) if (!m[i].flagdeleted) total += m[i].size;
-  puts("+OK ");
+  putstr("+OK ");
   put(strnum,fmt_uint(strnum,numm));
-  puts(" ");
+  putstr(" ");
   put(strnum,fmt_ulong(strnum,total));
-  puts("\r\n");
+  putstr("\r\n");
   flush();
 }
 
@@ -171,9 +171,9 @@ void pop3_rset()
 
 void pop3_last()
 {
-  puts("+OK ");
+  putstr("+OK ");
   put(strnum,fmt_uint(strnum,last));
-  puts("\r\n");
+  putstr("\r\n");
   flush();
 }
 
@@ -222,10 +222,10 @@ int i;
 int flaguidl;
 {
   put(strnum,fmt_uint(strnum,i + 1));
-  puts(" ");
+  putstr(" ");
   if (flaguidl) printfn(m[i].fn);
   else put(strnum,fmt_ulong(strnum,m[i].size));
-  puts("\r\n");
+  putstr("\r\n");
 }
 
 void dolisting(arg,flaguidl) char *arg; int flaguidl;
@@ -234,7 +234,7 @@ void dolisting(arg,flaguidl) char *arg; int flaguidl;
   if (*arg) {
     i = msgno(arg);
     if (i == -1) return;
-    puts("+OK ");
+    putstr("+OK ");
     list(i,flaguidl);
   }
   else {
@@ -242,7 +242,7 @@ void dolisting(arg,flaguidl) char *arg; int flaguidl;
     for (i = 0;i < numm;++i)
       if (!m[i].flagdeleted)
 	list(i,flaguidl);
-    puts(".\r\n");
+    putstr(".\r\n");
   }
   flush();
 }
