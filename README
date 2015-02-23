@@ -1,3 +1,19 @@
+- Work In progress -  ( no releases yet )
+
+QmailNG: Refactoring of Qmail
+
+Tasks :
+- patch clean-up
+- clean history
+- incorporate latest avalible features from other forks
+- add new fixes and features
+
+The Project Scope is creating and managing Qmail Code in a consistent way.
+
+We thank everyone that already contributed to this hard work.
+
+-------------------------------------------------------------------------------
+
 netqmail 1.06
 20071130
 
