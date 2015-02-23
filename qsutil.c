@@ -10,19 +10,19 @@ static struct substdio sserr = SUBSTDIO_FDBUF(write,0,errbuf,1);
 
 void logsa(sa) stralloc *sa; {
  substdio_putflush(&sserr,sa->s,sa->len); }
-void log1(s1) char *s1; {
+void wlog1(s1) char *s1; {
  substdio_putsflush(&sserr,s1); }
-void log2(s1,s2) char *s1; char *s2; {
+void wlog2(s1,s2) char *s1; char *s2; {
  substdio_putsflush(&sserr,s1);
  substdio_putsflush(&sserr,s2); }
-void log3(s1,s2,s3) char *s1; char *s2; char *s3; {
+void wlog3(s1,s2,s3) char *s1; char *s2; char *s3; {
  substdio_putsflush(&sserr,s1);
  substdio_putsflush(&sserr,s2);
  substdio_putsflush(&sserr,s3); }
-void nomem() { log1("alert: out of memory, sleeping...\n"); sleep(10); }
+void nomem() { wlog1("alert: out of memory, sleeping...\n"); sleep(10); }
 
 void pausedir(dir) char *dir;
-{ log3("alert: unable to opendir ",dir,", sleeping...\n"); sleep(10); }
+{ wlog3("alert: unable to opendir ",dir,", sleeping...\n"); sleep(10); }
 
 static int issafe(ch) char ch;
 {

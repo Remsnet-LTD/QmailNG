@@ -1,9 +1,9 @@
 #ifndef QSUTIL_H
 #define QSUTIL_H
 
-extern void log1();
-extern void log2();
-extern void log3();
+extern void wlog1();
+extern void wlog2();
+extern void wlog3();
 extern void logsa();
 extern void nomem();
 extern void pausedir();
